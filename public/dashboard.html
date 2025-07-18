@@ -28,6 +28,36 @@
             };
         }
     </script>
+    <style>
+        /* Add to existing styles */
+        .loader-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f7fafc;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f7fafc;
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+    </style>
 </head>
 
 <body class="bg-gray-50 text-gray-800">
