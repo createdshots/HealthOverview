@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign In | myHealthTracker</title>
+  <title>Sign In | HealthOverview</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="/firebaseConfig.js"></script>
@@ -126,7 +126,7 @@
     
     <div class="z-10 max-w-lg mx-auto text-center px-8">
       <h1 class="text-4xl font-extrabold mb-4 rainbow-text">Empowering the Chronically Ill</h1>
-      <p class="text-lg text-gray-700 mb-6">myHealthTracker helps you monitor symptoms, spot trends, and take control of your health journey. Designed for people with chronic conditions, by people who understand.</p>
+      <p class="text-lg text-gray-700 mb-6">HealthOverview helps you monitor symptoms, spot trends, and take control of your health journey. Designed for people with chronic conditions, by people who understand.</p>
       <ul class="text-left text-base text-gray-600 space-y-2">
         <li>✔️ Log symptoms and medical visits</li>
         <li>✔️ Track your conditions with personalized questions</li>
@@ -139,8 +139,8 @@
   <div class="flex flex-col w-full md:w-1/2 justify-center items-center bg-white min-h-screen p-8 relative">
     <div class="w-full max-w-md mx-auto bg-white rounded-xl shadow-lg p-8">
       <div class="mb-8 text-center">
-        <img src="/logo.svg" alt="myHealthTracker logo" class="mx-auto mb-2 w-14 h-14">
-        <h2 class="text-2xl font-bold text-gray-900 mb-1">Sign in to myHealthTracker</h2>
+        <img src="/logo.svg" alt="HealthOverview logo" class="mx-auto mb-2 w-14 h-14">
+        <h2 class="text-2xl font-bold text-gray-900 mb-1">Sign in to HealthOverview</h2>
         <p class="text-gray-600 text-sm">Start tracking your health journey today.</p>
       </div>
       <div class="space-y-4">
@@ -176,7 +176,7 @@
     <div id="guest-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 hidden">
       <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
         <h3 class="text-lg font-bold text-gray-900 mb-2">Guest Session Disclaimer</h3>
-        <p class="text-gray-700 mb-4">You are about to use myHealthTracker as a guest. <span class="font-semibold text-red-600">Your data will not be saved</span> after you leave or refresh the page. For a full experience, please sign in with Google.</p>
+        <p class="text-gray-700 mb-4">You are about to use HealthOverview as a guest. <span class="font-semibold text-red-600">Your data will not be saved</span> after you leave or refresh the page. For a full experience, please sign in with Google.</p>
         <div class="flex justify-end gap-2">
           <button id="guest-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
           <button id="guest-continue-btn" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Continue as Guest</button>
@@ -185,82 +185,122 @@
     </div>
   </div>
   <script type="module">
-    import { FirebaseAuth } from '/js/auth.js';
-    import { GoogleAuthProvider, OAuthProvider, signInWithPopup, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    try {
+      // Import Firebase modules
+      const { FirebaseAuth } = await import('/js/auth.js');
+      const { GoogleAuthProvider, OAuthProvider, signInWithPopup, signInAnonymously } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
 
-    const firebaseAuth = new FirebaseAuth();
-    await firebaseAuth.initialize();
-    const auth = firebaseAuth.getAuth();
+      const firebaseAuth = new FirebaseAuth();
+      await firebaseAuth.initialize();
+      const auth = firebaseAuth.getAuth();
 
-    firebaseAuth.onAuthChange(({ user }) => {
-      if (user) {
-        window.location.href = '/dashboard.html';
+      firebaseAuth.onAuthChange(({ user }) => {
+        if (user) {
+          console.log('User authenticated:', user);
+          window.location.href = '/dashboard.html';
+        }
+      });
+
+      function showLoginStatusMessage(message, type = 'error') {
+        const msgDiv = document.getElementById('login-status-message');
+        if (!msgDiv) return;
+        msgDiv.textContent = message;
+        msgDiv.className = type === 'error' ? 'text-red-600' : 'text-green-600';
+        msgDiv.style.opacity = 1;
+        setTimeout(() => { msgDiv.style.opacity = 0; }, 6000);
       }
-    });
 
-    function showLoginStatusMessage(message, type = 'error') {
-      const msgDiv = document.getElementById('login-status-message');
-      if (!msgDiv) return;
-      msgDiv.textContent = message;
-      msgDiv.className = type === 'error' ? 'text-red-600' : 'text-green-600';
-      msgDiv.style.opacity = 1;
-      setTimeout(() => { msgDiv.style.opacity = 0; }, 6000);
-    }
+      // Google Sign-In
+      const googleBtn = document.getElementById('google-signin-btn');
+      if (googleBtn) {
+        googleBtn.addEventListener('click', async () => {
+          try {
+            showLoginStatusMessage('Signing in with Google...', 'success');
+            const provider = new GoogleAuthProvider();
+            provider.addScope('email');
+            provider.addScope('profile');
+            const result = await signInWithPopup(auth, provider);
+            console.log('Google sign-in successful:', result.user);
+          } catch (error) {
+            console.error('Google sign-in error:', error);
+            showLoginStatusMessage(`Google sign-in failed: ${error.message}`);
+          }
+        });
+      }
 
-    // Google Sign-In
-    const googleBtn = document.getElementById('google-signin-btn');
-    if (googleBtn) {
-      googleBtn.addEventListener('click', async () => {
-        try {
-          const provider = new GoogleAuthProvider();
-          await signInWithPopup(auth, provider);
-        } catch (error) {
-          showLoginStatusMessage(error.message);
-        }
-      });
-    }
+      // Microsoft Sign-In  
+      const msBtn = document.getElementById('microsoft-signin-btn');
+      if (msBtn) {
+        msBtn.addEventListener('click', async () => {
+          try {
+            showLoginStatusMessage('Signing in with Microsoft...', 'success');
+            const provider = new OAuthProvider('microsoft.com');
+            provider.addScope('mail.read');
+            provider.addScope('user.read');
+            const result = await signInWithPopup(auth, provider);
+            console.log('Microsoft sign-in successful:', result.user);
+          } catch (error) {
+            console.error('Microsoft sign-in error:', error);
+            showLoginStatusMessage(`Microsoft sign-in failed: ${error.message}`);
+          }
+        });
+      }
 
-    // Microsoft Sign-In  
-    const msBtn = document.getElementById('microsoft-signin-btn');
-    if (msBtn) {
-      msBtn.addEventListener('click', async () => {
-        try {
-          const provider = new OAuthProvider('microsoft.com');
-          await signInWithPopup(auth, provider);
-        } catch (error) {
-          showLoginStatusMessage(error.message);
-        }
-      });
-    }
+      // Guest Sign-In
+      const guestBtn = document.getElementById('guest-signin-btn');
+      const guestModal = document.getElementById('guest-modal');
+      const guestContinueBtn = document.getElementById('guest-continue-btn');
+      const guestCancelBtn = document.getElementById('guest-cancel-btn');
 
-    // Guest Sign-In
-    const guestBtn = document.getElementById('guest-signin-btn');
-    const guestModal = document.getElementById('guest-modal');
-    const guestContinueBtn = document.getElementById('guest-continue-btn');
-    const guestCancelBtn = document.getElementById('guest-cancel-btn');
+      if (guestBtn) {
+        guestBtn.addEventListener('click', () => {
+          console.log('Guest button clicked');
+          guestModal?.classList.remove('hidden');
+        });
+      }
 
-    if (guestBtn) {
-      guestBtn.addEventListener('click', () => {
-        guestModal?.classList.remove('hidden');
-      });
-    }
+      if (guestContinueBtn) {
+        guestContinueBtn.addEventListener('click', async () => {
+          try {
+            console.log('Attempting anonymous sign-in...');
+            showLoginStatusMessage('Signing in as guest...', 'success');
+            
+            const result = await signInAnonymously(auth);
+            console.log('Anonymous sign-in successful:', result.user);
+            
+            showLoginStatusMessage('Signed in as guest successfully!', 'success');
+            guestModal?.classList.add('hidden');
+            
+            // The onAuthChange callback should handle redirect
+            setTimeout(() => {
+              if (!window.location.href.includes('dashboard.html')) {
+                window.location.href = '/dashboard.html';
+              }
+            }, 1000);
+            
+          } catch (error) {
+            console.error('Anonymous sign-in error:', error);
+            showLoginStatusMessage(`Guest sign-in failed: ${error.message}`);
+          }
+        });
+      }
 
-    if (guestContinueBtn) {
-      guestContinueBtn.addEventListener('click', async () => {
-        try {
-          await signInAnonymously(auth);
-          showLoginStatusMessage('Signed in as guest successfully!', 'success');
+      if (guestCancelBtn) {
+        guestCancelBtn.addEventListener('click', () => {
           guestModal?.classList.add('hidden');
-        } catch (error) {
-          showLoginStatusMessage(error.message);
-        }
-      });
-    }
+        });
+      }
 
-    if (guestCancelBtn) {
-      guestCancelBtn.addEventListener('click', () => {
-        guestModal?.classList.add('hidden');
-      });
+    } catch (error) {
+      console.error('Failed to load authentication module:', error);
+      
+      // Fallback error message
+      const msgDiv = document.getElementById('login-status-message');
+      if (msgDiv) {
+        msgDiv.textContent = 'Authentication system failed to load. Please refresh the page.';
+        msgDiv.className = 'text-red-600';
+        msgDiv.style.opacity = 1;
+      }
     }
   </script>
 </body>
