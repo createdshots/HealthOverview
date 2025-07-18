@@ -1,7 +1,28 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const path = require('path');
+const fs = require('fs');
+
 admin.initializeApp();
+
+// Serve authentication JavaScript dynamically
+exports.authScript = functions.https.onRequest((req, res) => {
+  res.set('Content-Type', 'application/javascript');
+  res.set('Cache-Control', 'no-cache');
+  
+  // Read and serve the auth script
+  const authScript = fs.readFileSync(path.join(__dirname, 'client-scripts', 'auth.js'), 'utf8');
+  res.send(authScript);
+});
+
+// Serve login JavaScript dynamically  
+exports.loginScript = functions.https.onRequest((req, res) => {
+  res.set('Content-Type', 'application/javascript');
+  res.set('Cache-Control', 'no-cache');
+  
+  const loginScript = fs.readFileSync(path.join(__dirname, 'client-scripts', 'login.js'), 'utf8');
+  res.send(loginScript);
+});
 
 exports.authRedirect = functions.https.onRequest((req, res) => {
   // Allow access to index.html (login page), firebaseConfig.js, and static assets without auth
