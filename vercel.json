@@ -3,7 +3,6 @@
   "outputDirectory": "public",
   "devCommand": null,
   "installCommand": null,
-  "functions": {},
   "rewrites": [
     {
       "source": "/dashboard.html",
