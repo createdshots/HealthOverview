@@ -1,31 +1,20 @@
 {
   "name": "healthoverview",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "A web application for tracking medical visits and symptoms.",
-  "main": "src/app.js",
+  "main": "public/index.html",
   "scripts": {
-    "start": "live-server public",
-    "build": "webpack --mode production",
-    "test": "jest"
+    "dev": "vercel dev",
+    "build": "echo 'No build needed - static files'",
+    "start": "vercel dev"
   },
   "dependencies": {
-    "chart.js": "^3.7.0",
-    "firebase": "^9.6.1",
-    "live-server": "^1.2.1"
+    "chart.js": "^3.7.0"
   },
-  "devDependencies": {
-    "webpack": "^5.64.0",
-    "webpack-cli": "^4.9.1",
-    "jest": "^27.4.5"
-  },
-  "author": "Your Name",
+  "author": "Jack Tolley",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/createdshots/healthoverview.git"
-  },
-  "bugs": {
-    "url": "https://github.com/createdshots/healthoverview/issues"
-  },
-  "homepage": "https://github.com/createdshots/healthoverview#readme"
+  }
 }

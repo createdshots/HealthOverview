@@ -1,0 +1,21 @@
+{
+  "buildCommand": null,
+  "outputDirectory": "public",
+  "devCommand": null,
+  "installCommand": null,
+  "functions": {},
+  "rewrites": [
+    {
+      "source": "/dashboard.html",
+      "destination": "/dashboard.html"
+    },
+    {
+      "source": "/profile.html",
+      "destination": "/profile.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
