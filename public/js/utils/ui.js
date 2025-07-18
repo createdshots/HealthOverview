@@ -3,7 +3,8 @@ export class UIManager {
     constructor() {
         this.statusMessageArea = null;
         this.loadingIndicator = null;
-        this.loaderText = null;
+        this.authSignedOutView = null;
+        this.authSignedInView = null;
     }
 
     initialize() {
@@ -11,12 +12,14 @@ export class UIManager {
         
         this.statusMessageArea = document.getElementById('status-message-area');
         this.loadingIndicator = document.getElementById('full-page-loader');
-        this.loaderText = document.getElementById('loader-text');
+        this.authSignedOutView = document.getElementById('auth-signed-out-view');
+        this.authSignedInView = document.getElementById('auth-signed-in-view');
         
         const result = {
             statusArea: !!this.statusMessageArea,
             loader: !!this.loadingIndicator,
-            loaderText: !!this.loaderText
+            authOut: !!this.authSignedOutView,
+            authIn: !!this.authSignedInView
         };
         
         console.log('✅ UIManager elements found:', result);
@@ -26,64 +29,82 @@ export class UIManager {
     showStatusMessage(message, type = 'success') {
         console.log(`📝 Status message: ${message} (${type})`);
         
-        if (!this.statusMessageArea) {
-            console.warn('⚠️ Status message area not found');
-            return;
+        if (this.statusMessageArea) {
+            this.statusMessageArea.innerHTML = `
+                <div class="text-center p-2 rounded-lg ${this.getStatusClasses(type)}">
+                    ${message}
+                </div>
+            `;
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                if (this.statusMessageArea) {
+                    this.statusMessageArea.innerHTML = '';
+                }
+            }, 5000);
         }
+    }
 
-        const colorClass = type === 'error' ? 'text-red-600' : 
-                          type === 'warning' ? 'text-yellow-600' : 
-                          type === 'info' ? 'text-blue-600' : 'text-green-600';
-
-        this.statusMessageArea.innerHTML = `
-            <div class="${colorClass} text-center font-medium">
-                ${message}
-            </div>
-        `;
-
-        // Clear message after 5 seconds
-        setTimeout(() => {
-            if (this.statusMessageArea) {
-                this.statusMessageArea.innerHTML = '';
-            }
-        }, 5000);
+    getStatusClasses(type) {
+        switch (type) {
+            case 'success': return 'bg-green-100 text-green-800 border border-green-200';
+            case 'error': return 'bg-red-100 text-red-800 border border-red-200';
+            case 'info': return 'bg-blue-100 text-blue-800 border border-blue-200';
+            default: return 'bg-gray-100 text-gray-800 border border-gray-200';
+        }
     }
 
     setLoading(loading, text = 'Loading...') {
         console.log(`⏳ Loading state: ${loading} - ${text}`);
         
-        if (!this.loadingIndicator) {
-            console.warn('⚠️ Loading indicator not found');
-            return;
-        }
-
-        if (loading) {
-            this.loadingIndicator.classList.remove('loader-hidden');
-            if (this.loaderText) {
-                this.loaderText.textContent = text;
+        if (this.loadingIndicator) {
+            const loaderText = document.getElementById('loader-text');
+            if (loaderText) {
+                loaderText.textContent = text;
             }
-        } else {
-            this.loadingIndicator.classList.add('loader-hidden');
+            
+            if (loading) {
+                this.loadingIndicator.classList.remove('loader-hidden');
+            } else {
+                this.loadingIndicator.classList.add('loader-hidden');
+            }
         }
     }
 
     updateUserDisplay(user, userId) {
-        console.log('👤 Updating user display:', user ? userId : 'No user');
+        console.log('👤 Updating user display:', user ? 'signed in' : 'signed out');
         
-        const signedOutView = document.getElementById('auth-signed-out-view');
-        const signedInView = document.getElementById('auth-signed-in-view');
-        const userIdDisplay = document.getElementById('user-id-display');
-
         if (user) {
-            if (signedOutView) signedOutView.classList.add('hidden');
-            if (signedInView) signedInView.classList.remove('hidden');
-            if (userIdDisplay) {
-                userIdDisplay.textContent = user.isAnonymous ? 'Guest User' : 
-                                           (user.displayName || user.email || userId);
+            // Hide sign-in buttons
+            if (this.authSignedOutView) {
+                this.authSignedOutView.style.display = 'none';
             }
+            
+            // Show signed-in state
+            if (this.authSignedInView) {
+                this.authSignedInView.style.display = 'flex';
+                this.authSignedInView.classList.remove('hidden');
+            }
+            
+            // Update user display
+            const userIdDisplay = document.getElementById('user-id-display');
+            if (userIdDisplay) {
+                const displayName = user.isAnonymous ? 'Guest User' : 
+                                 (user.displayName || user.email || 'User');
+                userIdDisplay.textContent = displayName;
+            }
+            
         } else {
-            if (signedOutView) signedOutView.classList.remove('hidden');
-            if (signedInView) signedInView.classList.add('hidden');
+            // Show sign-in buttons
+            if (this.authSignedOutView) {
+                this.authSignedOutView.style.display = 'flex';
+            }
+            
+            // Hide signed-in state
+            if (this.authSignedInView) {
+                this.authSignedInView.style.display = 'none';
+                this.authSignedInView.classList.add('hidden');
+            }
         }
     }
 
@@ -91,11 +112,21 @@ export class UIManager {
         console.log(`👤 Profile button visibility: ${visible}`);
         
         const profileBtn = document.getElementById('show-profile-btn');
+        const addRecordBtn = document.getElementById('add-record-btn');
+        
         if (profileBtn) {
             if (visible) {
                 profileBtn.classList.remove('hidden');
             } else {
                 profileBtn.classList.add('hidden');
+            }
+        }
+        
+        if (addRecordBtn) {
+            if (visible) {
+                addRecordBtn.classList.remove('hidden');
+            } else {
+                addRecordBtn.classList.add('hidden');
             }
         }
     }
@@ -123,6 +154,25 @@ export class UIManager {
         greetingElement.innerHTML = `
             Welcome back, ${userName}! 
             You've visited ${hospitalCount} hospitals and ${ambulanceCount} ambulance services.
+        `;
+    }
+
+    updateStats(type, data) {
+        const statsElement = document.getElementById(`${type}-stats`);
+        if (!statsElement) return;
+        
+        const total = data.length;
+        const visited = data.filter(item => item.visited).length;
+        const percentage = total > 0 ? Math.round((visited / total) * 100) : 0;
+        
+        statsElement.innerHTML = `
+            <div class="text-sm text-gray-600">
+                Progress: ${visited}/${total} (${percentage}%)
+                <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                    <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                         style="width: ${percentage}%"></div>
+                </div>
+            </div>
         `;
     }
 }
