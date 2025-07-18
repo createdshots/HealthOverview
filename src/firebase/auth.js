@@ -17,11 +17,11 @@ export class FirebaseAuth {
 
     async initialize() {
         // Defensive check for firebase-config.js
-        if (typeof userFirebaseConfig === 'undefined') {
+        if (typeof window.userFirebaseConfig === 'undefined') {
             document.body.innerHTML = '<div class="flex items-center justify-center min-h-screen"><div class="bg-white p-8 rounded shadow text-center"><h2 class="text-2xl font-bold mb-2 text-red-600">Configuration Error</h2><p>firebase-config.js is missing.</p></div></div>';
             throw new Error('FATAL: firebase-config.js not loaded!');
         }
-        this.app = initializeApp(userFirebaseConfig);
+        this.app = initializeApp(window.userFirebaseConfig);
         this.auth = getAuth(this.app);
         this.db = getFirestore(this.app);
         this.setupAuthListener();
