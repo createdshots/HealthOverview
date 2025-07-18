@@ -1,9 +1,6 @@
 # Firebase config - contains sensitive API keys
 firebaseConfig.js
 
-# Don't track copied JS files if using build process
-public/js/
-
 # Node modules
 functions/node_modules/
 node_modules/

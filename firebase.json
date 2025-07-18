@@ -8,14 +8,6 @@
     ],
     "rewrites": [
       {
-        "source": "/js/auth.js",
-        "function": "authScript"
-      },
-      {
-        "source": "/js/login.js",
-        "function": "loginScript"
-      },
-      {
         "source": "/dashboard.html",
         "destination": "/dashboard.html"
       },
@@ -28,8 +20,5 @@
         "destination": "/index.html"
       }
     ]
-  },
-  "functions": {
-    "source": "functions"
   }
 }
