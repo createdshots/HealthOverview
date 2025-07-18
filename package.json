@@ -1,6 +1,6 @@
 {
-  "name": "ambulance-hospitaltracker",
-  "version": "1.0.0",
+  "name": "healthoverview",
+  "version": "1.0.2",
   "description": "A web application for tracking medical visits and symptoms.",
   "main": "src/app.js",
   "scripts": {
@@ -19,5 +19,13 @@
     "jest": "^27.4.5"
   },
   "author": "Your Name",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/createdshots/healthoverview.git"
+  },
+  "bugs": {
+    "url": "https://github.com/createdshots/healthoverview/issues"
+  },
+  "homepage": "https://github.com/createdshots/healthoverview#readme"
 }
