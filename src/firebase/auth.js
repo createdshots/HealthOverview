@@ -48,10 +48,12 @@ export class FirebaseAuth {
                 this.userId = null;
                 this.docRef = null;
                 
-                // Only redirect if not already on login page
+                // Only redirect if not already on index page (login page)
                 const currentPath = window.location.pathname;
-                if (!currentPath.includes('login.html')) {
-                    window.location.href = '/login.html';
+                const isOnLoginPage = currentPath === '/' || currentPath.includes('index.html') || currentPath === '/public/' || currentPath === '/public/index.html';
+                
+                if (!isOnLoginPage) {
+                    window.location.href = '/';
                 } else {
                     // On login page, call callback with null user
                     if (this.onAuthChangeCallback) this.onAuthChangeCallback({ user: null });

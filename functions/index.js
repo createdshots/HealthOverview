@@ -4,9 +4,10 @@ const path = require('path');
 admin.initializeApp();
 
 exports.authRedirect = functions.https.onRequest((req, res) => {
-  // Allow access to login.html, firebaseConfig.js, and static assets without auth
+  // Allow access to index.html (login page), firebaseConfig.js, and static assets without auth
   if (
-    req.path === '/login.html' ||
+    req.path === '/' ||
+    req.path === '/index.html' ||
     req.path === '/firebaseConfig.js' ||
     req.path === '/favicon.ico' ||
     req.path.startsWith('/__/') || // Firebase internal
@@ -24,8 +25,8 @@ exports.authRedirect = functions.https.onRequest((req, res) => {
       : req.cookies?.__session;
 
   if (!idToken) {
-    // Not authenticated, redirect to login
-    return res.redirect('/login.html');
+    // Not authenticated, redirect to login (index.html)
+    return res.redirect('/');
   }
 
   // Verify token
@@ -37,7 +38,7 @@ exports.authRedirect = functions.https.onRequest((req, res) => {
       res.sendFile(path.join(__dirname, '../public', req.path));
     })
     .catch(() => {
-      // Invalid token, redirect to login
-      res.redirect('/login.html');
+      // Invalid token, redirect to login (index.html)
+      res.redirect('/');
     });
 });

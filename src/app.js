@@ -3,12 +3,12 @@ import { FirebaseAuth } from './firebase/auth.js';
 
 // Immediate authentication check - prevent access to protected pages
 const currentPath = window.location.pathname;
-const isLoginPage = currentPath.includes('login.html');
+const isLoginPage = currentPath === '/' || currentPath.includes('index.html') || currentPath === '/public/' || currentPath === '/public/index.html';
 const isProfilePage = currentPath.includes('profile.html');
-const isLandingPage = currentPath === '/';
+const isDashboardPage = currentPath.includes('dashboard.html');
 
-// Only run auth check on protected pages (dashboard, not login, profile, or landing)
-if (!isLoginPage && !isProfilePage && !isLandingPage) {
+// Only run auth check on protected pages (dashboard, not login or profile)
+if (!isLoginPage && !isProfilePage) {
   // Show loading while checking authentication
   document.body.style.visibility = 'hidden';
   
@@ -48,7 +48,7 @@ async function initializeApp() {
             firebaseAuth.onAuthChange(({ user }) => {
                 if (!user) {
                     // User not authenticated, redirect to login
-                    window.location.href = '/login.html';
+                    window.location.href = '/';
                 } else {
                     // User is authenticated, show the page and start app
                     document.body.style.visibility = 'visible';
@@ -59,7 +59,7 @@ async function initializeApp() {
         });
     } catch (error) {
         console.error('Firebase initialization failed:', error);
-        window.location.href = '/login.html';
+        window.location.href = '/';
     }
 }
 import { DataManager } from './data/dataManager.js';
@@ -129,7 +129,7 @@ class HospitalTrackerApp {
         document.getElementById('logout-btn')?.addEventListener('click', async () => {
             const success = await this.firebaseAuth.logout();
             if (success) {
-                window.location.href = '/';  // Go to landing page which will redirect to login
+                window.location.href = '/';  // Go back to login page (index.html)
             } else {
                 this.uiManager.showStatusMessage('Failed to logout. Please try again.', 'error');
             }

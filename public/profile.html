@@ -1,7 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+                // Save the profile data (this should be implemented in your app logic)
+            localData.userProfile = { displayName, email, conditions };
+            await saveData(); // Assume saveData is a function that saves localData
+
+            // Redirect to the main application page after saving
+            window.location.href = '/dashboard.html';
+        });
+
+        document.getElementById('cancel-btn').addEventListener('click', () => {
+            window.location.href = '/dashboard.html'; // Redirect to the main page
+        });et="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Profile Setup</title>
     <link rel="stylesheet" href="styles/main.css">
