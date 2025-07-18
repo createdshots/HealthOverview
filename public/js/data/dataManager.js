@@ -29,8 +29,28 @@ export class DataManager {
 
     async initializeDefaultData() {
         const defaultData = {
-            hospitals: [],
-            ambulance: [],
+            hospitals: [
+                {
+                    name: "Sample General Hospital",
+                    location: "123 Medical Way, City, State",
+                    type: "General Hospital",
+                    visited: false
+                },
+                {
+                    name: "Community Health Center",
+                    location: "456 Healthcare Ave, City, State", 
+                    type: "Health Center",
+                    visited: false
+                }
+            ],
+            ambulance: [
+                {
+                    name: "City Emergency Services",
+                    location: "789 Emergency Blvd, City, State",
+                    type: "Emergency Services",
+                    visited: false
+                }
+            ],
             medicalRecords: [],
             awards: [],
             userProfile: {
@@ -41,14 +61,14 @@ export class DataManager {
         };
         
         this.setData(defaultData);
-        this.showStatus('Default data loaded', 'info');
+        this.showStatus('Sample data loaded for guest user', 'info');
         return true;
     }
 
     async saveData() {
         if (!this.firebaseAuth) {
-            console.warn('Firebase auth not available');
-            return false;
+            console.log('Guest user - data saved locally only');
+            return true;
         }
 
         this.setLoading(true, 'Saving your data...');
@@ -116,15 +136,18 @@ export class DataManager {
                 item.visited = !item.visited;
                 if (item.visited) {
                     item.visitDate = new Date().toISOString().split('T')[0];
+                    this.showStatus(`Marked ${item.name} as visited!`, 'success');
                 } else {
                     delete item.visitDate;
+                    this.showStatus(`Unmarked ${item.name}`, 'info');
                 }
                 break;
             case 'delete':
-                this.data[type].splice(index, 1);
+                const deletedItem = this.data[type].splice(index, 1)[0];
+                this.showStatus(`Deleted ${deletedItem.name}`, 'info');
                 break;
             case 'edit':
-                // Implement edit functionality
+                this.showStatus('Edit functionality coming soon!', 'info');
                 break;
         }
 
@@ -150,12 +173,14 @@ export class DataManager {
     }
 
     showStatus(message, type = 'info') {
+        console.log(`Status: ${message} (${type})`);
         if (this.onStatusCallback) {
             this.onStatusCallback(message, type);
         }
     }
 
     setLoading(loading, text = '') {
+        console.log(`Loading: ${loading} - ${text}`);
         if (this.onLoadingCallback) {
             this.onLoadingCallback(loading, text);
         }
