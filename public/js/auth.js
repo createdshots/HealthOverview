@@ -157,7 +157,7 @@ export class FirebaseAuth {
     }
 
     async refreshToken() {
-        if this.currentUser) {
+        if (this.currentUser) {
             try {
                 this.userToken = await this.currentUser.getIdToken(true);
                 return this.userToken;
