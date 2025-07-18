@@ -1,16 +1,25 @@
-// Use environment variables in production, fallback to hardcoded values in development
-const userFirebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyDXJQOLf7tkzeu0z2TFvzaiXtdDVfwgTWU",
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "healthoverview-info.firebaseapp.com",
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "healthoverview-info",
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "healthoverview-info.firebasestorage.app",
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "712121936430",
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:712121936430:web:3a0afcdfd0a9034adc8dbf",
-    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-NQ9XKQJZYB"
-};
+// Firebase Configuration for client-side use
+(function() {
+    'use strict';
+    
+    // For client-side code, we need to use hardcoded values or build-time replacement
+    // Vercel can inject environment variables at build time, but for static files we need a different approach
+    
+    const userFirebaseConfig = {
+        apiKey: "AIzaSyDXJQOLf7tkzeu0z2TFvzaiXtdDVfwgTWU",
+        authDomain: "healthoverview-info.firebaseapp.com",
+        projectId: "healthoverview-info",
+        storageBucket: "healthoverview-info.firebasestorage.app",
+        messagingSenderId: "712121936430",
+        appId: "1:712121936430:web:3a0afcdfd0a9034adc8dbf",
+        measurementId: "G-NQ9XKQJZYB"
+    };
 
-// Make config available globally for secure access
-if (typeof window !== 'undefined') {
-    window.userFirebaseConfig = userFirebaseConfig;
-    console.log('Firebase config loaded from:', process.env.NODE_ENV === 'production' ? 'environment variables' : 'development defaults');
-}
+    // Make config available globally
+    if (typeof window !== 'undefined') {
+        window.userFirebaseConfig = userFirebaseConfig;
+        console.log('Firebase config loaded successfully');
+    } else {
+        console.error('Window object not available');
+    }
+})();

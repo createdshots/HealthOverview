@@ -5,8 +5,8 @@
   "installCommand": null,
   "rewrites": [
     {
-      "source": "/firebaseConfig.js",
-      "destination": "/firebaseConfig.js"
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     },
     {
       "source": "/js/(.*)",
@@ -27,7 +27,7 @@
   ],
   "headers": [
     {
-      "source": "/firebaseConfig.js",
+      "source": "/api/config",
       "headers": [
         {
           "key": "Content-Type",

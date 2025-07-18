@@ -13,8 +13,9 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <!-- Load Firebase config -->
-    <script src="./firebaseConfig.js"></script>
+    
+    <!-- Load Firebase config from API -->
+    <script src="/api/config"></script>
 </head>
 
 <body class="bg-gray-50 text-gray-800">
@@ -163,8 +164,8 @@
 
     <script type="module">
         // Wait for config to load
-        await new Promise(resolve => setTimeout(resolve, 100));
-
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
         if (typeof window.userFirebaseConfig === 'undefined') {
             console.error('Firebase config not loaded!');
             document.body.innerHTML = `
@@ -177,9 +178,9 @@
             `;
             throw new Error('Firebase configuration not found');
         }
-
+        
         try {
-            // Import your app module - this will initialize everything
+            // Import your app module
             await import('./js/app.js');
         } catch (error) {
             console.error('Failed to load app:', error);

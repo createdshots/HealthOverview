@@ -6,8 +6,11 @@
   <title>Sign In | HealthOverview</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-  <!-- Load the updated config file -->
-  <script src="./firebaseConfig.js"></script>
+  
+  <!-- Load Firebase config from API endpoint that can access environment variables -->
+  <script src="/api/config"></script>
+  
+  <!-- Your existing styles -->
   <style>
     body { font-family: 'Inter', sans-serif; }
     /* Animated gradient background */
@@ -186,8 +189,8 @@
     </div>
   </div>
   <script type="module">
-    // Add a small delay to ensure config loads
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Add a delay to ensure config loads
+    await new Promise(resolve => setTimeout(resolve, 200));
     
     // Check if config loaded properly
     if (typeof window.userFirebaseConfig === 'undefined') {
