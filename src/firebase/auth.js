@@ -53,7 +53,7 @@ export class FirebaseAuth {
                 const isOnLoginPage = currentPath === '/' || currentPath.includes('index.html') || currentPath === '/public/' || currentPath === '/public/index.html';
                 
                 if (!isOnLoginPage) {
-                    window.location.href = '/';
+                    window.location.href = '/';  // Changed from '/login.html' to '/'
                 } else {
                     // On login page, call callback with null user
                     if (this.onAuthChangeCallback) this.onAuthChangeCallback({ user: null });

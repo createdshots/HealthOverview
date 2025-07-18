@@ -18,7 +18,7 @@ if (!isLoginPage && !isProfilePage) {
     firebaseAuth.onAuthChange(({ user }) => {
       if (!user) {
         // User not authenticated, redirect to login
-        window.location.href = '/login.html';
+        window.location.href = '/';  // Changed from '/login.html' to '/'
       } else {
         // User is authenticated, show the page
         document.body.style.visibility = 'visible';
@@ -28,7 +28,7 @@ if (!isLoginPage && !isProfilePage) {
     });
   }).catch((error) => {
     console.error('Firebase initialization failed:', error);
-    window.location.href = '/login.html';
+    window.location.href = '/';  // Changed from '/login.html' to '/'
   });
 } else {
   // On login/profile pages, initialize normally
@@ -48,7 +48,7 @@ async function initializeApp() {
             firebaseAuth.onAuthChange(({ user }) => {
                 if (!user) {
                     // User not authenticated, redirect to login
-                    window.location.href = '/';
+                    window.location.href = '/';  // Changed from '/login.html' to '/'
                 } else {
                     // User is authenticated, show the page and start app
                     document.body.style.visibility = 'visible';
@@ -59,7 +59,7 @@ async function initializeApp() {
         });
     } catch (error) {
         console.error('Firebase initialization failed:', error);
-        window.location.href = '/';
+        window.location.href = '/';  // Changed from '/login.html' to '/'
     }
 }
 import { DataManager } from './data/dataManager.js';
@@ -129,7 +129,7 @@ class HospitalTrackerApp {
         document.getElementById('logout-btn')?.addEventListener('click', async () => {
             const success = await this.firebaseAuth.logout();
             if (success) {
-                window.location.href = '/';  // Go back to login page (index.html)
+                window.location.href = '/';  // Changed from '/login.html' to '/' (goes to index.html)
             } else {
                 this.uiManager.showStatusMessage('Failed to logout. Please try again.', 'error');
             }
