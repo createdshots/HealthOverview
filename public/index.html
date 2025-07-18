@@ -1,0 +1,72 @@
+<!-- filepath: /ambulance-hospitaltracker/ambulance-hospitaltracker/public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Health Tracker</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <h1 class="text-2xl font-bold">Welcome to My Health Tracker</h1>
+        <div id="personal-greeting" class="text-lg mt-4"></div>
+        <div id="recent-activity-section"></div>
+        <button id="help-btn" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">Help</button>
+        <button id="show-profile-btn" class="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors hidden">Profile</button>
+        <button id="add-record-btn" class="mt-4 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors hidden">Add Record</button>
+    </div>
+
+    <!-- Modals Container -->
+    <div id="modal-container"></div>
+
+    <footer class="fixed bottom-4 right-4 z-10">
+        <p class="text-sm">© 2023 My Health Tracker</p>
+    </footer>
+
+    <script type="module">
+        // Check if user is new or a guest
+        const userId = auth?.currentUser?.uid; // Assuming auth is defined and holds user authentication info
+        if (!userId || userId.startsWith('guest_')) {
+            window.location.href = 'profile.html'; // Redirect to profile.html for onboarding
+        }
+
+        function setupSnapshotListener() { /* ... */ }
+
+        async function initializeDefaultData() { /* ... */ }
+
+        async function loadListFromFile(type) { /* ... */ }
+
+        async function saveData() { /* ... */ }
+
+        function showStatusMessage(message, type = 'success') { /* ... */ }
+
+        function createModal(id, title, content, size = 'max-w-4xl') { /* ... */ }
+
+        function openModal(modal) { /* ... */ }
+
+        function closeModal(modal) { /* ... */ }
+
+        function renderAll() {
+            try {
+                addRecentActivitySection(); // Ensure this function is defined in app.js
+            } catch (error) {
+                console.error('Error rendering all:', error);
+            }
+        }
+
+        function addRecentActivitySection() {
+            // Implementation of the function to add recent activity section
+        }
+
+        // Event listeners
+        document.getElementById('help-btn').addEventListener('click', showHelpModal);
+        document.getElementById('show-profile-btn').addEventListener('click', () => {
+            window.location.href = 'profile.html';
+        });
+
+        // Call renderAll to initialize the UI
+        renderAll();
+    </script>
+</body>
+</html>
