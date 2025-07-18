@@ -1,6 +1,3 @@
-# Firebase config - contains sensitive API keys
-firebaseConfig.js
-
 # Node modules
 functions/node_modules/
 node_modules/

@@ -5,6 +5,14 @@
   "installCommand": null,
   "rewrites": [
     {
+      "source": "/firebaseConfig.js",
+      "destination": "/firebaseConfig.js"
+    },
+    {
+      "source": "/js/(.*)",
+      "destination": "/js/$1"
+    },
+    {
       "source": "/dashboard.html",
       "destination": "/dashboard.html"
     },
@@ -15,6 +23,30 @@
     {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/firebaseConfig.js",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300"
+        }
+      ]
+    },
+    {
+      "source": "/js/(.*)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        }
+      ]
     }
   ]
 }
