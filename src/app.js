@@ -1,5 +1,18 @@
 // Main Application Entry Point for Hospital Tracker
 import { FirebaseAuth } from './firebase/auth.js';
+// Redirect to /login.html if not authenticated
+if (window.location.pathname !== '/login.html') {
+  import('./firebase/auth.js').then(({ FirebaseAuth }) => {
+    const firebaseAuth = new FirebaseAuth();
+    firebaseAuth.initialize().then(() => {
+      firebaseAuth.onAuthChange(({ user }) => {
+        if (!user) {
+          window.location.href = '/login.html';
+        }
+      });
+    });
+  });
+}
 import { DataManager } from './data/dataManager.js';
 import { UIManager } from './utils/ui.js';
 import { ModalManager } from './components/modal.js';
