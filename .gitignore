@@ -2,3 +2,5 @@ firebaseConfig.js
 
 # Ignore node_modules directory
 functions/node_modules/
+
+.firebase
