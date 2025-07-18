@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HealthOverview</title>
+    <title>myHealthTracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Leaflet CSS for maps -->
@@ -13,49 +13,75 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
-    <!-- Load Firebase config from API -->
-    <script src="/api/config"></script>
-    <script>
-        // Disable source map warnings for external libraries
-        if (typeof console !== 'undefined' && console.warn) {
-            const originalWarn = console.warn;
-            console.warn = function(message) {
-                if (typeof message === 'string' && message.includes('source map')) {
-                    return;
-                }
-                originalWarn.apply(console, arguments);
-            };
-        }
-    </script>
+    <!-- External Config File -->
+    <script src="firebase-config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Add to existing styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .list-item:hover {
+            background-color: #f9fafb;
+        }
+
+        .progress-bar-fill {
+            transition: width 0.5s ease-in-out;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .status-message,
+        .modal-backdrop,
+        .modal-content {
+            transition: all 0.3s ease-in-out;
+        }
+
+        #map {
+            height: 80vh;
+            border-radius: 0.75rem;
+        }
+
+        .award {
+            filter: grayscale(1);
+            opacity: 0.5;
+        }
+
+        .award.unlocked {
+            filter: grayscale(0);
+            opacity: 1;
+        }
+
         .loader-hidden {
             opacity: 0;
             pointer-events: none;
         }
-        
-        .custom-scrollbar {
-            scrollbar-width: thin;
-            scrollbar-color: #cbd5e0 #f7fafc;
+
+        .fade-in-warning {
+            opacity: 0;
+            animation: fadeInWarn 1.2s ease 0.2s forwards;
         }
-        
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f7fafc;
-            border-radius: 3px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e0;
-            border-radius: 3px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #a0aec0;
+        @keyframes fadeInWarn {
+            from { opacity: 0; transform: translateY(-16px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -78,13 +104,9 @@
     </div>
 
     <!-- App Title - Moved Below Warning -->
-    <header class="text-center mb-8 relative">
-        <h1 class="text-4xl font-bold text-gray-900 mt-4 mb-1">HealthOverview</h1>
+    <header class="text-center mb-8">
+        <h1 class="text-4xl font-bold text-gray-900 mt-4 mb-1">myHealthTracker</h1>
         <p class="text-lg text-gray-600 mb-2">Check off hospitals and ambulance trusts you've visited.</p>
-        <!-- Logout Button - positioned in top right corner -->
-        <button id="logout-btn" class="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
-            Logout
-        </button>
     </header>
 
     <!-- Personalized Greeting -->
@@ -104,10 +126,23 @@
 
     <!-- Auth Buttons -->
     <div class="fixed top-4 right-4 z-20">
-        <div id="auth-signed-out-view" class="flex flex-col items-end space-y-2" style="display: none;">
+        <div id="auth-signed-out-view" class="flex flex-col items-end space-y-2">
             <button id="google-signin-btn"
                 class="bg-white text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 transition-colors flex items-center w-full justify-center">
-                <!-- SVG content -->
+                <svg class="w-5 h-5 mr-2" viewBox="0 0 48 48">
+                    <path fill="#4285F4"
+                        d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z">
+                    </path>
+                    <path fill="#34A853"
+                        d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z">
+                    </path>
+                    <path fill="#FBBC05"
+                        d="M27.461 44.5l5.657-5.657C30.485 41.658 27.214 44 24 44c-5.166 0-9.558-2.922-11.481-7.281l-6.571 4.819C9.656 40.663 16.318 44 24 44z">
+                    </path>
+                    <path fill="#EA4335"
+                        d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l5.657 5.657C42.485 36.678 44 31.888 44 24c0-1.341-.138-2.65-.389-3.917z">
+                    </path>
+                </svg>
                 Sign in with Google
             </button>
             <button id="anon-signin-btn"
@@ -192,35 +227,1373 @@
     </footer>
 
     <script type="module">
-        // Wait for config to load
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // Defensive check for firebase-config.js
+        if (typeof userFirebaseConfig === 'undefined') {
+            document.body.innerHTML = '<div class="flex items-center justify-center min-h-screen"><div class="bg-white p-8 rounded shadow text-center"><h2 class="text-2xl font-bold mb-2 text-red-600">Configuration Error</h2><p class="text-gray-700 mb-4">firebase-config.js is missing or not loaded.<br>Please contact the site owner or try again later.</p></div></div>';
+            throw new Error('FATAL: firebase-config.js not loaded!');
+        }
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        const firebaseConfig = userFirebaseConfig;
+        // Only initialize Firebase ONCE
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        // Make statusMessageArea available everywhere
+        const statusMessageArea = document.getElementById('status-message-area');
+        // Ensure all state variables are defined at the top level
+        let userId = null;
+        let docRef = null;
+        let localData = {
+            hospitals: [],
+            ambulance: [],
+            awards: [],
+            visitHistory: [],
+            medicalRecords: [],
+            symptomTracking: [],
+            userProfile: {}
+        };
+        let unsubscribe = null;
+        // Ensure all DOM element references are defined at the top level
+        const userIdDisplay = document.getElementById('user-id-display');
+        const authSignedInView = document.getElementById('auth-signed-in-view');
+        const authSignedOutView = document.getElementById('auth-signed-out-view');
+        const loadingIndicator = document.getElementById('full-page-loader');
+        const loaderText = document.getElementById('loader-text');
+        const modalContainer = document.getElementById('modal-container');
         
-        if (typeof window.userFirebaseConfig === 'undefined') {
-            console.error('Firebase config not loaded!');
-            document.body.innerHTML = `
-                <div class="flex items-center justify-center min-h-screen">
-                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded text-center">
-                        <strong>Configuration Error:</strong><br>
-                        Firebase configuration failed to load.
+        // --- Awards Definition ---
+        const awardsDefinition = {
+            'first_visit': { name: 'First Visit!', description: 'Log your first visit to any location.', icon: '&#127881;' },
+            'hospitals_5': { name: 'Hospital Hopper', description: 'Visit 5 different hospitals.', icon: '&#127973;' },
+            'hospitals_10': { name: 'Hospital Hero', description: 'Visit 10 different hospitals.', icon: '&#129661;' },
+            'trusts_all': { name: 'Trust Titan', description: 'Visit every ambulance trust.', icon: '&#128657;' },
+            'visits_100': { name: 'Century Club', description: 'Accumulate 100 total visits.', icon: '&#127941;' }
+        };
+
+        try {
+            console.log("Initializing Firebase with config:", firebaseConfig);
+            // app, db, and auth are already initialized above
+            console.log("Firebase initialized successfully");
+        } catch (e) {
+            console.error("Firebase initialization failed:", e);
+            showStatusMessage("Could not connect to the database.", "error");
+        }
+
+        // --- Authentication ---
+
+        onAuthStateChanged(auth, async (user) => {
+            // Clean up any existing listener
+            if (unsubscribe) {
+                unsubscribe();
+                unsubscribe = null;
+            }
+
+            if (user) {
+                if (typeof userFirebaseConfig === 'undefined') {
+                    showStatusMessage("FATAL: firebase-config.js not found. App cannot start.", "error");
+                    loadingIndicator.classList.add('loader-hidden');
+                    return;
+                }
+
+                userId = user.uid;
+                userIdDisplay.textContent = user.isAnonymous ? 'Guest' : user.displayName || user.email;
+                authSignedInView.style.display = 'flex';
+                authSignedOutView.style.display = 'none';
+
+                updateProfileButtonVisibility();
+
+                // Set up Firestore document reference
+                docRef = doc(db, "users", userId);
+                console.log("Document reference created for user:", userId);
+
+                // --- New User Check for Google SSO ---
+                // Only do this for Google SSO (not anonymous)
+                const isGoogleSSO = user.providerData && user.providerData.some(p => p.providerId && p.providerId.includes('google.com'));
+                if (isGoogleSSO) {
+                    try {
+                        const userDocSnap = await getDoc(docRef);
+                        if (!userDocSnap.exists()) {
+                            // New user, redirect to onboarding
+                            window.location.href = '/profile.html?onboarding=1';
+                            return;
+                        }
+                    } catch (err) {
+                        console.error('Error checking user doc existence:', err);
+                        showStatusMessage('Error checking user profile.', 'error');
+                        loadingIndicator.classList.add('loader-hidden');
+                        return;
+                    }
+                }
+
+                // Show loading and start listening
+                loadingIndicator.classList.remove('loader-hidden');
+                loaderText.textContent = 'Connecting to your data...';
+
+                setupSnapshotListener();
+            } else {
+                // User signed out, redirect to login
+                window.location.href = '/login.html';
+            }
+        });
+
+        function setupSnapshotListener() {
+            if (!docRef) {
+                console.log("No docRef available for snapshot listener");
+                return;
+            }
+
+            console.log("Setting up snapshot listener for:", docRef.path);
+
+            unsubscribe = onSnapshot(docRef, async (snapshot) => {
+                try {
+                    if (snapshot.exists()) {
+                        // Merge existing data with loaded data
+                        const firestoreData = snapshot.data();
+                        localData = {
+                            hospitals: [],
+                            ambulance: [],
+                            awards: [],
+                            visitHistory: [],
+                            medicalRecords: [],
+                            symptomTracking: [],
+                            userProfile: {},
+                            ...firestoreData
+                        };
+                        renderAll();
+                        loadingIndicator.classList.add('loader-hidden');
+                        // Check for onboarding after data is loaded
+                        // if (!localData.userProfile?.onboardingCompleted) {
+                        //     setTimeout(() => {
+                        //         showOnboardingQuestionnaire();
+                        //     }, 500);
+                        // }
+                    } else {
+                        // Document doesn't exist, initialize with default data
+                        showStatusMessage('No user data found. Importing default hospitals and ambulances...', 'error');
+                        await initializeDefaultData();
+                        // After initializing, fetch the new data
+                        const userDocSnap = await getDoc(docRef);
+                        if (userDocSnap.exists()) {
+                            localData = {
+                                hospitals: [],
+                                ambulance: [],
+                                awards: [],
+                                visitHistory: [],
+                                medicalRecords: [],
+                                symptomTracking: [],
+                                userProfile: {},
+                                ...userDocSnap.data()
+                            };
+                            renderAll();
+                            loadingIndicator.classList.add('loader-hidden');
+                            showStatusMessage('Default data imported successfully!', 'success');
+                            // if (!localData.userProfile?.onboardingCompleted) {
+                            //     setTimeout(() => {
+                            //         showOnboardingQuestionnaire();
+                            //     }, 500);
+                            // }
+                        } else {
+                            showStatusMessage('Failed to import default data. Please refresh or contact support.', 'error');
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error processing snapshot:", error);
+                    showStatusMessage("Error loading data.", "error");
+                    loadingIndicator.classList.add('loader-hidden');
+                }
+            }, (error) => {
+                console.error("Snapshot listener error:", error);
+                showStatusMessage("Error connecting to database.", "error");
+                loadingIndicator.classList.add('loader-hidden');
+            });
+        }
+
+        // --- Default Data Initialization for New Users (including guests) ---
+        async function initializeDefaultData() {
+            try {
+                loaderText.textContent = 'Setting up your data...';
+                // Load hospitals
+                const hospitals = await loadListFromFile('hospitals');
+                // Load ambulances
+                const ambulance = await loadListFromFile('ambulance');
+                // Set up localData
+                localData = {
+                    hospitals: hospitals || [],
+                    ambulance: ambulance || [],
+                    awards: [],
+                    visitHistory: [],
+                    medicalRecords: [],
+                    symptomTracking: [],
+                    userProfile: {}
+                };
+                // Save to Firestore
+                await saveData();
+                showStatusMessage('Default data initialized!', 'success');
+            } catch (error) {
+                console.error('Error initializing default data:', error);
+                showStatusMessage('Failed to initialize default data.', 'error');
+            }
+        }
+
+        async function loadListFromFile(type) {
+            try {
+                if (type === 'hospitals') {
+                    loaderText.textContent = `Loading hospital data...`;
+                    const response = await fetch('hospital_data.json');
+                    if (!response.ok) throw new Error("Could not load 'hospital_data.json'.");
+                    const data = await response.json();
+
+                    const newList = data.map(hospital => ({
+                        name: hospital.name,
+                        visited: false,
+                        count: 0,
+                        coords: hospital.coords,
+                        city: hospital.city
+                    }));
+                    showStatusMessage(`${newList.length} hospitals loaded successfully!`, 'success');
+                    return newList;
+
+                } else { // Ambulance trusts still load from txt and geocode
+                    const fileName = 'ambulance.txt';
+                    const response = await fetch(fileName);
+                    if (!response.ok) {
+                        throw new Error(`Could not load '${fileName}'. Make sure it is in the same folder as index.html.`);
+                    }
+                    const text = await response.text();
+                    if (text.trim().toLowerCase().startsWith('<!doctype html>')) {
+                        throw new Error(`Server returned an HTML page for '${fileName}'. Please check that the file exists and is in the correct folder.`);
+                    }
+                    const lines = text.split(/\r\n?|\n/).filter(line => line.trim() !== '');
+
+                    if (lines.length === 0) {
+                        showStatusMessage(`${fileName} is empty or could not be read.`, "error");
+                        return [];
+                    }
+
+                    loaderText.textContent = `Loading ${lines.length} ambulance trusts...`;
+
+                    const newList = [];
+                    for (const [index, line] of lines.entries()) {
+                        const name = line.trim();
+                        loaderText.textContent = `Loading data...`;
+                        const coords = await geocodeLocation(name);
+                        newList.push({ name, visited: false, count: 0, coords });
+                        await new Promise(resolve => setTimeout(resolve, 250));
+                    }
+
+                    showStatusMessage(`${newList.length} ambulance trusts loaded successfully!`, 'success');
+                    return newList;
+                }
+            } catch (error) {
+                console.error(`Error loading ${type} list:`, error);
+                showStatusMessage(error.message, "error");
+                loadingIndicator.classList.add('loader-hidden');
+                return [];
+            }
+        }
+
+        // Update the saveData function to handle errors better
+        async function saveData() {
+            if (!docRef) {
+                console.log("No document reference available, skipping save");
+                return;
+            }
+
+            if (!userId) {
+                console.log("No user ID available, skipping save");
+                return;
+            }
+
+            checkAwards();
+
+            try {
+                console.log("Attempting to save data to Firestore...", {
+                    userId,
+                    docPath: docRef.path,
+                    dataKeys: Object.keys(localData)
+                });
+
+                await setDoc(docRef, localData, { merge: true });
+                console.log("Data saved successfully to Firestore");
+                showStatusMessage("Data saved successfully!", "success");
+            } catch (error) {
+                console.error("Error saving data to Firestore:", error);
+                console.error("Error details:", {
+                    code: error.code,
+                    message: error.message,
+                    stack: error.stack
+                });
+                showStatusMessage("Error saving data. Your changes may not be saved.", "error");
+            }
+        }
+
+        // --- UI & Modals ---
+        function showStatusMessage(message, type = 'success') {
+            statusMessageArea.textContent = message;
+            statusMessageArea.className = `status-message mt-4 h-6 font-medium ${type === 'error' ? 'text-red-600' : 'text-green-600'}`;
+            statusMessageArea.style.opacity = 1;
+            setTimeout(() => { statusMessageArea.style.opacity = 0; }, 5000);
+        }
+
+        function createModal(id, title, content, size = 'max-w-4xl') {
+            const modalHTML = `
+                <div id="${id}" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50 opacity-0 modal-backdrop">
+                    <div class="bg-white rounded-xl shadow-2xl p-6 w-full ${size} modal-content transform scale-95">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-gray-900">${title}</h2>
+                            <button class="close-modal-btn text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+                        </div>
+                        <div>${content}</div>
                     </div>
-                </div>
+                </div>`;
+            modalContainer.insertAdjacentHTML('beforeend', modalHTML);
+            const modal = document.getElementById(id);
+
+            // Handle close button clicks
+            modal.querySelector('.close-modal-btn').addEventListener('click', () => closeModal(modal));
+
+            // Handle backdrop clicks
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal(modal);
+            });
+
+            return modal;
+        }
+
+        function openModal(modal) {
+            modal.classList.remove('hidden', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('.modal-content').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeModal(modal) {
+            modal.classList.add('opacity-0');
+            modal.querySelector('.modal-content').classList.add('scale-95');
+            setTimeout(() => {
+                modal.remove();
+            }, 300);
+        }
+
+        // --- Rendering ---
+        function renderAll() {
+            try {
+                renderGreetingAndActions();
+                renderHospitals();
+                renderAmbulance();
+                addRecentActivitySection();
+            } catch (error) {
+                console.error("Error rendering data:", error);
+                showStatusMessage("Error displaying data.", "error");
+            }
+        }
+
+        function renderHospitals() {
+            const searchTerm = document.getElementById('hospital-search').value;
+            renderList('hospitals', localData.hospitals || [], searchTerm);
+            renderStats('hospitals', localData.hospitals || []);
+        }
+
+        function renderAmbulance() {
+            const searchTerm = document.getElementById('ambulance-search').value;
+            renderList('ambulance', localData.ambulance || [], searchTerm);
+            renderStats('ambulance', localData.ambulance || []);
+        }
+
+        function renderList(type, data, searchTerm) {
+            const listElement = document.getElementById(`${type}-list`);
+            listElement.innerHTML = '';
+            let filteredData = (data || []).filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+            filteredData.sort((a, b) => b.visited - a.visited);
+
+            if (filteredData.length === 0) {
+                listElement.innerHTML = `<p class="text-gray-500">No matching ${type}.</p>`;
+                return;
+            }
+
+            // Show only first 10 by default, with option to show more
+            const showAll = listElement.dataset.showAll === 'true';
+            const itemsToShow = showAll ? filteredData : filteredData.slice(0, 10);
+
+            itemsToShow.forEach((item) => {
+                const index = data.findIndex(d => d.name === item.name);
+                const itemElement = document.createElement('div');
+                itemElement.className = 'list-item flex items-center justify-between p-2 rounded-lg border';
+                itemElement.classList.toggle('bg-green-50', item.visited);
+                itemElement.classList.toggle('border-green-200', item.visited);
+
+                let cityHTML = '';
+                if (type === 'hospitals' && item.city) {
+                    cityHTML = `<span class="text-xs text-gray-500">${item.city}</span>`;
+                }
+
+                itemElement.innerHTML = `
+                    <div class="flex items-center flex-grow min-w-0">
+                        <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0" ${item.visited ? 'checked' : ''} data-type="${type}" data-index="${index}">
+                        <div class="ml-3 flex flex-col">
+                           <span class="text-sm truncate ${item.visited ? 'line-through text-gray-500' : 'text-gray-700'}" title="${item.name}">${item.name}</span>
+                           ${cityHTML}
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 flex-shrink-0 ml-2">
+                        <button class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold w-6 h-6 rounded-full transition-colors text-sm" data-action="decrease" data-type="${type}" data-index="${index}">-</button>
+                        <span class="font-medium text-sm w-6 text-center">${item.count}</span>
+                        <button class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold w-6 h-6 rounded-full transition-colors text-sm" data-action="increase" data-type="${type}" data-index="${index}">+</button>
+                    </div>`;
+                listElement.appendChild(itemElement);
+            });
+
+            // Add show more/less button if needed
+            if (filteredData.length > 10) {
+                const toggleButton = document.createElement('button');
+                toggleButton.className = 'w-full mt-2 px-3 py-2 text-sm text-blue-600 hover:text-blue-800 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors';
+                toggleButton.textContent = showAll ? `Show Less (${filteredData.length - 10} hidden)` : `Show All ${filteredData.length} ${type}`;
+
+                toggleButton.addEventListener('click', () => {
+                    listElement.dataset.showAll = showAll ? 'false' : 'true';
+                    renderList(type, data, searchTerm);
+                });
+
+                listElement.appendChild(toggleButton);
+            }
+        }
+
+        function renderStats(type, data) {
+            const statsElement = document.getElementById(`${type}-stats`);
+            if (!data || data.length === 0) {
+                statsElement.innerHTML = '';
+                return;
+            }
+            const total = data.length;
+            const visited = data.filter(item => item.visited).length;
+            const percentage = total > 0 ? Math.round((visited / total) * 100) : 0;
+            const totalVisits = data.reduce((sum, item) => sum + item.count, 0);
+            statsElement.innerHTML = `
+                <div class="space-y-2">
+                    <p class="text-sm font-medium text-gray-600"><span class="font-bold text-gray-800">${visited}</span> of <span class="font-bold text-gray-800">${total}</span> visited (${percentage}%)</p>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5"><div class="bg-blue-600 h-2.5 rounded-full progress-bar-fill" style="width: ${percentage}%"></div></div>
+                    <p class="text-sm font-medium text-gray-600">Total individual visits: <span class="font-bold text-gray-800">${totalVisits}</span></p>
+                </div>`;
+        }
+
+        // --- Features ---
+
+        async function geocodeLocation(name) {
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=1`);
+                const data = await response.json();
+                if (data && data.length > 0) {
+                    return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+                }
+                return null;
+            } catch (error) {
+                console.error('Geocoding error:', error);
+                return null;
+            }
+        }
+
+        function checkAwards() {
+            const visitedHospitals = localData.hospitals.filter(h => h.visited).length;
+            const visitedAmbulance = localData.ambulance.filter(a => a.visited).length;
+            const totalVisits = localData.hospitals.reduce((s, h) => s + h.count, 0) + localData.ambulance.reduce((s, a) => s + a.count, 0);
+
+            const unlock = (awardId) => {
+                if (!localData.awards.includes(awardId)) {
+                    localData.awards.push(awardId);
+                    const award = awardsDefinition[awardId];
+                    showStatusMessage(`Award Unlocked: ${award.name}`, 'success');
+                }
+            };
+
+            if (totalVisits > 0) unlock('first_visit');
+            if (visitedHospitals >= 5) unlock('hospitals_5');
+            if (visitedHospitals >= 10) unlock('hospitals_10');
+            if (localData.ambulance.length > 0 && visitedAmbulance === localData.ambulance.length) unlock('trusts_all');
+            if (totalVisits >= 100) unlock('visits_100');
+        }
+
+        // --- Event Handling ---
+        // Add this function after your existing functions
+
+        // --- Visit History Tracking ---
+        function logVisit(type, index, action) {
+            const item = localData[type][index];
+            const timestamp = new Date().toISOString();
+
+            const historyEntry = {
+                id: `${timestamp}_${Math.random().toString(36).substr(2, 9)}`,
+                timestamp,
+                type: // 'hospitals' or 'ambulance'
+                item.name,
+                city: item.city || null,
+                action: // 'visited', 'unvisited', 'count_increased', 'count_decreased'
+                item.count,
+                newCount: action === 'count_increased' ? item.count + 1 :
+                    action === 'count_decreased' ? item.count - 1 : item.count,
+                coords: item.coords
+            };
+
+            if (!localData.visitHistory) localData.visitHistory = [];
+            localData.visitHistory.unshift(historyEntry); // Add to beginning for recent-first order
+
+            // Keep only last 1000 entries to prevent data bloat
+            if (localData.visitHistory.length > 1000) {
+                localData.visitHistory = localData.visitHistory.slice(0, 1000);
+            }
+        }
+
+        // Update your existing handleInteraction function
+        function handleInteraction(event) {
+            const target = event.target;
+            if (!target.dataset.type) return;
+
+            const type = target.dataset.type;
+            const index = parseInt(target.dataset.index);
+            const data = localData[type];
+
+            if (!data || !data[index]) return;
+
+            let action = '';
+
+            if (target.type === 'checkbox') {
+                const wasVisited = data[index].visited;
+                data[index].visited = target.checked;
+                action = target.checked ? 'visited' : 'unvisited';
+
+                if (target.checked && data[index].count === 0) {
+                    data[index].count = 1;
+                    action = 'visited'; // First visit
+                }
+
+                logVisit(type, index, action);
+
+            } else if (target.dataset.action === 'increase') {
+                action = 'count_increased';
+                logVisit(type, index, action);
+
+                data[index].count++;
+                if (data[index].count > 0) {
+                    data[index].visited = true;
+                }
+
+            } else if (target.dataset.action === 'decrease' && data[index].count > 0) {
+                action = 'count_decreased';
+                logVisit(type, index, action);
+
+                data[index].count--;
+                if (data[index].count === 0) {
+                    data[index].visited = false;
+                }
+            }
+
+            saveData();
+            renderAll();
+        }
+
+        // Add profile button event listener with your other button listeners
+        document.getElementById('show-profile-btn').addEventListener('click', () => {
+            window.location.href = '/profile.html';
+        });
+
+        function updateProfileButtonVisibility() {
+            const profileBtn = document.getElementById('show-profile-btn');
+            const addRecordBtn = document.getElementById('add-record-btn');
+
+            if (userId) {
+                profileBtn.classList.remove('hidden');
+                addRecordBtn.classList.remove('hidden');
+            } else {
+                profileBtn.classList.add('hidden');
+                addRecordBtn.classList.add('hidden');
+            }
+        }
+
+        document.getElementById('hospitals-list').addEventListener('click', handleInteraction);
+        document.getElementById('ambulance-list').addEventListener('click', handleInteraction);
+
+        // --- Event Listeners ---
+        document.getElementById('hospital-search').addEventListener('input', (e) => renderList('hospitals', localData.hospitals, e.target.value));
+        document.getElementById('ambulance-search').addEventListener('input', (e) => renderList('ambulance', localData.ambulance, e.target.value));
+        document.getElementById('help-btn').addEventListener('click', showHelpModal);
+
+        document.getElementById('show-stats-btn').addEventListener('click', () => {
+            const content = `<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div><h3 class="text-xl font-semibold text-center mb-4">Hospitals</h3><canvas id="hospitals-chart"></canvas></div>
+                                <div><h3 class="text-xl font-semibold text-center mb-4">Ambulance Trusts</h3><canvas id="ambulance-chart"></canvas></div>
+                             </div>`;
+            const modal = createModal('stats-modal', 'Statistics', content);
+            openModal(modal);
+
+            const createPieChart = (type, data, chartId) => {
+                const ctx = modal.querySelector(`#${chartId}`).getContext('2d');
+                const visited = data.filter(item => item.visited).length;
+                const notVisited = data.length - visited;
+                return new Chart(ctx, { type: 'pie', data: { labels: ['Visited', 'Not Visited'], datasets: [{ data: [visited, notVisited], backgroundColor: ['#10B981', '#EF4444'], borderColor: '#ffffff', borderWidth: 2 }] }, options: { responsive: true, plugins: { legend: { position: 'top' } } } });
+            };
+            createPieChart('hospitals', localData.hospitals, 'hospitals-chart');
+            createPieChart('ambulance', localData.ambulance, 'ambulance-chart');
+        });
+
+        document.getElementById('show-map-btn').addEventListener('click', () => {
+            const modal = createModal('map-modal', 'Map View', '<div id="map"></div>', 'max-w-6xl');
+            openModal(modal);
+
+            setTimeout(() => {
+                try {
+                    map = L.map('map').setView([54.5, -2.5], 6); // Centered on UK
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }).addTo(map);
+
+                    const visitedHospitals = localData.hospitals.filter(h => h.visited);
+                    const visitedAmbulance = localData.ambulance.filter(a => a.visited);
+
+                    const visitedLocations = [...visitedHospitals, ...visitedAmbulance];
+
+                    visitedLocations.forEach(loc => {
+                        if (loc.coords && loc.coords.lat) {
+                            const isHospital = localData.hospitals.some(h => h.name === loc.name);
+
+                            const color = isHospital ? '#3b82f6' : '#16a34a';
+
+                            const baseRadius = 8;
+                            const radius = Math.min(baseRadius + (loc.count * 2), 20);
+
+                            const baseOpacity = 0.6;
+                            const fillOpacity = Math.min(baseOpacity + (loc.count * 0.1), 1.0);
+
+                            L.circleMarker([loc.coords.lat, loc.coords.lon], {
+                                color: color,
+                                fillColor: color,
+                                fillOpacity: fillOpacity,
+                                radius: radius,
+                                weight: 2
+                            })
+                                .addTo(map)
+                                .bindPopup(`
+                                    <div class="text-center">
+                                        <b>${loc.name}</b><br>
+                                        <span class="text-sm ${isHospital ? 'text-blue-600' : 'text-green-600'}">${isHospital ? 'Hospital' : 'Ambulance Trust'}</span><br>
+                                        <span class="font-semibold">Visits: ${loc.count}</span>
+                                    </div>
+                                `);
+                        }
+                    });
+
+                    if (visitedLocations.length === 0) {
+                        modal.querySelector('#map').innerHTML = '<p class="text-gray-500 text-center mt-8">No visited locations to display. Start checking off hospitals and ambulance trusts to see them appear on the map!</p>';
+                    }
+
+                } catch (e) {
+                    console.error("Map initialization failed:", e);
+                    modal.querySelector('#map').innerHTML = '<p class="text-red-500 text-center">Sorry, the map could not be loaded.</p>';
+                }
+            }, 100);
+        });
+
+        document.getElementById('show-awards-btn').addEventListener('click', () => {
+            let awardsContent = '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-center">';
+            for (const id in awardsDefinition) {
+                const award = awardsDefinition[id];
+                const unlocked = localData.awards.includes(id);
+                awardsContent += `
+                    <div class="award p-4 border rounded-lg ${unlocked ? 'unlocked' : ''}">
+                        <div class="text-5xl">${award.icon}</div>
+                        <h4 class="font-bold mt-2">${award.name}</h4>
+                        <p class="text-sm text-gray-600">${award.description}</p>
+                    </div>`;
+            }
+            awardsContent += '</div>';
+            const modal = createModal('awards-modal', 'Your Awards', awardsContent);
+            openModal(modal);
+        });
+
+        document.getElementById('add-record-btn').addEventListener('click', () => {
+            const modalContent = createAddRecordForm();
+            const modal = createModal('add-record-modal', 'Add Medical Record', modalContent, 'max-w-2xl');
+            openModal(modal);
+            setupAddRecordEventListeners(modal);
+        });
+
+        function setupAddRecordEventListeners(modal) {
+            const form = modal.querySelector('#add-record-form');
+            const cancelBtn = modal.querySelector('.cancel-btn');
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => {
+                    closeModal(modal);
+                });
+            }
+
+            if (form) {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+
+                    const record = {
+                        id: `rec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                        timestamp: new Date().toISOString(),
+                        date: form.querySelector('#visit-date').value,
+                        time: form.querySelector('#visit-time').value,
+                        hospital: form.querySelector('#hospital-select').value,
+                        ambulanceInvolved: form.querySelector('#ambulance-involved').checked,
+                        ambulance: form.querySelector('#ambulance-select')?.value || null,
+                        visitType: form.querySelector('#visit-type').value,
+                        notes: form.querySelector('#visit-notes').value,
+                        conditions: {}
+                    };
+
+                    const formData = new FormData(form);
+                    for (let [key, value] of formData.entries()) {
+                        if (key.startsWith('condition_')) {
+                            const parts = key.split('_');
+                            const condition = parts[1];
+                            const field = parts.slice(2).join('_');
+                            if (!record.conditions[condition]) {
+                                record.conditions[condition] = {};
+                            }
+                            const inputElement = form.querySelector(`[name="${key}"]`);
+                            if (inputElement && inputElement.type === 'checkbox') {
+                                record.conditions[condition][field] = inputElement.checked;
+                            } else if (value) {
+                                record.conditions[condition][field] = value;
+                            }
+                        }
+                    }
+                    
+                    if (!localData.medicalRecords) {
+                        localData.medicalRecords = [];
+                    }
+                    localData.medicalRecords.unshift(record);
+
+                    await saveData();
+                    closeModal(modal);
+                    showStatusMessage('Medical record added successfully!', 'success');
+                    renderAll();
+                });
+
+                // Toggle ambulance dropdown
+                const ambulanceCheckbox = modal.querySelector('#ambulance-involved');
+                const ambulanceSection = modal.querySelector('#ambulance-section');
+                if (ambulanceCheckbox && ambulanceSection) {
+                    ambulanceCheckbox.addEventListener('change', (e) => {
+                        ambulanceSection.classList.toggle('hidden', !e.target.checked);
+                    });
+                }
+            }
+        }
+
+        // Update the createAddRecordForm function in index.html to include conditions
+        function createAddRecordForm() {
+            const hospitalOptions = localData.hospitals.map(h =>
+                `<option value="${h.name}">${h.name}${h.city ? ` - ${h.city}` : ''}</option>`
+            ).join('');
+            const ambulanceOptions = localData.ambulance.map(a =>
+                `<option value="${a.name}">${a.name}</option>`
+            ).join('');
+            const userConditions = localData.userProfile?.conditions || [];
+            const conditionQuestions = generateConditionQuestionsForRecord(userConditions);
+            return `
+                <form id="add-record-form" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Left Column: Main Visit Info -->
+                        <div class="space-y-4">
+                            <div>
+                                <label for="visit-date" class="block text-sm font-medium text-gray-700 mb-2">Visit Date</label>
+                                <input type="date" id="visit-date" required
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                    value="${new Date().toISOString().split('T')[0]}">
+                            </div>
+                            <div>
+                                <label for="visit-time" class="block text-sm font-medium text-gray-700 mb-2">Visit Time (Optional)</label>
+                                <input type="time" id="visit-time"
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label for="hospital-select" class="block text-sm font-medium text-gray-700 mb-2">Hospital/Medical Facility</label>
+                                <select id="hospital-select" required
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                    <option value="">Select a hospital...</option>
+                                    ${hospitalOptions}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="ambulance-involved"
+                                        class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+                                    <span class="ml-2 text-sm font-medium text-gray-700">Ambulance service was involved</span>
+                                </label>
+                                <div id="ambulance-section" class="hidden mt-2">
+                                    <label for="ambulance-select" class="block text-sm font-medium text-gray-700 mb-2">Ambulance Trust</label>
+                                    <select id="ambulance-select"
+                                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                        <option value="">Select an ambulance trust...</option>
+                                        ${ambulanceOptions}
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="visit-type" class="block text-sm font-medium text-gray-700 mb-2">Type of Visit</label>
+                                <select id="visit-type" required
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                    <option value="">Select visit type...</option>
+                                    <option value="emergency">Emergency</option>
+                                    <option value="outpatient">Outpatient Appointment</option>
+                                    <option value="inpatient">Inpatient Stay</option>
+                                    <option value="procedure">Procedure/Surgery</option>
+                                    <option value="test">Tests/Diagnostic</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="visit-notes" class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                                <textarea id="visit-notes" rows="4"
+                                    placeholder="Add any additional details about your visit..."
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"></textarea>
+                            </div>
+                        </div>
+                        <!-- Right Column: Condition-Specific Questions -->
+                        <div class="space-y-4">
+                            ${conditionQuestions ? `
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 h-full flex flex-col">
+                                    <h4 class="font-semibold text-gray-900 mb-3">📋 Condition-Specific Questions</h4>
+                                    <p class="text-sm text-gray-600 mb-4">Based on your tracked conditions:</p>
+                                    <div class="flex-1 overflow-y-auto">${conditionQuestions}</div>
+                                </div>
+                            ` : `<div class='text-gray-500 text-sm'>No tracked conditions. Add some in your profile for personalized questions.</div>`}
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-4 border-t mt-4">
+                        <button type="button" class="cancel-btn px-4 py-2 text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                            Add Record
+                        </button>
+                    </div>
+                </form>
             `;
-            throw new Error('Firebase configuration not found');
+        }
+
+        // Add this function to generate condition questions for medical records
+        function generateConditionQuestionsForRecord(userConditions) {
+            if (!userConditions || userConditions.length === 0) return '';
+
+            const conditionQuestions = {
+                'epilepsy': [
+                    { id: 'seizure_occurred', type: 'checkbox', label: 'Did you have a seizure during this visit?' },
+                    { id: 'seizure_frequency', type: 'text', label: 'Recent seizure frequency', placeholder: 'e.g., 2 this week' }
+                ],
+                'autism': [
+                    { id: 'sensory_issues', type: 'checkbox', label: 'Did you experience sensory overload?' },
+                    { id: 'anxiety_level', type: 'select', label: 'Anxiety level during visit', options: ['Low', 'Medium', 'High', 'Severe'] }
+                ],
+                'diabetes': [
+                    { id: 'blood_sugar_check', type: 'text', label: 'Blood sugar level (if checked)', placeholder: 'e.g., 120 mg/dL' },
+                    { id: 'hypo_symptoms', type: 'checkbox', label: 'Did you experience hypoglycemic symptoms?' }
+                ],
+                'mental_health': [
+                    { id: 'panic_attack', type: 'checkbox', label: 'Did you have a panic attack?' },
+                    { id: 'mood_rating', type: 'select', label: 'Overall mood during visit', options: ['Very Low', 'Low', 'Neutral', 'Good', 'Very Good'] }
+                ],
+                'chronic_pain': [
+                    { id: 'pain_level', type: 'select', label: 'Pain level (1-10)', options: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'] }
+                ]
+            };
+
+            let questionsHTML = '';
+
+            userConditions.forEach(condition => {
+                const questions = conditionQuestions[condition];
+                if (questions) {
+                    questionsHTML += `
+                        <div class="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                            <h5 class="font-medium text-gray-900 mb-3 capitalize">${condition.replace('_', ' ')} Related</h5>
+                            <div class="space-y-3">
+                                ${questions.map(q => {
+                        switch (q.type) {
+                            case 'checkbox':
+                                return `
+                                                <label class="flex items-center">
+                                                    <input type="checkbox" name="condition_${condition}_${q.id}" 
+                                                           class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+                                                    <span class="ml-2 text-sm text-gray-700">${q.label}</span>
+                                                </label>
+                                            `;
+                            case 'select':
+                                return `
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">${q.label}</label>
+                                                    <select name="condition_${condition}_${q.id}" 
+                                                            class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                                        <option value="">Select...</option>
+                                                        ${q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                                                    </select>
+                                                </div>
+                                            `;
+                            default: // text
+                                return `
+                                                <div>
+                                                                                                       <label class="block text-sm font-medium text-gray-700 mb-1">${q.label}</label>
+                                                    <input type="text" name="condition_${condition}_${q.id}" 
+                                                           placeholder="${q.placeholder || ''}"
+                                                           class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                                </div>
+                                            `;
+                        }
+                    }).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            return questionsHTML;
         }
         
-        try {
-            // Import your app module
-            await import('./js/app.js');
-        } catch (error) {
-            console.error('Failed to load app:', error);
-            document.body.innerHTML = `
-                <div class="flex items-center justify-center min-h-screen">
-                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded text-center">
-                        <strong>App Error:</strong><br>
-                        Failed to load application. Check console for details.
+        function generateConditionQuestionsForSymptoms(userConditions) {
+            if (!userConditions || userConditions.length === 0) return '';
+
+            const conditionQuestions = {
+                'epilepsy': [
+                    { id: 'seizure_today', type: 'checkbox', label: 'Did you have a seizure today?' },
+                    { id: 'aura_symptoms', type: 'checkbox', label: 'Did you experience aura symptoms?' },
+                    { id: 'trigger_identified', type: 'text', label: 'Potential trigger (if known)', placeholder: 'e.g., stress, lack of sleep, flashing lights' },
+                    { id: 'medication_taken', type: 'checkbox', label: 'Did you take your medication as prescribed?' }
+                ],
+                'autism': [
+                    { id: 'sensory_overload', type: 'select', label: 'Sensory overload level', options: ['None', 'Mild', 'Moderate', 'Severe'] },
+                    { id: 'meltdown_occurred', type: 'checkbox', label: 'Did you experience a meltdown?' },
+                    { id: 'social_fatigue', type: 'select', label: 'Social fatigue level', options: ['None', 'Low', 'Medium', 'High', 'Exhausted'] },
+                    { id: 'stimming_frequency', type: 'select', label: 'Stimming frequency today', options: ['None', 'Occasional', 'Frequent', 'Constant'] }
+                ],
+                'diabetes': [
+                    { id: 'blood_sugar_morning', type: 'text', label: 'Morning blood sugar', placeholder: 'e.g., 120 mg/dL' },
+                    { id: 'blood_sugar_evening', type: 'text', label: 'Evening blood sugar', placeholder: 'e.g., 140 mg/dL' },
+                    { id: 'hypo_episode', type: 'checkbox', label: 'Did you have a hypoglycemic episode?' },
+                    { id: 'insulin_doses', type: 'text', label: 'Insulin doses taken', placeholder: 'e.g., 10 units morning, 8 units evening' }
+                ],
+                'mental_health': [
+                    { id: 'anxiety_level', type: 'select', label: 'Anxiety level today', options: ['Very Low', 'Low', 'Moderate', 'High', 'Very High'] },
+                    { id: 'panic_attack', type: 'checkbox', label: 'Did you have a panic attack?' },
+                    { id: 'mood_rating', type: 'select', label: 'Overall mood', options: ['Very Low', 'Low', 'Neutral', 'Good', 'Very Good'] },
+                    { id: 'sleep_quality', type: 'select', label: 'Sleep quality last night', options: ['Very Poor', 'Poor', 'Fair', 'Good', 'Excellent'] }
+                ],
+                'chronic_pain': [
+                    { id: 'pain_level_morning', type: 'select', label: 'Pain level (morning)', options: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'] },
+                    { id: 'pain_level_evening', type: 'select', label: 'Pain level (evening)', options: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'] },
+                    { id: 'flare_up', type: 'checkbox', label: 'Did you experience a flare-up?' },
+                    { id: 'medication_effectiveness', type: 'select', label: 'Pain medication effectiveness', options: ['Not effective', 'Slightly effective', 'Moderately effective', 'Very effective', 'Completely effective'] }
+                ],
+                'heart_condition': [
+                    { id: 'heart_rate_resting', type: 'text', label: 'Resting heart rate', placeholder: 'e.g., 72 bpm' },
+                    { id: 'blood_pressure', type: 'text', label: 'Blood pressure', placeholder: 'e.g., 120/80' },
+                    { id: 'chest_pain', type: 'checkbox', label: 'Did you experience chest pain?' },
+                    { id: 'palpitations', type: 'checkbox', label: 'Did you notice palpitations?' }
+                ],
+                'respiratory': [
+                    { id: 'breathing_difficulty', type: 'select', label: 'Breathing difficulty level', options: ['None', 'Mild', 'Moderate', 'Severe'] },
+                    { id: 'peak_flow', type: 'text', label: 'Peak flow reading', placeholder: 'e.g., 450 L/min' },
+                    { id: 'inhaler_usage', type: 'text', label: 'Inhaler uses today', placeholder: 'e.g., 3 times' },
+                    { id: 'oxygen_saturation', type: 'text', label: 'Oxygen saturation', placeholder: 'e.g., 98%' }
+                ],
+                'autoimmune': [
+                    { id: 'flare_severity', type: 'select', label: 'Flare-up severity', options: ['None', 'Mild', 'Moderate', 'Severe'] },
+                    { id: 'fatigue_level', type: 'select', label: 'Fatigue level', options: ['None', 'Mild', 'Moderate', 'Severe', 'Debilitating'] },
+                    { id: 'joint_pain', type: 'select', label: 'Joint pain level', options: ['None', 'Mild', 'Moderate', 'Severe'] },
+                    { id: 'medication_side_effects', type: 'checkbox', label: 'Did you experience medication side effects?' }
+                ],
+                'neurological': [
+                    { id: 'migraine_occurred', type: 'checkbox', label: 'Did you have a migraine?' },
+                    { id: 'coordination_issues', type: 'checkbox', label: 'Did you notice coordination problems?' },
+                    { id: 'memory_problems', type: 'checkbox', label: 'Did you experience memory issues?' },
+                    { id: 'speech_difficulties', type: 'checkbox', label: 'Did you have speech difficulties?' }
+                ],
+                'gastrointestinal': [
+                    { id: 'symptom_severity', type: 'select', label: 'Symptom severity today', options: ['None', 'Mild', 'Moderate', 'Severe'] },
+                    { id: 'food_triggers', type: 'text', label: 'Food triggers (if any)', placeholder: 'e.g., dairy, gluten' },
+                    { id: 'bathroom_urgency', type: 'select', label: 'Bathroom urgency episodes', options: ['None', '1-2', '3-5', '6-10', 'More than 10'] },
+                    { id: 'medication_response', type: 'select', label: 'Medication effectiveness', options: ['Not taken', 'Not effective', 'Somewhat effective', 'Very effective'] }
+                ]
+            };
+            
+            let questionsHTML = '';
+
+            userConditions.forEach(condition => {
+                const questions = conditionQuestions[condition];
+                if (questions) {
+                    questionsHTML += `
+            <div class="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                <h5 class="font-medium text-gray-900 mb-3 capitalize">${condition.replace('_', ' ')} Tracking</h5>
+                <div class="space-y-3">
+                    ${questions.map(q => {
+                        switch (q.type) {
+                            case 'checkbox':
+                                return `
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="condition_${condition}_${q.id}" 
+                                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                        <span class="ml-2 text-sm text-gray-700">${q.label}</span>
+                                    </label>
+                                `;
+                            case 'select':
+                                return `
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">${q.label}</label>
+                                        <select name="condition_${condition}_${q.id}" 
+                                                class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">Select...</option>
+                                            ${q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                `;
+                            default: // text
+                                return `
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">${q.label}</label>
+                                        <input type="text" name="condition_${condition}_${q.id}" 
+                                               placeholder="${q.placeholder || ''}"
+                                               class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                `;
+                        }
+                    }).join('')}
+                </div>
+            </div>
+        `;
+                }
+            });
+
+            return questionsHTML;
+        }
+
+        function showEditProfileModal() {
+            const currentProfile = localData.userProfile || {};
+            const conditions = currentProfile.conditions || {};
+
+            const conditionOptions = `
+                <option value="">Select a condition...</option>
+                <option value="epilepsy" ${conditions.epilepsy ? 'selected' : ''}>Epilepsy</option>
+                <option value="autism" ${conditions.autism ? 'selected' : ''}>Autism</option>
+                <option value="diabetes" ${conditions.diabetes ? 'selected' : ''}>Diabetes</option>
+                <option value="mental_health" ${conditions.mental_health ? 'selected' : ''}>Mental Health</option>
+                <option value="chronic_pain" ${conditions.chronic_pain ? 'selected' : ''}>Chronic Pain</option>
+                <option value="heart_condition" ${conditions.heart_condition ? 'selected' : ''}>Heart Condition</option>
+                <option value="respiratory" ${conditions.respiratory ? 'selected' : ''}>Respiratory Issues</option>
+                <option value="autoimmune" ${conditions.autoimmune ? 'selected' : ''}>Autoimmune Disorders</option>
+                <option value="neurological" ${conditions.neurological ? 'selected' : ''}>Neurological Disorders</option>
+                <option value="gastrointestinal" ${conditions.gastrointestinal ? 'selected' : ''}>Gastrointestinal Issues</option>
+            `;
+
+            const modalContent = `
+                <form id="edit-profile-form" class="space-y-4">
+                    <div>
+                        <label for="display-name" class="block text-sm font-medium text-gray-700 mb-2">Display Name</label>
+                        <input type="text" id="display-name" value="${currentProfile.displayName || ''}"
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" id="email" value="${currentProfile.email || ''}"
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" ${userId.startsWith('guest_') ? 'disabled' : ''}>
+                    </div>
+                    <div>
+                        <label for="conditions-select" class="block text-sm font-medium text-gray-700 mb-2">Tracked Conditions</label>
+                        <select id="conditions-select" multiple
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            ${conditionOptions}
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Hold Ctrl (Windows) or Command (Mac) to select multiple conditions.</p>
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-4 border-t mt-4">
+                        <button type="button" class="cancel-btn px-4 py-2 text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            `;
+
+            const modal = createModal('edit-profile-modal', 'Edit Profile', modalContent);
+            openModal(modal);
+
+            // Setup form submission and cancel button
+            const form = modal.querySelector('#edit-profile-form');
+            const cancelBtn = modal.querySelector('.cancel-btn');
+
+            cancelBtn.addEventListener('click', () => {
+                closeModal(modal);
+            });
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const newDisplayName = form.querySelector('#display-name').value.trim();
+                const newEmail = form.querySelector('#email').value.trim();
+                const selectedConditions = Array.from(form.querySelectorAll('#conditions-select option:checked')).map(opt => opt.value);
+
+                // Update local data
+                localData.userProfile.displayName = newDisplayName;
+                localData.userProfile.email = newEmail;
+                localData.userProfile.conditions = {};
+                selectedConditions.forEach(cond => {
+                    localData.userProfile.conditions[cond] = true;
+                });
+
+                // Save to Firestore
+                await saveData();
+
+                // Close modal and show success message
+                closeModal(modal);
+                showStatusMessage('Profile updated successfully!', 'success');
+                renderAll();
+            });
+        }
+
+        // Add event listener setup for quick symptom form
+        function setupQuickSymptomEventListeners(modal) {
+            const form = modal.querySelector('#quick-symptom-form');
+            const cancelBtn = modal.querySelector('.cancel-btn');
+
+            // Cancel button
+            cancelBtn.addEventListener('click', () => {
+                closeModal(modal);
+            });
+
+            // Form submission
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const symptomData = {
+                    id: `${new Date().toISOString()}_${Math.random().toString(36).substr(2, 9)}`,
+                    timestamp: new Date().toISOString(),
+                    date: form.querySelector('#symptom-date').value,
+                    conditions: {},
+                    notes: form.querySelector('#symptom-notes').value || null
+                };
+
+                // Collect condition-specific data
+                const formData = new FormData(form);
+
+                for (let [key, value] of formData.entries()) {
+                    if (key.startsWith('condition_')) {
+                        const parts = key.split('_');
+                        const condition = parts[1];
+                        const field = parts.slice(2).join('_');
+
+                        if (!symptomData.conditions[condition]) symptomData.conditions[condition] = {};
+
+                        // Handle checkboxes
+                        if (form.querySelector(`[name="${key}"]`).type === 'checkbox') {
+                            symptomData.conditions[condition][field] = true;
+                        } else if (value) {
+                            symptomData.conditions[condition][field] = value;
+                        }
+                    }
+                }
+
+                // Add to symptom tracking
+                if (!localData.symptomTracking) localData.symptomTracking = [];
+                localData.symptomTracking.unshift(symptomData);
+
+                // Save data
+                await saveData();
+
+                // Close modal
+                closeModal(modal);
+
+                // Re-render lists
+                renderAll();
+
+                showStatusMessage('Symptoms logged successfully!', 'success');
+            });
+        }
+
+        // --- Help Modal ---
+        function showHelpModal() {
+            const helpContent = `
+        <div class="space-y-4">
+            <h2 class="text-xl font-bold mb-2">Help & Support</h2>
+            <p>Welcome to myHealthTracker! Here you can track your medical visits, symptoms, and more. If you have questions or need support, check the FAQ or contact us.</p>
+            <ul class="list-disc pl-6 text-sm text-gray-700">
+                <li>To add a new record, click the <b>Add Record</b> button.</li>
+                <li>To log symptoms, use the <b>Log Symptoms</b> button on your dashboard or profile.</li>
+                <li>Update your profile and tracked conditions from the profile page.</li>
+            </ul>
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                <h3 class="font-semibold text-yellow-800 mb-1">Work In Progress</h3>
+                <p class="text-yellow-900 text-sm">This is a work-in-progress project. Features and data may change. Thank you for your feedback and patience as we continue to improve the app!</p>
+            </div>
+            <button id="close-help-btn" class="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">Close</button>
+        </div>
+    `;
+            const modal = createModal('help-modal', 'Help & Support', helpContent, 'max-w-2xl');
+            openModal(modal);
+            modal.querySelector('#close-help-btn').addEventListener('click', () => closeModal(modal));
+        }
+
+        // --- Main Greeting and Actions ---
+        function renderGreetingAndActions() {
+            const activities = [];
+            (localData.medicalRecords || []).forEach(entry => {
+                activities.push({
+                    type: 'record',
+                    date: entry.date,
+                    timestamp: entry.timestamp,
+                    entry
+                });
+            });
+            
+            // Sort by timestamp descending
+            activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            const recent = activities.slice(0, 5);
+
+            if (recent.length === 0) {
+                // If there's no activity, don't show the section.
+                return;
+            }
+
+            const sectionHTML = `
+                <div id="recent-activity-section" class="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                        <div>
+                            <h3 class="text-lg font-semibold text-blue-900">🕒 Recent Activity</h3>
+                            <p class="text-sm text-blue-700">Your latest symptom logs and medical records</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        ${recent.map(act => {
+                            const date = new Date(act.date);
+                            const displayDate = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                            const notes = act.entry.notes ? `<div class="text-xs text-gray-700 mt-1 italic">"${act.entry.notes}"</div>` : '';
+
+                            if (act.type === 'symptom') {
+                                const conditions = Object.keys(act.entry.conditions || {}).map(c => `<span class="inline-block bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-xs mr-1 capitalize">${c.replace(/_/g, ' ')}</span>`).join('');
+                                return `
+                                    <div class="bg-white p-3 rounded-lg border border-blue-200 flex flex-col">
+                                        <div class="flex-grow">
+                                            <div class="font-medium text-blue-900 text-sm mb-1">Symptom Log</div>
+                                            <div class="text-xs text-gray-600 mb-2">${displayDate}</div>
+                                            <div class="mb-1 flex flex-wrap gap-1">${conditions || '<span class="text-xs text-gray-500">General log</span>'}</div>
+                                        </div>
+                                        ${notes}
+                                    </div>
+                                `;
+                            } else { // 'record'
+                                const visitType = act.entry.visitType ? `<span class="inline-block bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-xs mr-1 capitalize">${act.entry.visitType}</span>` : '';
+                                return `
+                                    <div class="bg-white p-3 rounded-lg border border-green-200 flex flex-col">
+                                        <div class="flex-grow">
+                                            <div class="font-medium text-green-900 text-sm mb-1">Medical Record</div>
+                                            <div class="text-xs text-gray-600 mb-2">${displayDate}</div>
+                                            <div class="font-semibold text-xs text-gray-800 mb-2">${act.entry.hospital || 'Unknown Facility'}</div>
+                                            <div class="mb-1 flex flex-wrap gap-1">${visitType}</div>
+                                        </div>
+                                        ${notes}
+                                    </div>
+                                `;
+                            }
+                        }).join('')}
                     </div>
                 </div>
             `;
+            container.innerHTML = sectionHTML;
+        }
+
+        // Add a build tracker to the bottom right
+        // Replace the old static version badge with a dynamic one
+        window.addEventListener('DOMContentLoaded', () => {
+            // Remove old badges if present
+            const oldBuild = document.getElementById('build-tracker');
+            if (oldBuild) oldBuild.remove();
+            const oldWip = document.getElementById('wip-badge');
+            if (oldWip) oldWip.remove();
+            // Create a container for badges in the bottom left
+            let badgeContainer = document.getElementById('badge-container');
+            if (!badgeContainer) {
+                badgeContainer = document.createElement('div');
+                badgeContainer.id = 'badge-container';
+                badgeContainer.style.position = 'fixed';
+                badgeContainer.style.bottom = '1.5rem';
+                badgeContainer.style.left = '1.5rem';
+                badgeContainer.style.display = 'flex';
+                badgeContainer.style.flexDirection = 'row';
+                badgeContainer.style.alignItems = 'center';
+                badgeContainer.style.gap = '12px';
+                badgeContainer.style.zIndex = '9998';
+                badgeContainer.style.pointerEvents = 'none';
+                document.body.appendChild(badgeContainer);
+            }
+            // Build tracker badge (dynamic)
+            const buildDiv = document.createElement('div');
+            buildDiv.id = 'build-tracker';
+            buildDiv.style.background = '#fff';
+            buildDiv.style.color = '#6366f1';
+            buildDiv.style.fontWeight = '500';
+            buildDiv.style.fontSize = '1rem';
+            buildDiv.style.padding = '4px 14px';
+            buildDiv.style.borderRadius = '10px';
+            buildDiv.style.boxShadow = '0 1px 4px rgba(0,0,0,0.08)';
+            buildDiv.style.opacity = '0.92';
+            buildDiv.style.pointerEvents = 'auto';
+            buildDiv.style.cursor = 'pointer';
+            // Default fallback version
+            let fallbackVersion = 'v0.9.0';
+            buildDiv.textContent = `Build: ${fallbackVersion}`;
+            badgeContainer.appendChild(buildDiv);
+
+            // Fetch latest commit hash from GitHub API
+            fetch('https://api.github.com/repos/createdshots/ambulance-hospitaltracker/commits/main')
+                .then(res => res.ok ? res.json() : null)
+                .then(data => {
+                    if (data && data.sha) {
+                        const shortSha = data.sha.substring(0, 7);
+                        buildDiv.innerHTML = `<a href="https://github.com/createdshots/ambulance-hospitaltracker/commit/${data.sha}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;pointer-events:auto;">Build: <span style='font-family:monospace;'>${shortSha}</span></a>`;
+                    }
+                })
+                .catch(() => {
+                    // fallback, already set
+                });
+
+            // Work-in-progress badge
+            const wipBadge = document.createElement('div');
+            wipBadge.id = 'wip-badge';
+            wipBadge.innerHTML = `<span style="font-size:1.1em;vertical-align:middle;">🚧</span> <span style="vertical-align:middle;">Work in Progress</span>`;
+            wipBadge.style.background = '#fff';
+            wipBadge.style.color = '#b45309';
+            wipBadge.style.fontWeight = '500';
+            wipBadge.style.fontSize = '1rem';
+            wipBadge.style.padding = '4px 14px';
+            wipBadge.style.borderRadius = '10px';
+            wipBadge.style.boxShadow = '0 1px 4px rgba(0,0,0,0.08)';
+            wipBadge.style.opacity = '0.92';
+            wipBadge.style.pointerEvents = 'none';
+            badgeContainer.appendChild(wipBadge);
+        });
+
+        // Add personalized greeting to the top of the page
+        function renderGreeting() {
+            let name = localData.userProfile?.displayName?.trim();
+            if (!name) {
+                const user = auth?.currentUser;
+                name = user?.displayName || user?.email || (user?.isAnonymous ? 'Guest' : 'User');
+            }
+            const greetingDiv = document.getElementById('personal-greeting');
+            if (greetingDiv) {
+                greetingDiv.textContent = `Hello, ${name}!`;
+            }
+        }
+
+        // Fix ReferenceError for showOnboardingQuestionnaire
+        if (typeof showOnboardingQuestionnaire !== 'function') {
+            function showOnboardingQuestionnaire() { /* no-op fallback */ }
         }
     </script>
 </body>
