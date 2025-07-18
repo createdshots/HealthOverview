@@ -16,8 +16,16 @@
         "function": "loginScript"
       },
       {
+        "source": "/dashboard.html",
+        "destination": "/dashboard.html"
+      },
+      {
+        "source": "/profile.html", 
+        "destination": "/profile.html"
+      },
+      {
         "source": "**",
-        "function": "authRedirect"
+        "destination": "/index.html"
       }
     ]
   },

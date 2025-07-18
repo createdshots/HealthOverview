@@ -1,6 +1,16 @@
+# Firebase config - contains sensitive API keys
 firebaseConfig.js
 
-# Ignore node_modules directory
-functions/node_modules/
+# Don't track copied JS files if using build process
+public/js/
 
-.firebase
+# Node modules
+functions/node_modules/
+node_modules/
+
+# Firebase cache
+.firebase/
+
+# Environment files
+.env
+.env.local
