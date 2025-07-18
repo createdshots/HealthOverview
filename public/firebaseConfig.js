@@ -1,9 +1,5 @@
-// Firebase Configuration for client-side use
 (function() {
     'use strict';
-    
-    // For client-side code, we need to use hardcoded values or build-time replacement
-    // Vercel can inject environment variables at build time, but for static files we need a different approach
     
     const userFirebaseConfig = {
         apiKey: "AIzaSyDXJQOLf7tkzeu0z2TFvzaiXtdDVfwgTWU",

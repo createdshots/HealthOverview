@@ -66,7 +66,6 @@ class DashboardApp {
 
     // Update authentication UI
     updateAuthUI(user) {
-        const signedOutView = document.getElementById('auth-signed-out-view');
         const signedInView = document.getElementById('auth-signed-in-view');
         const userIdDisplay = document.getElementById('user-id-display');
         const addRecordBtn = document.getElementById('add-record-btn');
@@ -74,7 +73,6 @@ class DashboardApp {
 
         if (user) {
             // User is signed in
-            if (signedOutView) signedOutView.classList.add('hidden');
             if (signedInView) {
                 signedInView.classList.remove('hidden');
                 signedInView.classList.add('flex');
@@ -90,16 +88,8 @@ class DashboardApp {
             // Update greeting
             this.updateGreeting(displayName);
         } else {
-            // User is signed out
-            if (signedOutView) signedOutView.classList.remove('hidden');
-            if (signedInView) {
-                signedInView.classList.add('hidden');
-                signedInView.classList.remove('flex');
-            }
-            
-            // Hide authenticated user buttons
-            if (addRecordBtn) addRecordBtn.classList.add('hidden');
-            if (showProfileBtn) showProfileBtn.classList.add('hidden');
+            // User is signed out, redirect to login page
+            window.location.href = '/index.html';
         }
     }
 
@@ -238,9 +228,8 @@ class DashboardApp {
         try {
             await signOut(auth);
             console.log('Sign-out successful');
-            // Clear local data
-            this.dataManager.clearAllData();
-            this.renderAll();
+            // Redirect to login page after sign out
+            window.location.href = '/index.html';
         } catch (error) {
             console.error('Sign-out error:', error);
             this.uiComponents.showStatusMessage('Error signing out. Please try again.', 'error');
@@ -250,22 +239,7 @@ class DashboardApp {
     // Setup event listeners
     setupEventListeners() {
         // Authentication buttons
-        const googleSignInBtn = document.getElementById('google-signin-btn');
-        const microsoftSignInBtn = document.getElementById('microsoft-signin-btn');
-        const guestSignInBtn = document.getElementById('guest-signin-btn');
         const signOutBtn = document.getElementById('signout-btn');
-
-        if (googleSignInBtn) {
-            googleSignInBtn.addEventListener('click', () => this.signInWithGoogle());
-        }
-
-        if (microsoftSignInBtn) {
-            microsoftSignInBtn.addEventListener('click', () => this.signInWithMicrosoft());
-        }
-
-        if (guestSignInBtn) {
-            guestSignInBtn.addEventListener('click', () => this.signInAsGuest());
-        }
 
         if (signOutBtn) {
             signOutBtn.addEventListener('click', () => this.signOut());
