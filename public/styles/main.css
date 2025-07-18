@@ -1,1 +1,66 @@
-/* This file is intentionally left blank. */
+body {
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.list-item:hover {
+    background-color: #f9fafb;
+}
+
+.progress-bar-fill {
+    transition: width 0.5s ease-in-out;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.status-message,
+.modal-backdrop,
+.modal-content {
+    transition: all 0.3s ease-in-out;
+}
+
+#map {
+    height: 80vh;
+    border-radius: 0.75rem;
+}
+
+.award {
+    filter: grayscale(1);
+    opacity: 0.5;
+}
+
+.award.unlocked {
+    filter: grayscale(0);
+    opacity: 1;
+}
+
+.loader-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.fade-in-warning {
+    opacity: 0;
+    animation: fadeInWarn 1.2s ease 0.2s forwards;
+}
+@keyframes fadeInWarn {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+}/* This file is intentionally left blank. */
