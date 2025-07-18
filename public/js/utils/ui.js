@@ -8,26 +8,22 @@ export class UIManager {
     }
 
     initialize() {
-        console.log('🔄 UIManager initializing...');
-        
         this.statusMessageArea = document.getElementById('status-message-area');
         this.loadingIndicator = document.getElementById('full-page-loader');
         this.authSignedOutView = document.getElementById('auth-signed-out-view');
         this.authSignedInView = document.getElementById('auth-signed-in-view');
         
-        const result = {
-            statusArea: !!this.statusMessageArea,
+        console.log('UI Manager initialized');
+        return { 
+            statusArea: !!this.statusMessageArea, 
             loader: !!this.loadingIndicator,
             authOut: !!this.authSignedOutView,
             authIn: !!this.authSignedInView
         };
-        
-        console.log('✅ UIManager elements found:', result);
-        return result;
     }
 
     showStatusMessage(message, type = 'success') {
-        console.log(`📝 Status message: ${message} (${type})`);
+        console.log(`Status: ${message} (${type})`);
         
         if (this.statusMessageArea) {
             this.statusMessageArea.innerHTML = `
@@ -55,7 +51,7 @@ export class UIManager {
     }
 
     setLoading(loading, text = 'Loading...') {
-        console.log(`⏳ Loading state: ${loading} - ${text}`);
+        console.log(`Loading: ${loading} - ${text}`);
         
         if (this.loadingIndicator) {
             const loaderText = document.getElementById('loader-text');
@@ -72,7 +68,7 @@ export class UIManager {
     }
 
     updateUserDisplay(user, userId) {
-        console.log('👤 Updating user display:', user ? 'signed in' : 'signed out');
+        console.log('Updating user display:', user ? 'signed in' : 'signed out');
         
         if (user) {
             // Hide sign-in buttons
@@ -109,7 +105,7 @@ export class UIManager {
     }
 
     updateProfileButtonVisibility(visible) {
-        console.log(`👤 Profile button visibility: ${visible}`);
+        console.log(`Profile button visibility: ${visible}`);
         
         const profileBtn = document.getElementById('show-profile-btn');
         const addRecordBtn = document.getElementById('add-record-btn');
@@ -132,29 +128,30 @@ export class UIManager {
     }
 
     setupBuildTracker() {
-        console.log('🔧 Build tracker setup (placeholder)');
+        console.log('Build tracker setup');
+        // You can add build tracking logic here if needed
     }
 
     renderGreeting(data, auth) {
-        console.log('👋 Rendering greeting...');
-        
         const greetingElement = document.getElementById('personal-greeting');
-        if (!greetingElement) {
-            console.warn('⚠️ Greeting element not found');
-            return;
-        }
-
-        const user = auth?.currentUser;
-        const userName = user?.isAnonymous ? 'Guest' : 
-                        (user?.displayName || user?.email?.split('@')[0] || 'User');
+        if (!greetingElement) return;
         
-        const hospitalCount = data?.hospitals?.filter(h => h.visited).length || 0;
-        const ambulanceCount = data?.ambulance?.filter(a => a.visited).length || 0;
+        const user = auth?.currentUser;
+        const displayName = user?.isAnonymous ? 'Guest' : 
+                           (user?.displayName || 'User');
+        
+        const totalHospitals = data?.hospitals?.length || 0;
+        const visitedHospitals = data?.hospitals?.filter(h => h.visited)?.length || 0;
+        const totalAmbulance = data?.ambulance?.length || 0;
+        const visitedAmbulance = data?.ambulance?.filter(a => a.visited)?.length || 0;
         
         greetingElement.innerHTML = `
-            Welcome back, ${userName}! 
-            You've visited ${hospitalCount} hospitals and ${ambulanceCount} ambulance services.
+            Welcome back, ${displayName}! 
+            You've visited ${visitedHospitals}/${totalHospitals} hospitals 
+            and ${visitedAmbulance}/${totalAmbulance} ambulance services.
         `;
+        
+        console.log('Greeting rendered for', displayName);
     }
 
     updateStats(type, data) {
