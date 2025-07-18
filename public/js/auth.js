@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, onSnapshot, setDoc, getDoc, connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 export class FirebaseAuth {
     constructor() {
@@ -15,35 +15,18 @@ export class FirebaseAuth {
     }
 
     async initialize() {
-        try {
-            if (typeof window.userFirebaseConfig === 'undefined') {
-                throw new Error('Firebase configuration not found. Make sure firebaseConfig.js is loaded.');
-            }
-            
-            console.log('Initializing Firebase with config:', window.userFirebaseConfig);
-            this.app = initializeApp(window.userFirebaseConfig);
-            this.auth = getAuth(this.app);
-            this.db = getFirestore(this.app);
-            
-            // Test Firebase connection
-            console.log('Firebase initialized successfully');
-            console.log('Auth instance:', this.auth);
-            console.log('Firestore instance:', this.db);
-            
-            this.setupAuthListener();
-        } catch (error) {
-            console.error('Firebase initialization error:', error);
-            throw error;
+        if (typeof window.userFirebaseConfig === 'undefined') {
+            throw new Error('Firebase configuration not found');
         }
+        this.app = initializeApp(window.userFirebaseConfig);
+        this.auth = getAuth(this.app);
+        this.db = getFirestore(this.app);
+        this.setupAuthListener();
     }
 
     setupAuthListener() {
         onAuthStateChanged(this.auth, async (user) => {
-            console.log('Auth state changed:', user ? `User: ${user.uid}` : 'No user');
-            
-            if (this.unsubscribe) {
-                this.unsubscribe();
-            }
+            if (this.unsubscribe) this.unsubscribe();
 
             if (user) {
                 this.userId = user.uid;
@@ -67,9 +50,14 @@ export class FirebaseAuth {
                     this.onAuthChangeCallback({ user });
                 }
                 
-                // Only setup data listener for non-anonymous users
+                // Setup data listener for non-anonymous users
                 if (!user.isAnonymous) {
                     this.setupDataListener();
+                } else {
+                    // For anonymous users, call data callback with empty data
+                    if (this.onDataChangeCallback) {
+                        this.onDataChangeCallback({ data: null, exists: false });
+                    }
                 }
             } else {
                 this.userId = null;
@@ -109,7 +97,7 @@ export class FirebaseAuth {
 
     async saveData(data) {
         if (!this.docRef) {
-            console.warn('Cannot save data: no document reference');
+            console.warn('Cannot save data: no document reference (anonymous user)');
             return false;
         }
         

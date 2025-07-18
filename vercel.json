@@ -9,7 +9,7 @@
       "destination": "/dashboard.html"
     },
     {
-      "source": "/profile.html",
+      "source": "/profile.html", 
       "destination": "/profile.html"
     },
     {
