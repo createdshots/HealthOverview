@@ -1,6 +1,6 @@
 // Modular login logic for HospitalTracker
 import { FirebaseAuth } from './auth.js';
-import { GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithEmailAndPassword, sendSignInLinkToEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithEmailAndPassword, sendSignInLinkToEmail, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 const firebaseAuth = new FirebaseAuth();
 await firebaseAuth.initialize();
@@ -45,6 +45,19 @@ if (msBtn) {
 const emailBtn = document.getElementById('email-signin-btn');
 if (emailBtn) {
   emailBtn.addEventListener('click', showEmailCombinedModal);
+}
+
+// Guest Sign-In
+const guestBtn = document.getElementById('guest-signin-btn');
+if (guestBtn) {
+  guestBtn.addEventListener('click', async () => {
+    try {
+      await signInAnonymously(auth);
+      showLoginStatusMessage('Signed in as guest successfully!', 'success');
+    } catch (error) {
+      showLoginStatusMessage(error.message);
+    }
+  });
 }
 
 function showEmailCombinedModal() {

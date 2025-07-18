@@ -1,17 +1,66 @@
 // Main Application Entry Point for Hospital Tracker
 import { FirebaseAuth } from './firebase/auth.js';
-// Redirect to /login.html if not authenticated
-if (window.location.pathname !== '/login.html') {
-  import('./firebase/auth.js').then(({ FirebaseAuth }) => {
-    const firebaseAuth = new FirebaseAuth();
-    firebaseAuth.initialize().then(() => {
-      firebaseAuth.onAuthChange(({ user }) => {
-        if (!user) {
-          window.location.href = '/login.html';
-        }
-      });
+
+// Immediate authentication check - prevent access to protected pages
+const currentPath = window.location.pathname;
+const isLoginPage = currentPath.includes('login.html');
+const isProfilePage = currentPath.includes('profile.html');
+const isLandingPage = currentPath === '/';
+
+// Only run auth check on protected pages (dashboard, not login, profile, or landing)
+if (!isLoginPage && !isProfilePage && !isLandingPage) {
+  // Show loading while checking authentication
+  document.body.style.visibility = 'hidden';
+  
+  // Initialize Firebase Auth and check authentication status
+  const firebaseAuth = new FirebaseAuth();
+  firebaseAuth.initialize().then(() => {
+    firebaseAuth.onAuthChange(({ user }) => {
+      if (!user) {
+        // User not authenticated, redirect to login
+        window.location.href = '/login.html';
+      } else {
+        // User is authenticated, show the page
+        document.body.style.visibility = 'visible';
+        // Initialize the app
+        initializeApp();
+      }
     });
+  }).catch((error) => {
+    console.error('Firebase initialization failed:', error);
+    window.location.href = '/login.html';
   });
+} else {
+  // On login/profile pages, initialize normally
+  initializeApp();
+}
+
+async function initializeApp() {
+    // Show loading while checking authentication
+    document.body.style.visibility = 'hidden';
+    
+    try {
+        // Initialize Firebase Auth and check authentication status
+        const firebaseAuth = new FirebaseAuth();
+        await firebaseAuth.initialize();
+        
+        return new Promise((resolve) => {
+            firebaseAuth.onAuthChange(({ user }) => {
+                if (!user) {
+                    // User not authenticated, redirect to login
+                    window.location.href = '/login.html';
+                } else {
+                    // User is authenticated, show the page and start app
+                    document.body.style.visibility = 'visible';
+                    startApp();
+                    resolve();
+                }
+            });
+        });
+    } catch (error) {
+        console.error('Firebase initialization failed:', error);
+        window.location.href = '/login.html';
+    }
 }
 import { DataManager } from './data/dataManager.js';
 import { UIManager } from './utils/ui.js';
@@ -75,6 +124,17 @@ class HospitalTrackerApp {
         document.getElementById('show-map-btn')?.addEventListener('click', () => this.modalManager.showMapModal(this.dataManager.getData()));
         document.getElementById('show-awards-btn')?.addEventListener('click', () => this.showAwardsModal());
         document.getElementById('add-record-btn')?.addEventListener('click', () => this.showAddRecordModal());
+        
+        // Logout functionality
+        document.getElementById('logout-btn')?.addEventListener('click', async () => {
+            const success = await this.firebaseAuth.logout();
+            if (success) {
+                window.location.href = '/';  // Go to landing page which will redirect to login
+            } else {
+                this.uiManager.showStatusMessage('Failed to logout. Please try again.', 'error');
+            }
+        });
+        
         this.listRenderer.setupEventListeners(() => this.renderAll());
     }
 
@@ -124,7 +184,19 @@ class HospitalTrackerApp {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize app function
+function startApp() {
     const app = new HospitalTrackerApp();
     app.initialize();
-});
+}
+
+// Check if we're on a protected page and need authentication
+if (!isLoginPage && !isProfilePage) {
+    // Wait for DOM and then check authentication
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeApp();
+    });
+} else {
+    // On login/profile pages, just start normally
+    document.addEventListener('DOMContentLoaded', startApp);
+}

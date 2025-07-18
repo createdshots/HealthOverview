@@ -44,7 +44,18 @@ export class FirebaseAuth {
                 if (this.onAuthChangeCallback) this.onAuthChangeCallback({ user });
                 this.setupDataListener();
             } else {
-                window.location.href = '/login.html';
+                // User is not authenticated
+                this.userId = null;
+                this.docRef = null;
+                
+                // Only redirect if not already on login page
+                const currentPath = window.location.pathname;
+                if (!currentPath.includes('login.html')) {
+                    window.location.href = '/login.html';
+                } else {
+                    // On login page, call callback with null user
+                    if (this.onAuthChangeCallback) this.onAuthChangeCallback({ user: null });
+                }
             }
         });
     }
@@ -75,4 +86,14 @@ export class FirebaseAuth {
     onDataChange(callback) { this.onDataChangeCallback = callback; }
     getAuth() { return this.auth; }
     getUserId() { return this.userId; }
+    
+    async logout() {
+        try {
+            await signOut(this.auth);
+            return true;
+        } catch (error) {
+            console.error("Error signing out:", error);
+            return false;
+        }
+    }
 }
