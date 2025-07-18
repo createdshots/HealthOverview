@@ -22,52 +22,32 @@ class HospitalTrackerApp {
         try {
             console.log('Initializing Hospital Tracker App...');
             
-            // Initialize UI components
-            this.uiManager.initialize();
-            this.modalManager.initialize();
-            
-            // Setup callbacks
+            // Initialize components
             this.setupCallbacks();
             
             // Initialize Firebase Auth
             await this.firebaseAuth.initialize();
             
-            // Setup UI elements
-            this.uiManager.setupBuildTracker();
             this.setupEventListeners();
             
             console.log('App initialization complete');
         } catch (error) {
             console.error('App initialization failed:', error);
-            this.uiManager.showStatusMessage('Failed to initialize app. Please refresh the page.', 'error');
         }
     }
 
     setupCallbacks() {
-        // Data manager callbacks
-        this.dataManager.onStatus((msg, type) => this.uiManager.showStatusMessage(msg, type));
-        this.dataManager.onLoading((loading, text) => this.uiManager.setLoading(loading, text));
+        // Set up the connection between auth and data manager
         this.dataManager.setFirebaseAuth(this.firebaseAuth);
-
-        // Component data manager setup
-        this.listRenderer.setDataManager(this.dataManager);
-        this.medicalRecordsManager.setDataManager(this.dataManager);
 
         // Auth callbacks
         this.firebaseAuth.onAuthChange(async ({ user }) => {
             console.log('Auth state changed:', user ? `User: ${user.uid}` : 'No user');
-            this.uiManager.updateUserDisplay(user, user?.uid);
-            this.uiManager.updateProfileButtonVisibility(!!user);
             
-            if (user) {
-                this.uiManager.setLoading(true, 'Loading your data...');
-                // For anonymous users, initialize with default data immediately
-                if (user.isAnonymous) {
-                    console.log('Anonymous user detected, initializing with default data');
-                    await this.dataManager.initializeDefaultData();
-                    this.renderAll();
-                    this.uiManager.setLoading(false);
-                }
+            if (user && user.isAnonymous) {
+                console.log('Anonymous user detected, initializing with default data');
+                await this.dataManager.initializeDefaultData();
+                this.renderAll();
             }
         });
 
@@ -76,17 +56,12 @@ class HospitalTrackerApp {
             
             if (exists && data) {
                 this.dataManager.setData(data);
-            } else {
-                this.uiManager.showStatusMessage('No user data found. Setting up defaults...', 'info');
+            } else if (!this.firebaseAuth.getCurrentUser()?.isAnonymous) {
                 await this.dataManager.initializeDefaultData();
             }
             
             this.renderAll();
-            this.uiManager.setLoading(false);
         });
-
-        // Awards manager callback
-        this.awardsManager.onStatus((msg, type) => this.uiManager.showStatusMessage(msg, type));
     }
 
     setupEventListeners() {

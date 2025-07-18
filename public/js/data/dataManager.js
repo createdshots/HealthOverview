@@ -1,110 +1,163 @@
 // Data Manager for Hospital Tracker Application
 export class DataManager {
     constructor() {
-        this.localData = {};
+        this.data = {
+            hospitals: [],
+            ambulance: [],
+            medicalRecords: [],
+            awards: [],
+            userProfile: {}
+        };
         this.firebaseAuth = null;
-        this.statusCallback = null;
-        this.loadingCallback = null;
+        this.onStatusCallback = null;
+        this.onLoadingCallback = null;
     }
 
-    setFirebaseAuth(auth) { this.firebaseAuth = auth; }
-    onStatus(callback) { this.statusCallback = callback; }
-    onLoading(callback) { this.loadingCallback = callback; }
-    showStatus(msg, type) { if (this.statusCallback) this.statusCallback(msg, type); }
-    setLoading(loading, text) { if (this.loadingCallback) this.loadingCallback(loading, text); }
+    setFirebaseAuth(firebaseAuth) {
+        this.firebaseAuth = firebaseAuth;
+    }
 
-    getData() { return this.localData; }
-    setData(data) {
-        this.localData = {
-            hospitals: [], ambulance: [], awards: [], visitHistory: [],
-            medicalRecords: [], symptomTracking: [], userProfile: {}, ...data
-        };
+    getData() {
+        return this.data;
+    }
+
+    setData(newData) {
+        if (newData) {
+            this.data = { ...this.data, ...newData };
+        }
     }
 
     async initializeDefaultData() {
-        this.setLoading(true, 'Setting up your account...');
-        const hospitals = await this.loadListFromFile('hospitals');
-        const ambulance = await this.loadListFromFile('ambulance');
-        this.localData = {
-            hospitals, ambulance, awards: [], visitHistory: [],
-            medicalRecords: [], symptomTracking: [], userProfile: {}
-        };
-        await this.saveData();
-        this.setLoading(false);
-    }
-
-    async loadListFromFile(type) {
-        try {
-            const isHospital = type === 'hospitals';
-            const url = isHospital ? 'hospital_data.json' : 'ambulance.txt';
-            this.setLoading(true, `Loading ${type}...`);
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Could not load '${url}'.`);
-
-            if (isHospital) {
-                const data = await response.json();
-                return data.map(h => ({ name: h.name, visited: false, count: 0, coords: h.coords, city: h.city }));
-            } else {
-                const text = await response.text();
-                const lines = text.split(/\r\n?|\n/).filter(line => line.trim());
-                const list = [];
-                for (const name of lines) {
-                    const coords = await this.geocodeLocation(name);
-                    list.push({ name, visited: false, count: 0, coords });
-                    await new Promise(r => setTimeout(r, 250)); // Rate limit geocoding
-                }
-                return list;
+        const defaultData = {
+            hospitals: [],
+            ambulance: [],
+            medicalRecords: [],
+            awards: [],
+            userProfile: {
+                displayName: 'Guest User',
+                email: '',
+                conditions: []
             }
-        } catch (error) {
-            this.showStatus(error.message, "error");
-            this.setLoading(false);
-            return [];
-        }
-    }
-
-    async geocodeLocation(name) {
-        try {
-            const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=1`);
-            const data = await r.json();
-            return data?.[0] ? { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) } : null;
-        } catch (error) {
-            console.error('Geocoding error:', error);
-            return null;
-        }
+        };
+        
+        this.setData(defaultData);
+        this.showStatus('Default data loaded', 'info');
+        return true;
     }
 
     async saveData() {
-        if (!this.firebaseAuth) return false;
-        const success = await this.firebaseAuth.saveData(this.localData);
-        if (success) {
-            this.showStatus("Data saved!", "success");
-        } else {
-            this.showStatus("Error saving data.", "error");
+        if (!this.firebaseAuth) {
+            console.warn('Firebase auth not available');
+            return false;
         }
-        return success;
+
+        this.setLoading(true, 'Saving your data...');
+        
+        try {
+            const success = await this.firebaseAuth.saveData(this.data);
+            if (success) {
+                this.showStatus('Data saved successfully!', 'success');
+            } else {
+                this.showStatus('Failed to save data', 'error');
+            }
+            return success;
+        } catch (error) {
+            console.error('Save data error:', error);
+            this.showStatus('Error saving data', 'error');
+            return false;
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    async loadHospitals() {
+        if (!this.firebaseAuth) return [];
+
+        try {
+            const response = await this.firebaseAuth.apiCall('/api/hospitals');
+            if (response.ok) {
+                const result = await response.json();
+                return result.hospitals || [];
+            }
+        } catch (error) {
+            console.error('Error loading hospitals:', error);
+        }
+        return [];
+    }
+
+    async addHospital(hospital) {
+        if (!this.firebaseAuth) return false;
+
+        try {
+            const response = await this.firebaseAuth.apiCall('/api/hospitals', {
+                method: 'POST',
+                body: JSON.stringify(hospital)
+            });
+            
+            if (response.ok) {
+                const newHospital = await response.json();
+                this.data.hospitals.push(newHospital);
+                await this.saveData();
+                return true;
+            }
+        } catch (error) {
+            console.error('Error adding hospital:', error);
+        }
+        return false;
     }
 
     handleInteraction(type, index, action) {
-        const item = this.localData[type]?.[index];
-        if (!item) return;
+        if (!this.data[type] || !this.data[type][index]) return;
 
-        if (action === 'toggle') {
-            item.visited = !item.visited;
-            if (item.visited && item.count === 0) item.count = 1;
-        } else if (action === 'increase') {
-            item.count++;
-            if (item.count > 0) item.visited = true;
-        } else if (action === 'decrease' && item.count > 0) {
-            item.count--;
-            if (item.count === 0) item.visited = false;
+        const item = this.data[type][index];
+        
+        switch (action) {
+            case 'toggle':
+                item.visited = !item.visited;
+                if (item.visited) {
+                    item.visitDate = new Date().toISOString().split('T')[0];
+                } else {
+                    delete item.visitDate;
+                }
+                break;
+            case 'delete':
+                this.data[type].splice(index, 1);
+                break;
+            case 'edit':
+                // Implement edit functionality
+                break;
         }
+
+        // Auto-save after interaction
         this.saveData();
     }
-    
+
     addMedicalRecord(record) {
-        if (!this.localData.medicalRecords) this.localData.medicalRecords = [];
-        record.id = `rec_${Date.now()}`;
-        record.timestamp = new Date().toISOString();
-        this.localData.medicalRecords.unshift(record);
+        this.data.medicalRecords.push({
+            ...record,
+            id: Date.now().toString(),
+            createdAt: new Date().toISOString()
+        });
+    }
+
+    // Status and loading callbacks
+    onStatus(callback) {
+        this.onStatusCallback = callback;
+    }
+
+    onLoading(callback) {
+        this.onLoadingCallback = callback;
+    }
+
+    showStatus(message, type = 'info') {
+        if (this.onStatusCallback) {
+            this.onStatusCallback(message, type);
+        }
+    }
+
+    setLoading(loading, text = '') {
+        if (this.onLoadingCallback) {
+            this.onLoadingCallback(loading, text);
+        }
     }
 }
