@@ -4,8 +4,20 @@ import { showModal, hideModal } from './components/modal.js';
 import { showStatusMessage } from './utils/ui.js';
 import { symptomTracker, showSymptomTracker, showSymptomOverview } from './features/symptomTracker.js';
 
+// Global variables
+let currentUser = null;
+let currentUserData = null;
+const isOnboarding = new URLSearchParams(window.location.search).has('onboarding');
+
+// DOM elements
+const personalGreeting = document.getElementById('personal-greeting');
+const notSignedInDiv = document.getElementById('not-signed-in');
+const profileContent = document.getElementById('profile-content');
+const loadingOverlay = document.getElementById('loading-overlay');
+const signoutBtn = document.getElementById('signout-btn');
+const addRecordBtn = document.getElementById('add-record-btn');
+
 document.addEventListener('DOMContentLoaded', () => {
-    // ...existing code...
     // Topbar styling update
     const header = document.querySelector('header');
     if (header) {
@@ -16,11 +28,16 @@ document.addEventListener('DOMContentLoaded', () => {
         header.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)';
     }
 
-    // Fix modal logic for Add Record
+    // ProfileMedicalRecordsManager class
     class ProfileMedicalRecordsManager {
         constructor() {
-            this.dataManager = window.enhancedDataManager;
+            this.dataManager = window.enhancedDataManager || enhancedDataManager;
         }
+
+        setDataManager(dataManager) {
+            this.dataManager = dataManager;
+        }
+
         showAddRecordModal() {
             import('./components/modal.js').then(({ showModal, hideModal }) => {
                 import('./utils/ui.js').then(({ showStatusMessage }) => {
@@ -42,7 +59,71 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
         }
-        // ...existing code for modal content generation and listeners...
+
+        generateEnhancedModalContent(userConditions) {
+            return `
+                <div class="bg-gradient-to-r from-indigo-600 to-purple-700 text-white p-6 rounded-t-xl">
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">📋</div>
+                        <h2 class="text-2xl font-bold mb-2">Add Medical Record</h2>
+                        <p class="text-indigo-100">Track your health journey with detailed records</p>
+                    </div>
+                </div>
+                
+                <form id="add-record-form" class="p-6 space-y-6">
+                    <!-- Incident Type Selection -->
+                    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-5 rounded-2xl border border-indigo-200">
+                        <h3 class="text-xl font-bold text-indigo-800 mb-4 flex items-center">
+                            <span class="text-2xl mr-3">🏥</span>
+                            What type of incident?
+                        </h3>
+                        <input type="hidden" id="selected-type" name="incidentType" required>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            ${this.getIncidentTypes().map(type => `
+                                <div class="incident-type-card p-4 border-2 border-indigo-200 rounded-xl cursor-pointer hover:border-indigo-400 transition-all duration-300 bg-white" data-type="${type.id}">
+                                    <div class="text-center">
+                                        <div class="text-3xl mb-2">${type.icon}</div>
+                                        <div class="font-semibold text-indigo-800 text-sm">${type.name}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Basic Info -->
+                    ${this.generateBasicInfoHTML()}
+
+                    <!-- Condition-specific Symptoms -->
+                    <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-5 rounded-2xl border border-purple-200">
+                        ${this.generateConditionSymptomsPanel(userConditions)}
+                    </div>
+
+                    <!-- General Symptoms -->
+                    ${this.generateGeneralSymptomsHTML()}
+
+                    <!-- Severity -->
+                    ${this.generateSeverityHTML()}
+
+                    <!-- Notes -->
+                    ${this.generateNotesHTML()}
+
+                    <!-- Action Buttons -->
+                    ${this.generateActionButtonsHTML()}
+                </form>
+            `;
+        }
+
+        getIncidentTypes() {
+            return [
+                { id: 'emergency_visit', name: 'Emergency Visit', icon: '🚨' },
+                { id: 'scheduled_appointment', name: 'Scheduled Appointment', icon: '📅' },
+                { id: 'symptom_episode', name: 'Symptom Episode', icon: '🤒' },
+                { id: 'medication_reaction', name: 'Medication Reaction', icon: '💊' },
+                { id: 'follow_up', name: 'Follow-up Visit', icon: '🔄' },
+                { id: 'test_results', name: 'Test Results', icon: '📊' }
+            ];
+        }
+
         generateBasicInfoHTML() {
             return `
                 <div class="bg-gradient-to-r from-emerald-500 to-teal-600 p-5 rounded-2xl shadow-lg">
@@ -119,7 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
 
-        // Add helper methods
         getConditionIcon(condition) {
             const icons = {
                 'epilepsy': '🧠',
@@ -165,8 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     { id: 'low_blood_sugar', name: 'Low blood sugar', icon: '📉' },
                     { id: 'excessive_thirst', name: 'Excessive thirst', icon: '🥤' },
                     { id: 'frequent_urination', name: 'Frequent urination', icon: '🚽' }
-                ],
-                // Add more condition-specific symptoms as needed
+                ]
             };
             return symptoms[condition] || [];
         }
@@ -350,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.refreshProfileData();
             }
         }
-    } // Close ProfileMedicalRecordsManager class
+    }
 
     // Initialize medical records manager
     const medicalRecordsManager = new ProfileMedicalRecordsManager();
@@ -374,10 +453,13 @@ document.addEventListener('DOMContentLoaded', () => {
         showStatusMessage(message, type);
     });
 
+    // Auth state change handler
     onAuthStateChanged(auth, async (user) => {
         currentUser = user;
         if (user) {
-            personalGreeting.textContent = `Welcome back, ${user.displayName || user.email || 'User'}`;
+            if (personalGreeting) {
+                personalGreeting.textContent = `Welcome back, ${user.displayName || user.email || 'User'}`;
+            }
             if (notSignedInDiv) notSignedInDiv.classList.add('hidden');
 
             // Set up data manager
@@ -406,8 +488,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isOnboarding && !onboardingCompleted) {
                     showOnboardingModal();
                 } else {
-                    profileContent.classList.remove('hidden');
-                    renderFullProfile(currentUserData, user);
+                    if (profileContent) {
+                        profileContent.classList.remove('hidden');
+                        renderProfileTabs();
+                        renderFullProfile(currentUserData, user);
+                    }
                 }
 
             } catch (error) {
@@ -417,16 +502,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Try to initialize default data as fallback
                 await enhancedDataManager.initializeDefaultData();
                 currentUserData = enhancedDataManager.getData();
-                profileContent.classList.remove('hidden');
-                renderFullProfile(currentUserData, user);
+                if (profileContent) {
+                    profileContent.classList.remove('hidden');
+                    renderProfileTabs();
+                    renderFullProfile(currentUserData, user);
+                }
             } finally {
-                loadingOverlay.style.display = 'none';
+                if (loadingOverlay) loadingOverlay.style.display = 'none';
             }
 
         } else {
             if (notSignedInDiv) notSignedInDiv.classList.remove('hidden');
-            profileContent.classList.add('hidden');
-            loadingOverlay.style.display = 'none';
+            if (profileContent) profileContent.classList.add('hidden');
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
         }
     });
 
@@ -449,6 +537,47 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Add Record button clicked from profile');
             medicalRecordsManager.showAddRecordModal();
         });
+    }
+
+    // Set up medical records manager with data manager
+    medicalRecordsManager.setDataManager(enhancedDataManager);
+
+    // Profile rendering functions
+    function renderProfileTabs() {
+        const profileContent = document.getElementById('profile-content');
+        if (!profileContent) return;
+        
+        profileContent.innerHTML = `
+            <!-- Profile Header and Stats -->
+            <div id="profile-header-and-stats"></div>
+            
+            <!-- Profile Tabs -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+                <!-- Tab Navigation -->
+                <div class="flex flex-wrap border-b border-gray-200 px-6">
+                    <button class="profile-tab-btn active border-purple-500 text-purple-600 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
+                        Overview
+                    </button>
+                    <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
+                        Conditions
+                    </button>
+                    <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
+                        Records
+                    </button>
+                    <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
+                        Symptom Tracker
+                    </button>
+                    <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 px-6 py-3 rounded-t-lg font-medium" data-tab="analytics">
+                        Analytics
+                    </button>
+                </div>
+                
+                <!-- Tab Content -->
+                <div id="profile-tab-content" class="p-6">
+                    <!-- Content will be dynamically inserted here -->
+                </div>
+            </div>
+        `;
     }
 
     function renderFullProfile(userData, user) {
@@ -485,6 +614,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderProfileHeader(userData, user, joinDate, daysSinceJoin, stats) {
         const headerContainer = document.getElementById('profile-header-and-stats');
+        if (!headerContainer) return;
+
         const displayName = userData.displayName || user.displayName || 'Health Tracker User';
         const memberSince = joinDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         
@@ -594,7 +725,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 
-                <!-- Days Active Card -->
+                <!-- Ambulance Services Card -->
                 <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
                     <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
                     <div class="relative">
@@ -963,9 +1094,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'bg-red-100 text-red-800';
     }
 
-    // Rest of your existing functions (showOnboardingModal, setupOnboardingEventListeners, completeOnboarding)
-    // ... (keeping the existing onboarding code as is)
-
     function showOnboardingModal() {
         const modalContent = `
             <div class="onboarding-gradient text-white p-4 rounded-t-xl">
@@ -1113,170 +1241,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupOnboardingEventListeners() {
-    const form = document.getElementById('onboarding-form');
-    const conditionCards = document.querySelectorAll('.onboarding-condition-card');
-    const skipBtn = document.getElementById('skip-onboarding');
-    
-    // Check if elements exist before setting up listeners
-    if (!form) {
-        console.error('Onboarding form not found');
-        return;
-    }
-    
-    if (!skipBtn) {
-        console.error('Skip button not found');
-        return;
-    }
-    
-    if (conditionCards.length === 0) {
-        console.error('No condition cards found');
-        return;
-    }
-    
-    let selectedConditions = new Set(currentUserData?.conditions || []);
-
-    // Handle condition selection
-    conditionCards.forEach(card => {
-        const conditionId = card.dataset.condition;
-        
-        // Set initial state
-        if (selectedConditions.has(conditionId)) {
-            card.classList.add('selected');
-            const checkbox = card.querySelector('.condition-checkbox');
-            if (checkbox) {
-                checkbox.classList.remove('hidden');
-            }
-        }
-
-        // Add click handler for condition selection
-        card.addEventListener('click', () => {
-            const checkbox = card.querySelector('.condition-checkbox');
-            
-            if (selectedConditions.has(conditionId)) {
-                // Deselect condition
-                selectedConditions.delete(conditionId);
-                card.classList.remove('selected');
-                if (checkbox) {
-                    checkbox.classList.add('hidden');
-                }
-            } else {
-                // Select condition
-                selectedConditions.add(conditionId);
-                card.classList.add('selected');
-                if (checkbox) {
-                    checkbox.classList.remove('hidden');
-                }
-            }
-        });
-    });
-
-    // Handle form submission
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await completeOnboarding(selectedConditions);
-    });
-
-    // Handle skip button
-    skipBtn.addEventListener('click', async () => {
-        await completeOnboarding(new Set());
-    });
-// ...existing code...
-
-// Add the missing completeOnboarding function
-async function completeOnboarding(selectedConditions) {
-    try {
-        const form = document.getElementById('onboarding-form');
-        if (!form) {
-            throw new Error('Form not found');
-        }
-        
-        const formData = new FormData(form);
-        
-        const userData = {
-            ...currentUserData,
-            displayName: formData.get('displayName') || currentUser?.displayName || 'User',
-            emergencyContact: formData.get('emergencyContact') || '',
-            medicalNotes: formData.get('medicalNotes') || '',
-            conditions: Array.from(selectedConditions),
-            onboardingCompleted: true,
-            profileSetupDate: new Date().toISOString()
-        };
-
-        // Save user data
-        await enhancedDataManager.setData({
-            ...enhancedDataManager.getData(),
-            userProfile: userData,
-            onboardingCompleted: true
-        });
-        
-        await enhancedDataManager.saveData();
-        currentUserData = enhancedDataManager.getData();
-        
-        hideModal();
-        showStatusMessage('Profile setup completed successfully! Redirecting to dashboard...', 'success');
-        
-        // Clear the onboarding parameter from URL
-        const url = new URL(window.location);
-        url.searchParams.delete('onboarding');
-        window.history.replaceState({}, '', url);
-        
-        // Set localStorage flag to prevent redirect loop
-        localStorage.setItem('onboardingCompleted', 'true');
-        
-        // Redirect to dashboard after a short delay
-        setTimeout(() => {
-            window.location.href = '/dashboard.html';
-        }, 1500);
-        
-    } catch (error) {
-        console.error('Error completing onboarding:', error);
-        showStatusMessage('Error saving profile. Please try again.', 'error');
-    }
-// ...existing code...
-
-// Fix the data manager setup for medical records
-medicalRecordsManager.setDataManager(enhancedDataManager);
-
-// Add the profile tabs HTML structure to the profile content
-function renderProfileTabs() {
-    const profileContent = document.getElementById('profile-content');
-    if (!profileContent) return;
-    
-    profileContent.innerHTML = `
-        <!-- Profile Header and Stats -->
-        <div id="profile-header-and-stats"></div>
-        
-        <!-- Profile Tabs -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-            <!-- Tab Navigation -->
-            <div class="flex flex-wrap border-b border-gray-200 px-6">
-                <button class="profile-tab-btn active border-purple-500 text-purple-600 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
-                    Overview
-                </button>
-                <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
-                    Conditions
-                </button>
-                <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
-                    Records
-                </button>
-                <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
-                    Symptom Tracker
-                </button>
-                <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 px-6 py-3 rounded-t-lg font-medium" data-tab="analytics">
-                    Analytics
-                </button>
-            </div>
-            
-            <!-- Tab Content -->
-            <div id="profile-tab-content" class="p-6">
-                <!-- Content will be dynamically inserted here -->
-            </div>
-        </div>
-    `;
-}
-
-    // Complete the setupOnboardingEventListeners function
-    function setupOnboardingEventListeners() {
         const form = document.getElementById('onboarding-form');
         const conditionCards = document.querySelectorAll('.onboarding-condition-card');
         const skipBtn = document.getElementById('skip-onboarding');
@@ -1346,7 +1310,6 @@ function renderProfileTabs() {
         });
     }
 
-    // Add the missing completeOnboarding function
     async function completeOnboarding(selectedConditions) {
         try {
             const form = document.getElementById('onboarding-form');
@@ -1377,20 +1340,19 @@ function renderProfileTabs() {
             currentUserData = enhancedDataManager.getData();
             
             hideModal();
-            showStatusMessage('Profile setup completed successfully! Redirecting to dashboard...', 'success');
+            showStatusMessage('Profile setup completed successfully! Refreshing profile...', 'success');
             
             // Clear the onboarding parameter from URL
             const url = new URL(window.location);
             url.searchParams.delete('onboarding');
             window.history.replaceState({}, '', url);
             
-            // Set localStorage flag to prevent redirect loop
-            localStorage.setItem('onboardingCompleted', 'true');
-            
-            // Redirect to dashboard after a short delay
-            setTimeout(() => {
-                window.location.href = '/dashboard.html';
-            }, 1500);
+            // Refresh the profile display
+            if (profileContent) {
+                profileContent.classList.remove('hidden');
+                renderProfileTabs();
+                renderFullProfile(currentUserData, currentUser);
+            }
             
         } catch (error) {
             console.error('Error completing onboarding:', error);
@@ -1398,7 +1360,7 @@ function renderProfileTabs() {
         }
     }
 
-    // Add the missing CSS for selected condition cards and other styling
+    // Add the CSS styles for onboarding
     const onboardingStyles = document.createElement('style');
     onboardingStyles.textContent = `
         .onboarding-condition-card.selected {
@@ -1486,5 +1448,12 @@ function renderProfileTabs() {
         onboardingStyles.id = 'onboarding-styles';
         document.head.appendChild(onboardingStyles);
     }
+
+    // Add global refresh function
+    window.refreshProfileData = function() {
+        if (currentUserData && currentUser) {
+            renderFullProfile(currentUserData, currentUser);
+        }
+    };
 
 }); // Close DOMContentLoaded event handler
