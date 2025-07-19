@@ -456,6 +456,41 @@ document.addEventListener('DOMContentLoaded', () => {
         showStatusMessage(message, type);
     });
 
+    // Function to update profile picture with fallback
+    function updateUserProfilePicture(displayName) {
+        const userProfilePic = document.getElementById('user-profile-pic');
+        const userAvatar = document.getElementById('user-avatar');
+        const userDisplayName = document.getElementById('user-display-name');
+        const userEmailDisplay = document.getElementById('user-email-display');
+        
+        // Get user data to check for profile picture
+        const userData = enhancedDataManager.getData();
+        const profilePictureUrl = userData?.userProfile?.profilePicture?.url || userData?.profilePicture?.url;
+        
+        if (profilePictureUrl && userProfilePic && userAvatar) {
+            // Show profile picture if available
+            userProfilePic.src = profilePictureUrl;
+            userProfilePic.classList.remove('hidden');
+            userAvatar.classList.add('hidden');
+        } else if (userAvatar && displayName) {
+            // Fall back to avatar initial if no profile picture
+            const initial = displayName.charAt(0).toUpperCase();
+            userAvatar.textContent = initial;
+            userAvatar.classList.remove('hidden');
+            if (userProfilePic) userProfilePic.classList.add('hidden');
+        }
+
+        // Update user display info in header
+        if (userDisplayName && currentUser) {
+            userDisplayName.textContent = displayName;
+            userDisplayName.classList.remove('hidden');
+        }
+        if (userEmailDisplay && currentUser && currentUser.email) {
+            userEmailDisplay.textContent = currentUser.email;
+            userEmailDisplay.classList.remove('hidden');
+        }
+    }
+
     // Auth state change handler
     onAuthStateChanged(auth, async (user) => {
         currentUser = user;
@@ -497,6 +532,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         renderFullProfile(currentUserData, user);
                     }
                 }
+                
+                // Update profile picture after data is loaded
+                const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
+                updateUserProfilePicture(displayName);
 
             } catch (error) {
                 console.error('Error loading user data:', error);
@@ -510,6 +549,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderProfileTabs();
                     renderFullProfile(currentUserData, user);
                 }
+                
+                // Update profile picture even in error case
+                const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
+                updateUserProfilePicture(displayName);
             } finally {
                 if (loadingOverlay) loadingOverlay.style.display = 'none';
             }

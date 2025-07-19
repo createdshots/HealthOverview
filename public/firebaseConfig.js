@@ -58,6 +58,27 @@ async function uploadToCloudinary(file) {
 async function deleteFromCloudinary(publicId) {
     console.log('Delete publicId:', publicId);
 }
+function updateUserProfilePicture(userData, displayName) {
+    const userProfilePic = document.getElementById('user-profile-pic');
+    const userAvatar = document.getElementById('user-avatar');
+    
+    if (!userProfilePic || !userAvatar) return;
+    
+    const profilePictureUrl = userData?.userProfile?.profilePicture?.url || userData?.profilePicture?.url;
+    
+    if (profilePictureUrl) {
+        // Show profile picture if available
+        userProfilePic.src = profilePictureUrl;
+        userProfilePic.classList.remove('hidden');
+        userAvatar.classList.add('hidden');
+    } else if (displayName) {
+        // Fall back to avatar initial if no profile picture
+        const initial = displayName.charAt(0).toUpperCase();
+        userAvatar.textContent = initial;
+        userAvatar.classList.remove('hidden');
+        userProfilePic.classList.add('hidden');
+    }
+}
 
 export { 
     app, 
@@ -75,5 +96,6 @@ export {
     collection,
     getDocs,
     uploadToCloudinary,
-    deleteFromCloudinary
+    deleteFromCloudinary,
+    updateUserProfilePicture
 };

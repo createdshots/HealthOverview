@@ -77,6 +77,11 @@ class DashboardApp {
                     // Update UI and render dashboard
                     this.updateAuthUI(user);
                     this.renderAll();
+                    
+                    // Update profile picture after data is loaded (in case it wasn't available during updateAuthUI)
+                    const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
+                    this.updateUserProfilePicture(displayName);
+                    
                     this.hideLoading();
                     
                     // Add entrance animations
@@ -233,11 +238,8 @@ class DashboardApp {
             if (userNameDisplay) userNameDisplay.textContent = displayName;
             if (userEmailDisplay) userEmailDisplay.textContent = email;
             
-            // Set avatar initial
-            if (userAvatar && displayName) {
-                const initial = displayName.charAt(0).toUpperCase();
-                userAvatar.textContent = initial;
-            }
+            // Handle profile picture with fallback to avatar initial
+            this.updateUserProfilePicture(displayName);
             
             // Show authenticated user buttons
             if (addRecordBtn) addRecordBtn.classList.remove('hidden');
@@ -248,6 +250,29 @@ class DashboardApp {
         } else {
             // User is signed out, redirect to login page
             window.location.href = '/index.html';
+        }
+    }
+
+    // Update user profile picture with fallback to avatar initial
+    updateUserProfilePicture(displayName) {
+        const userProfilePic = document.getElementById('user-profile-pic');
+        const userAvatar = document.getElementById('user-avatar');
+        
+        // Get user data to check for profile picture
+        const userData = this.dataManager.getData();
+        const profilePictureUrl = userData?.userProfile?.profilePicture?.url || userData?.profilePicture?.url;
+        
+        if (profilePictureUrl && userProfilePic && userAvatar) {
+            // Show profile picture if available
+            userProfilePic.src = profilePictureUrl;
+            userProfilePic.classList.remove('hidden');
+            userAvatar.classList.add('hidden');
+        } else if (userAvatar && displayName) {
+            // Fall back to avatar initial if no profile picture
+            const initial = displayName.charAt(0).toUpperCase();
+            userAvatar.textContent = initial;
+            userAvatar.classList.remove('hidden');
+            if (userProfilePic) userProfilePic.classList.add('hidden');
         }
     }
 
