@@ -63,8 +63,10 @@ if (msBtn) {
     try {
       showLoginStatusMessage('Signing in with Microsoft...', 'success');
       const provider = new OAuthProvider('microsoft.com');
-      provider.addScope('mail.read');
-      provider.addScope('user.read');
+      // Make sure these scopes are enabled in your Azure app
+      provider.addScope('openid');
+      provider.addScope('email');
+      provider.addScope('profile');
       provider.setCustomParameters({
         prompt: 'select_account'
       });
