@@ -93,19 +93,37 @@ export class EnhancedDataManager {
             console.log("Loading default data from files...");
             
             // Load hospitals data
-            const hospitalsResponse = await fetch('/js/hospital_data.json');
+            const hospitalsResponse = await fetch('/js/data/hospital_data.json');
             if (!hospitalsResponse.ok) {
-                throw new Error(`HTTP error! status: ${hospitalsResponse.status}`);
+                console.warn('Failed to load hospital_data.json, using fallback data');
+                // Fallback hospital data
+                var hospitalsData = [
+                    { name: "Royal London Hospital", city: "London" },
+                    { name: "St Bartholomew's Hospital", city: "London" },
+                    { name: "University College Hospital", city: "London" },
+                    { name: "King's College Hospital", city: "London" },
+                    { name: "Guy's Hospital", city: "London" }
+                ];
+            } else {
+                var hospitalsData = await hospitalsResponse.json();
             }
-            const hospitalsData = await hospitalsResponse.json();
             
             // Load ambulance data
-            const ambulanceResponse = await fetch('/js/ambulance.txt');
+            const ambulanceResponse = await fetch('/js/data/ambulance.txt');
             if (!ambulanceResponse.ok) {
-                throw new Error(`HTTP error! status: ${ambulanceResponse.status}`);
+                console.warn('Failed to load ambulance.txt, using fallback data');
+                // Fallback ambulance data
+                var ambulanceNames = [
+                    "London Ambulance Service NHS Trust",
+                    "South East Coast Ambulance Service NHS Foundation Trust",
+                    "East of England Ambulance Service NHS Trust",
+                    "West Midlands Ambulance Service NHS Foundation Trust",
+                    "North West Ambulance Service NHS Trust"
+                ];
+            } else {
+                const ambulanceText = await ambulanceResponse.text();
+                var ambulanceNames = ambulanceText.trim().split('\n').filter(line => line.trim());
             }
-            const ambulanceText = await ambulanceResponse.text();
-            const ambulanceData = ambulanceText.trim().split('\n').filter(line => line.trim());
 
             // Initialize data structure
             this.localData = {
@@ -114,7 +132,7 @@ export class EnhancedDataManager {
                     visited: false,
                     count: 0
                 })),
-                ambulance: ambulanceData.map(name => ({
+                ambulance: ambulanceNames.map(name => ({
                     name: name.trim(),
                     visited: false,
                     count: 0
@@ -123,8 +141,14 @@ export class EnhancedDataManager {
                 visitHistory: [],
                 medicalRecords: [],
                 symptomTracking: [],
-                userProfile: {}
+                userProfile: {},
+                onboardingCompleted: false
             };
+
+            console.log("Default data initialized:", {
+                hospitals: this.localData.hospitals.length,
+                ambulance: this.localData.ambulance.length
+            });
 
             // Save to Firestore if user is authenticated
             if (this.docRef && this.userId) {

@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const signoutBtn = document.getElementById('signout-btn');
     const personalGreeting = document.getElementById('personal-greeting');
     const userDisplayName = document.getElementById('user-display-name');
+    const addRecordBtn = document.getElementById('add-record-btn');
 
     const urlParams = new URLSearchParams(window.location.search);
     const isOnboarding = urlParams.get('onboarding') === 'true';
@@ -32,44 +33,64 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'gastrointestinal', name: 'Gastrointestinal', icon: '🫃', description: 'Digestive health tracking' }
     ];
 
+    // Initialize enhanced data manager for profile
+    enhancedDataManager.onStatusMessage((message, type) => {
+        showStatusMessage(message, type);
+    });
+
     onAuthStateChanged(auth, async (user) => {
         currentUser = user;
         if (user) {
             personalGreeting.textContent = `Welcome back, ${user.displayName || user.email || 'User'}`;
-            notSignedInDiv.classList.add('hidden');
+            if (notSignedInDiv) notSignedInDiv.classList.add('hidden');
+
+            // Set up data manager
+            enhancedDataManager.setUserId(user.uid);
+
+            // Set up symptom tracker
+            symptomTracker.setDataManager(enhancedDataManager);
+            symptomTracker.setCurrentUser(user);
+            symptomTracker.onStatus((message, type) => {
+                showStatusMessage(message, type);
+            });
 
             try {
-                const { userData, onboardingCompleted } = await loadUserData(user.uid);
-                currentUserData = userData || {};
-                
-                // Update user display name in header
-                const displayName = currentUserData.displayName || user.displayName || user.email || 'User';
-                userDisplayName.textContent = displayName;
-                userDisplayName.classList.remove('hidden');
+                // Load user data first
+                const onboardingCompleted = await enhancedDataManager.loadUserData();
+                currentUserData = enhancedDataManager.getData();
 
-                // Check if we need to show onboarding
-                if (!onboardingCompleted || isOnboarding) {
+                // Check if data is empty and needs initialization
+                if (!currentUserData.hospitals || currentUserData.hospitals.length === 0) {
+                    console.log('No hospital data found, initializing default data...');
+                    await enhancedDataManager.initializeDefaultData();
+                    currentUserData = enhancedDataManager.getData();
+                }
+
+                // Only show onboarding if specifically requested AND not completed
+                if (isOnboarding && !onboardingCompleted) {
                     showOnboardingModal();
                 } else {
-                    // Show profile content
                     profileContent.classList.remove('hidden');
-                    renderProfile();
+                    renderFullProfile(currentUserData, user);
                 }
 
             } catch (error) {
                 console.error('Error loading user data:', error);
                 showStatusMessage('Error loading profile data', 'error');
-                // Still show onboarding for new users
-                showOnboardingModal();
+                
+                // Try to initialize default data as fallback
+                await enhancedDataManager.initializeDefaultData();
+                currentUserData = enhancedDataManager.getData();
+                profileContent.classList.remove('hidden');
+                renderFullProfile(currentUserData, user);
             } finally {
                 loadingOverlay.style.display = 'none';
             }
 
         } else {
-            // Not signed in
-            loadingOverlay.style.display = 'none';
+            if (notSignedInDiv) notSignedInDiv.classList.remove('hidden');
             profileContent.classList.add('hidden');
-            notSignedInDiv.classList.remove('hidden');
+            loadingOverlay.style.display = 'none';
         }
     });
 
@@ -85,6 +106,528 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Add Record button handler
+    if (addRecordBtn) {
+        addRecordBtn.addEventListener('click', () => {
+            showSymptomTracker();
+        });
+    }
+
+    function renderFullProfile(userData, user) {
+        // Calculate join date
+        const joinDate = userData.onboardingDate ? new Date(userData.onboardingDate) : new Date();
+        const daysSinceJoin = Math.floor((new Date() - joinDate) / (1000 * 60 * 60 * 24));
+        
+        // Calculate stats
+        const totalRecords = userData.medicalRecords?.length || 0;
+        const totalConditions = userData.conditions?.length || 0;
+        const totalSymptoms = userData.symptoms?.length || 0;
+        const totalHospitals = userData.hospitals?.length || 0;
+        const visitedHospitals = userData.hospitals?.filter(h => h.visited)?.length || 0;
+        const totalAmbulance = userData.ambulance?.length || 0;
+        const visitedAmbulance = userData.ambulance?.filter(a => a.visited)?.length || 0;
+        
+        // Render profile header with beautiful gradient
+        renderProfileHeader(userData, user, joinDate, daysSinceJoin, {
+            totalRecords,
+            totalConditions, 
+            totalHospitals,
+            visitedHospitals,
+            totalAmbulance,
+            visitedAmbulance,
+            daysSinceJoin
+        });
+        
+        // Render the overview tab by default
+        renderOverviewTab(userData);
+        
+        // Setup tab switching
+        setupTabSwitching(userData);
+    }
+
+    function renderProfileHeader(userData, user, joinDate, daysSinceJoin, stats) {
+        const headerContainer = document.getElementById('profile-header-and-stats');
+        const displayName = userData.displayName || user.displayName || 'Health Tracker User';
+        const memberSince = joinDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        
+        headerContainer.innerHTML = `
+            <!-- Profile Header with Beautiful Gradient -->
+            <div class="relative overflow-hidden rounded-xl mb-6">
+                <!-- Gradient Background -->
+                <div class="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700"></div>
+                
+                <!-- Animated Background Elements -->
+                <div class="absolute inset-0 opacity-20">
+                    <div class="absolute top-0 left-0 w-72 h-72 bg-white rounded-full mix-blend-multiply filter blur-xl animate-pulse"></div>
+                    <div class="absolute top-0 right-0 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl animate-pulse animation-delay-2000"></div>
+                    <div class="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl animate-pulse animation-delay-4000"></div>
+                </div>
+                
+                <!-- Content -->
+                <div class="relative p-8 text-white">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between">
+                        <div class="flex items-center space-x-6 mb-4 md:mb-0">
+                            <!-- Avatar Circle with Gradient Border -->
+                            <div class="relative">
+                                <div class="w-24 h-24 bg-gradient-to-br from-white to-blue-100 rounded-full flex items-center justify-center text-4xl font-bold text-purple-600 shadow-xl border-4 border-white/30">
+                                    ${displayName.charAt(0).toUpperCase()}
+                                </div>
+                                <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-green-400 rounded-full border-4 border-white flex items-center justify-center">
+                                    <span class="text-white text-sm">✓</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h1 class="text-4xl font-bold mb-2 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+                                    ${displayName}
+                                </h1>
+                                <p class="text-blue-100 text-lg font-medium">Member since ${memberSince}</p>
+                                <p class="text-blue-200 text-sm flex items-center mt-1">
+                                    <span class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
+                                    ${daysSinceJoin} days on your health journey
+                                </p>
+                            </div>
+                        </div>
+                        <button id="edit-profile-btn" class="group bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-6 py-3 rounded-xl transition-all duration-200 border border-white/30 hover:border-white/50 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                            <span class="flex items-center space-x-2">
+                                <span class="text-xl">✏️</span>
+                                <span class="font-semibold">Edit Profile</span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Stats Grid with Gradients -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <!-- Tracked Conditions Card -->
+                <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <p class="text-purple-100 text-sm font-medium">Tracked Conditions</p>
+                                <p class="text-3xl font-bold">${stats.totalConditions}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-200">
+                                <span class="text-2xl">🏥</span>
+                            </div>
+                        </div>
+                        <div class="h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Medical Records Card -->
+                <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <p class="text-blue-100 text-sm font-medium">Medical Records</p>
+                                <p class="text-3xl font-bold">${stats.totalRecords}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-200">
+                                <span class="text-2xl">📋</span>
+                            </div>
+                        </div>
+                        <div class="h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hospitals Visited Card -->
+                <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-green-500 to-green-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <p class="text-green-100 text-sm font-medium">Hospitals Visited</p>
+                                <p class="text-3xl font-bold">${stats.visitedHospitals}/${stats.totalHospitals}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-200">
+                                <span class="text-2xl">🏥</span>
+                            </div>
+                        </div>
+                        <div class="h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/40 rounded-full animate-pulse" style="width: ${stats.totalHospitals > 0 ? (stats.visitedHospitals / stats.totalHospitals * 100) : 0}%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Days Active Card -->
+                <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <p class="text-orange-100 text-sm font-medium">Ambulance Services</p>
+                                <p class="text-3xl font-bold">${stats.visitedAmbulance}/${stats.totalAmbulance}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-200">
+                                <span class="text-2xl">🚑</span>
+                            </div>
+                        </div>
+                        <div class="h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/40 rounded-full animate-pulse" style="width: ${stats.totalAmbulance > 0 ? (stats.visitedAmbulance / stats.totalAmbulance * 100) : 0}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add edit profile functionality
+        const editBtn = document.getElementById('edit-profile-btn');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                showOnboardingModal();
+            });
+        }
+    }
+
+    function setupTabSwitching(userData) {
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('profile-tab-btn')) {
+                // Remove active class from all tabs
+                document.querySelectorAll('.profile-tab-btn').forEach(btn => {
+                    btn.classList.remove('active', 'border-purple-500', 'text-purple-600');
+                    btn.classList.add('border-transparent', 'text-gray-500');
+                });
+
+                // Add active class to clicked tab
+                e.target.classList.add('active', 'border-purple-500', 'text-purple-600');
+                e.target.classList.remove('border-transparent', 'text-gray-500');
+
+                // Get tab name
+                const tabName = e.target.dataset.tab;
+
+                // Render the appropriate tab content
+                switch(tabName) {
+                    case 'overview':
+                        renderOverviewTab(userData);
+                        break;
+                    case 'conditions':
+                        renderConditionsTab(userData);
+                        break;
+                    case 'records':
+                        renderRecordsTab(userData);
+                        break;
+                    case 'symptoms':
+                        renderSymptomsTab(userData);
+                        break;
+                    case 'analytics':
+                        renderAnalyticsTab(userData);
+                        break;
+                }
+            }
+        });
+
+        // Set up symptom tracker buttons
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'add-symptom-record-btn') {
+                e.preventDefault();
+                showSymptomTracker();
+            }
+            if (e.target.id === 'view-symptom-overview-btn') {
+                e.preventDefault();
+                showSymptomOverview();
+            }
+        });
+    }
+
+    function renderOverviewTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        const medicalRecords = userData.medicalRecords || [];
+        const recentRecords = medicalRecords.slice(-5).reverse();
+        const conditions = userData.conditions || [];
+        
+        content.innerHTML = `
+            <div class="space-y-6">
+                <!-- Quick Actions -->
+                <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button id="add-symptom-record-btn" class="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 flex items-center space-x-3">
+                            <span class="text-2xl">📝</span>
+                            <div class="text-left">
+                                <div class="font-semibold">Add Medical Record</div>
+                                <div class="text-sm opacity-90">Log symptoms, visits, or treatments</div>
+                            </div>
+                        </button>
+                        <button id="view-symptom-overview-btn" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 flex items-center space-x-3">
+                            <span class="text-2xl">📊</span>
+                            <div class="text-left">
+                                <div class="font-semibold">View Overview</div>
+                                <div class="text-sm opacity-90">See your health analytics</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h3>
+                    ${recentRecords.length > 0 ? `
+                        <div class="space-y-3">
+                            ${recentRecords.map(record => `
+                                <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                        <span class="text-blue-600 text-sm">📋</span>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="font-medium text-gray-900">${record.incidentType?.replace('_', ' ') || 'Medical Record'}</div>
+                                        <div class="text-sm text-gray-600">${record.timestamp ? new Date(record.timestamp).toLocaleDateString() : 'No date'}</div>
+                                    </div>
+                                    ${record.severity ? `<span class="px-2 py-1 text-xs rounded-full ${getSeverityColor(record.severity)}">${record.severity}/10</span>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <div class="text-center py-8 text-gray-500">
+                            <div class="text-4xl mb-3">📝</div>
+                            <p>No recent activity yet.</p>
+                            <p class="text-sm mt-1">Start by adding your first medical record!</p>
+                        </div>
+                    `}
+                </div>
+
+                <!-- Tracked Conditions Summary -->
+                ${conditions.length > 0 ? `
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h3 class="text-xl font-semibold text-gray-900 mb-4">Your Conditions</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            ${conditions.map(conditionId => {
+                                const condition = availableConditions.find(c => c.id === conditionId);
+                                return condition ? `
+                                    <div class="flex items-center space-x-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+                                        <span class="text-2xl">${condition.icon}</span>
+                                        <div>
+                                            <div class="font-medium text-gray-900">${condition.name}</div>
+                                            <div class="text-xs text-gray-600">${condition.description}</div>
+                                        </div>
+                                    </div>
+                                ` : '';
+                            }).join('')}
+                        </div>
+                    </div>
+                ` : `
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h3 class="text-xl font-semibold text-gray-900 mb-4">Your Conditions</h3>
+                        <div class="text-center py-8 text-gray-500">
+                            <div class="text-4xl mb-3">🏥</div>
+                            <p>No conditions selected yet.</p>
+                            <p class="text-sm mt-1">Edit your profile to add conditions you'd like to track.</p>
+                        </div>
+                    </div>
+                `}
+            </div>
+        `;
+    }
+
+    function renderConditionsTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        const conditions = userData.conditions || [];
+        
+        content.innerHTML = `
+            <div class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-semibold text-gray-900">My Tracked Conditions</h3>
+                    <button onclick="document.getElementById('edit-profile-btn').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                        Edit Conditions
+                    </button>
+                </div>
+                
+                ${conditions.length > 0 ? `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        ${conditions.map(conditionId => {
+                            const condition = availableConditions.find(c => c.id === conditionId);
+                            if (!condition) return '';
+                            
+                            return `
+                                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div class="flex items-center space-x-4 mb-4">
+                                        <div class="w-16 h-16 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center text-2xl">
+                                            ${condition.icon}
+                                        </div>
+                                        <div>
+                                            <h4 class="text-lg font-semibold text-gray-900">${condition.name}</h4>
+                                            <p class="text-sm text-gray-600">${condition.description}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="bg-gray-50 rounded-lg p-4">
+                                        <div class="text-sm text-gray-600 mb-2">Recent Activity</div>
+                                        <div class="text-xs text-gray-500">No recent records for this condition</div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                ` : `
+                    <div class="text-center py-12">
+                        <div class="text-6xl mb-4">🏥</div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">No Conditions Added Yet</h3>
+                        <p class="text-gray-600 mb-6">Start tracking your health by adding the conditions you want to monitor.</p>
+                        <button onclick="document.getElementById('edit-profile-btn').click()" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
+                            Add Your First Condition
+                        </button>
+                    </div>
+                `}
+            </div>
+        `;
+    }
+
+    function renderRecordsTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        const records = userData.medicalRecords || [];
+        
+        content.innerHTML = `
+            <div class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-semibold text-gray-900">Medical Records</h3>
+                    <button id="add-new-record-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                        Add New Record
+                    </button>
+                </div>
+                
+                ${records.length > 0 ? `
+                    <div class="space-y-4">
+                        ${records.map(record => `
+                            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h4 class="text-lg font-semibold text-gray-900">${record.incidentType?.replace('_', ' ').toUpperCase() || 'Medical Record'}</h4>
+                                        <p class="text-sm text-gray-600">${record.timestamp ? new Date(record.timestamp).toLocaleString() : 'No date'}</p>
+                                    </div>
+                                    ${record.severity ? `<span class="px-3 py-1 text-sm rounded-full ${getSeverityColor(record.severity)}">Severity: ${record.severity}/10</span>` : ''}
+                                </div>
+                                
+                                ${record.hospital ? `<p class="text-sm text-gray-700 mb-2"><strong>Hospital:</strong> ${record.hospital}</p>` : ''}
+                                ${record.ambulance ? `<p class="text-sm text-gray-700 mb-2"><strong>Ambulance:</strong> ${record.ambulance}</p>` : ''}
+                                ${record.symptoms ? `<p class="text-sm text-gray-700 mb-2"><strong>Symptoms:</strong> ${record.symptoms}</p>` : ''}
+                                ${record.treatment ? `<p class="text-sm text-gray-700 mb-2"><strong>Treatment:</strong> ${record.treatment}</p>` : ''}
+                                ${record.notes ? `<p class="text-sm text-gray-700"><strong>Notes:</strong> ${record.notes}</p>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : `
+                    <div class="text-center py-12">
+                        <div class="text-6xl mb-4">📋</div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">No Medical Records Yet</h3>
+                        <p class="text-gray-600 mb-6">Start building your health history by adding your first medical record.</p>
+                        <button id="add-first-record-btn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
+                            Add Your First Record
+                        </button>
+                    </div>
+                `}
+            </div>
+        `;
+
+        // Add event listeners for new record buttons
+        document.getElementById('add-new-record-btn')?.addEventListener('click', () => showSymptomTracker());
+        document.getElementById('add-first-record-btn')?.addEventListener('click', () => showSymptomTracker());
+    }
+
+    function renderSymptomsTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        
+        content.innerHTML = `
+            <div class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-semibold text-gray-900">Symptom Tracker</h3>
+                    <button id="track-symptoms-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        Track Symptoms
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <button id="log-symptom-btn" class="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-xl p-6 hover:from-green-100 hover:to-green-200 transition-all duration-200 text-left">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-green-500 text-white rounded-lg flex items-center justify-center text-xl">📝</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900">Log New Symptom</h4>
+                                <p class="text-sm text-gray-600">Record symptoms and track severity</p>
+                            </div>
+                        </div>
+                    </button>
+                    
+                    <button id="view-trends-btn" class="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl p-6 hover:from-blue-100 hover:to-blue-200 transition-all duration-200 text-left">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-blue-500 text-white rounded-lg flex items-center justify-center text-xl">📊</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900">View Trends</h4>
+                                <p class="text-sm text-gray-600">Analyze your health patterns</p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h4 class="font-semibold text-gray-900 mb-4">Recent Symptom Logs</h4>
+                    <div class="text-center py-8 text-gray-500">
+                        <div class="text-4xl mb-3">📊</div>
+                        <p>No symptom logs yet.</p>
+                        <p class="text-sm mt-1">Start tracking to see trends and patterns!</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add event listeners
+        document.getElementById('track-symptoms-btn')?.addEventListener('click', () => showSymptomTracker());
+        document.getElementById('log-symptom-btn')?.addEventListener('click', () => showSymptomTracker());
+        document.getElementById('view-trends-btn')?.addEventListener('click', () => showSymptomOverview());
+    }
+
+    function renderAnalyticsTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        
+        content.innerHTML = `
+            <div class="space-y-6">
+                <h3 class="text-xl font-semibold text-gray-900">Health Analytics</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h4 class="font-semibold text-gray-900 mb-4">Symptom Trends</h4>
+                        <div class="text-center py-8 text-gray-500">
+                            <div class="text-4xl mb-3">📈</div>
+                            <p>No data to analyze yet.</p>
+                            <p class="text-sm mt-1">Start logging symptoms to see trends!</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h4 class="font-semibold text-gray-900 mb-4">Visit History</h4>
+                        <div class="text-center py-8 text-gray-500">
+                            <div class="text-4xl mb-3">🏥</div>
+                            <p>No visit history yet.</p>
+                            <p class="text-sm mt-1">Add medical records to track visits!</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="view-full-analytics-btn" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200">
+                    View Detailed Analytics
+                </button>
+            </div>
+        `;
+
+        // Add event listener
+        document.getElementById('view-full-analytics-btn')?.addEventListener('click', () => showSymptomOverview());
+    }
+
+    function getSeverityColor(severity) {
+        const level = parseInt(severity);
+        if (level <= 3) return 'bg-green-100 text-green-800';
+        if (level <= 6) return 'bg-yellow-100 text-yellow-800';
+        if (level <= 8) return 'bg-orange-100 text-orange-800';
+        return 'bg-red-100 text-red-800';
+    }
+
+    // Rest of your existing functions (showOnboardingModal, setupOnboardingEventListeners, completeOnboarding)
+    // ... (keeping the existing onboarding code as is)
 
     function showOnboardingModal() {
         const modalContent = `
@@ -317,9 +860,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 profileSetupDate: new Date().toISOString()
             };
 
-            // Save to Firestore
-            await saveUserData(currentUser.uid, userData);
-            currentUserData = userData;
+            // Save to enhanced data manager
+            enhancedDataManager.setData(userData);
+            await enhancedDataManager.saveData();
+            currentUserData = enhancedDataManager.getData();
             
             hideModal();
             showStatusMessage('Profile setup completed successfully! Redirecting to dashboard...', 'success');
@@ -340,952 +884,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderProfile() {
-        // Profile rendering logic will go here
-        // For now, just show a basic profile
-        const content = document.getElementById('profile-tab-content');
-        if (content) {
-            content.innerHTML = `
-                <div class="text-center py-8">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Profile Setup Complete!</h3>
-                    <p class="text-gray-600 mb-4">Your health tracking profile is ready.</p>
-                    <div class="space-y-2">
-                        <p><strong>Conditions tracked:</strong> ${currentUserData?.conditions?.length || 0}</p>
-                        <p><strong>Setup date:</strong> ${currentUserData?.profileSetupDate ? new Date(currentUserData.profileSetupDate).toLocaleDateString() : 'Today'}</p>
-                    </div>
-                    <div class="mt-6">
-                        <a href="/dashboard.html" 
-                           class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-                            Go to Dashboard
-                        </a>
-                    </div>
-                </div>
-            `;
-        }
-    }
-
-    function renderFullProfile(userData, user) {
-        // Calculate join date
-        const joinDate = userData.onboardingDate ? new Date(userData.onboardingDate) : new Date();
-        const daysSinceJoin = Math.floor((new Date() - joinDate) / (1000 * 60 * 60 * 24));
-        
-        // Calculate stats
-        const totalRecords = userData.medicalRecords?.length || 0;
-        const totalConditions = userData.conditions?.length || 0;
-        const totalSymptoms = userData.symptoms?.length || 0;
-        
-        // Render profile header
-        renderProfileHeader(userData, user, joinDate, daysSinceJoin);
-        
-        // Render the overview tab by default
-        renderOverviewTab(userData);
-        
-        // Setup tab switching
-        setupTabSwitching(userData);
-    }
-
-    function renderProfileHeader(userData, user, joinDate, daysSinceJoin) {
-        const headerContainer = document.getElementById('profile-header-and-stats');
-        const displayName = userData.displayName || user.displayName || 'Health Tracker User';
-        const memberSince = joinDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-        
-        headerContainer.innerHTML = `
-            <!-- Profile Header with Beautiful Gradient -->
-            <div class="relative overflow-hidden rounded-xl mb-6">
-                <!-- Gradient Background -->
-                <div class="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700"></div>
-                
-                <!-- Animated Background Elements -->
-                <div class="absolute inset-0 opacity-20">
-                    <div class="absolute top-0 left-0 w-72 h-72 bg-white rounded-full mix-blend-multiply filter blur-xl animate-pulse"></div>
-                    <div class="absolute top-0 right-0 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl animate-pulse animation-delay-2000"></div>
-                    <div class="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl animate-pulse animation-delay-4000"></div>
-                </div>
-                
-                <!-- Content -->
-                <div class="relative p-8 text-white">
-                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between">
-                        <div class="flex items-center space-x-6 mb-4 md:mb-0">
-                            <!-- Avatar Circle with Gradient Border -->
-                            <div class="relative">
-                                <div class="w-24 h-24 bg-gradient-to-br from-white to-blue-100 rounded-full flex items-center justify-center text-4xl font-bold text-purple-600 shadow-xl border-4 border-white/30">
-                                    ${displayName.charAt(0).toUpperCase()}
-                                </div>
-                                <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-green-400 rounded-full border-4 border-white flex items-center justify-center">
-                                    <span class="text-white text-sm">✓</span>
-                                </div>
-                            </div>
-                            <div>
-                                <h1 class="text-4xl font-bold mb-2 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
-                                    ${displayName}
-                                </h1>
-                                <p class="text-blue-100 text-lg font-medium">Member since ${memberSince}</p>
-                                <p class="text-blue-200 text-sm flex items-center mt-1">
-                                    <span class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
-                                    ${daysSinceJoin} days on your health journey
-                                </p>
-                            </div>
-                        </div>
-                        <button id="edit-profile-btn" class="group bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-6 py-3 rounded-xl transition-all duration-200 border border-white/30 hover:border-white/50 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
-                            <span class="flex items-center space-x-2">
-                                <span class="text-xl">✏️</span>
-                                <span class="font-semibold">Edit Profile</span>
-                            </span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Enhanced Stats Grid with Gradients -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                <!-- Tracked Conditions Card -->
-                <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
-                    <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
-                    <div class="relative">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <p class="text-purple-100 text-sm font-medium">Tracked Conditions</p>
-                                <p class="text-3xl font-bold">${userData.conditions?.length || 0}</p>
-                            </div>
-                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-200">
-                                <span class="text-2xl">🏥</span>
-                            </div>
-                        </div>
-                        <div class="h-1 bg-white/20 rounded-full overflow-hidden">
-                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Medical Records Card -->
-                <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
-                    <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
-                    <div class="relative">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <p class="text-blue-100 text-sm font-medium">Medical Records</p>
-                                <p class="text-3xl font-bold">${userData.medicalRecords?.length || 0}</p>
-                            </div>
-                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-200">
-                                <span class="text-2xl">📋</span>
-                            </div>
-                        </div>
-                        <div class="h-1 bg-white/20 rounded-full overflow-hidden">
-                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Logged Symptoms Card -->
-                <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-green-500 to-green-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
-                    <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
-                    <div class="relative">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <p class="text-green-100 text-sm font-medium">Logged Symptoms</p>
-                                <p class="text-3xl font-bold">${userData.symptoms?.length || 0}</p>
-                            </div>
-                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-200">
-                                <span class="text-2xl">📝</span>
-                            </div>
-                        </div>
-                        <div class="h-1 bg-white/20 rounded-full overflow-hidden">
-                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Days Active Card -->
-                <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
-                    <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
-                    <div class="relative">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <p class="text-orange-100 text-sm font-medium">Days Active</p>
-                                <p class="text-3xl font-bold">${daysSinceJoin}</p>
-                            </div>
-                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-200">
-                                <span class="text-2xl">⏰</span>
-                            </div>
-                        </div>
-                        <div class="h-1 bg-white/20 rounded-full overflow-hidden">
-                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Add edit profile functionality
-        const editBtn = document.getElementById('edit-profile-btn');
-        if (editBtn) {
-            editBtn.addEventListener('click', () => {
-                showOnboardingModal(auth.currentUser, userData);
-            });
-        }
-    }
-
-    function setupTabSwitching(userData) {
-        // Initialize data manager and symptom tracker
-        enhancedDataManager.setUserId(currentUser.uid);
-        enhancedDataManager.setData(userData);
-        
-        symptomTracker.setDataManager(enhancedDataManager);
-        symptomTracker.setCurrentUser(currentUser);
-        symptomTracker.onStatus((message, type) => {
-            showStatusMessage(message, type);
-        });
-
-        // Set up tab navigation
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('profile-tab-btn')) {
-                const tabName = e.target.dataset.tab;
-                
-                // Update active tab
-                document.querySelectorAll('.profile-tab-btn').forEach(btn => {
-                    btn.classList.remove('active', 'bg-blue-600', 'text-white');
-                    btn.classList.add('bg-white', 'text-gray-600', 'hover:bg-gray-50');
-                });
-                
-                e.target.classList.add('active', 'bg-blue-600', 'text-white');
-                e.target.classList.remove('bg-white', 'text-gray-600', 'hover:bg-gray-50');
-                
-                // Render the appropriate tab content
-                switch(tabName) {
-                    case 'overview':
-                        renderOverviewTab(userData);
-                        break;
-                    case 'conditions':
-                        renderConditionsTab(userData);
-                        break;
-                    case 'records':
-                        renderRecordsTab(userData);
-                        break;
-                    case 'symptoms':
-                        renderSymptomsTab(userData);
-                        break;
-                    case 'analytics':
-                        renderAnalyticsTab(userData);
-                        break;
-                    case 'settings':
-                        renderSettingsTab(userData);
-                        break;
-                }
-            }
-        });
-
-        // Set up symptom tracker buttons
-        document.addEventListener('click', (e) => {
-            if (e.target.id === 'add-symptom-record-btn') {
-                e.preventDefault();
-                showSymptomTracker();
-            }
-            if (e.target.id === 'view-symptom-overview-btn') {
-                e.preventDefault();
-                showSymptomOverview();
-            }
-        });
-    }
-
-    function renderOverviewTab(userData) {
-        const content = document.getElementById('profile-tab-content');
-        const medicalRecords = userData.medicalRecords || [];
-        const recentRecords = medicalRecords.slice(-5).reverse();
-        
-        content.innerHTML = `
-            <!-- Tab Navigation -->
-            <div class="flex flex-wrap border-b border-gray-200 mb-6">
-                <button class="profile-tab-btn active bg-blue-600 text-white px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
-                    Overview
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
-                    Conditions
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
-                    Records
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
-                    Symptom Tracker
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium" data-tab="analytics">
-                    Analytics
-                </button>
-            </div>
-
-            <!-- Overview Content -->
-            <div class="space-y-6">
-                <!-- Quick Actions -->
-                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <button id="add-symptom-record-btn" class="group bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-4 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
-                            <div class="flex items-center space-x-3">
-                                <span class="text-2xl">📝</span>
-                                <div class="text-left">
-                                    <div class="font-semibold">Add Medical Record</div>
-                                    <div class="text-sm text-blue-100">Track symptoms or incidents</div>
-                                </div>
-                            </div>
-                        </button>
-                        
-                        <button id="view-symptom-overview-btn" class="group bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white p-4 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
-                            <div class="flex items-center space-x-3">
-                                <span class="text-2xl">📊</span>
-                                <div class="text-left">
-                                    <div class="font-semibold">View Overview</div>
-                                    <div class="text-sm text-green-100">Charts and analysis</div>
-                                </div>
-                            </div>
-                        </button>
-                        
-                        <button class="group bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white p-4 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
-                            <div class="flex items-center space-x-3">
-                                <span class="text-2xl">⚙️</span>
-                                <div class="text-left">
-                                    <div class="font-semibold">Settings</div>
-                                    <div class="text-sm text-purple-100">Manage preferences</div>
-                                </div>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Recent Medical Records -->
-                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-semibold text-gray-900">Recent Medical Records</h3>
-                        <span class="text-sm text-gray-500">${medicalRecords.length} total records</span>
-                    </div>
-                    
-                    ${recentRecords.length > 0 ? `
-                        <div class="space-y-3">
-                            ${recentRecords.map(record => {
-                                const date = new Date(record.timestamp).toLocaleDateString();
-                                const time = new Date(record.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                                const typeLabel = record.incidentType?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Medical Record';
-                                const severityColor = getSeverityColor(record.severity);
-                                
-                                return `
-                                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                                        <div class="flex justify-between items-start">
-                                            <div class="flex-1">
-                                                <div class="flex items-center space-x-2 mb-2">
-                                                    <span class="font-medium text-gray-900">${typeLabel}</span>
-                                                    ${record.severity ? `<span class="px-2 py-1 text-xs rounded-full ${severityColor}">Severity ${record.severity}</span>` : ''}
-                                                </div>
-                                                <div class="text-sm text-gray-600">
-                                                    ${date} at ${time}
-                                                    ${record.hospital ? `• ${record.hospital}` : ''}
-                                                    ${record.ambulance ? `• ${record.ambulance}` : ''}
-                                                </div>
-                                                ${record.symptoms ? `<div class="text-sm text-gray-700 mt-2">${record.symptoms.length > 100 ? record.symptoms.substring(0, 100) + '...' : record.symptoms}</div>` : ''}
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    ` : `
-                        <div class="text-center py-8 text-gray-500">
-                            <span class="text-4xl mb-4 block">📝</span>
-                            <p>No medical records yet.</p>
-                            <p class="text-sm">Start tracking your health journey by adding your first record.</p>
-                        </div>
-                    `}
-                </div>
-
-                <!-- Health Summary -->
-                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Health Summary</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <h4 class="font-medium text-gray-700 mb-2">Tracked Conditions</h4>
-                            <div class="flex flex-wrap gap-2">
-                                ${userData.conditions && userData.conditions.length > 0 ? 
-                                    userData.conditions.map(condition => 
-                                        `<span class="condition-badge bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">${condition.charAt(0).toUpperCase() + condition.slice(1)}</span>`
-                                    ).join('') : 
-                                    '<span class="text-gray-500 text-sm">No conditions tracked yet</span>'
-                                }
-                            </div>
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-gray-700 mb-2">Recent Activity</h4>
-                            <div class="text-sm text-gray-600">
-                                <p>Last record: ${medicalRecords.length > 0 ? new Date(medicalRecords[medicalRecords.length - 1].timestamp).toLocaleDateString() : 'None'}</p>
-                                <p>This month: ${medicalRecords.filter(r => {
-                                    const recordDate = new Date(r.timestamp);
-                                    const now = new Date();
-                                    return recordDate.getMonth() === now.getMonth() && recordDate.getFullYear() === now.getFullYear();
-                                }).length} records</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    function renderConditionsTab(userData) {
-        const content = document.getElementById('profile-tab-content');
-        const trackedConditions = userData.conditions || [];
-        
-        content.innerHTML = `
-            <!-- Tab Navigation -->
-            <div class="flex flex-wrap border-b border-gray-200 mb-6">
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
-                    Overview
-                </button>
-                <button class="profile-tab-btn active bg-blue-600 text-white px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
-                    Conditions
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
-                    Records
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
-                    Symptom Tracker
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium" data-tab="analytics">
-                    Analytics
-                </button>
-            </div>
-
-            <!-- Conditions Content -->
-            <div class="space-y-6">
-                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Your Tracked Conditions</h3>
-                    ${trackedConditions.length > 0 ? `
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            ${trackedConditions.map(condition => {
-                                const conditionInfo = availableConditions.find(c => c.id === condition) || { name: condition, icon: '🏥', description: 'Health condition' };
-                                return `
-                                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                                        <div class="flex items-center space-x-3">
-                                            <span class="text-2xl">${conditionInfo.icon}</span>
-                                            <div>
-                                                <h4 class="font-medium text-gray-900">${conditionInfo.name}</h4>
-                                                <p class="text-sm text-gray-600">${conditionInfo.description}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    ` : `
-                        <div class="text-center py-8 text-gray-500">
-                            <span class="text-4xl mb-4 block">🏥</span>
-                            <p>No conditions tracked yet.</p>
-                            <p class="text-sm">Add conditions through your profile settings.</p>
-                        </div>
-                    `}
-                </div>
-            </div>
-        `;
-    }
-
-    function renderRecordsTab(userData) {
-        const content = document.getElementById('profile-tab-content');
-        const medicalRecords = userData.medicalRecords || [];
-        
-        content.innerHTML = `
-            <!-- Tab Navigation -->
-            <div class="flex flex-wrap border-b border-gray-200 mb-6">
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
-                    Overview
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
-                    Conditions
-                </button>
-                <button class="profile-tab-btn active bg-blue-600 text-white px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
-                    Records
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
-                    Symptom Tracker
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium" data-tab="analytics">
-                    Analytics
-                </button>
-            </div>
-
-            <!-- Records Content -->
-            <div class="space-y-6">
-                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-semibold text-gray-900">All Medical Records</h3>
-                        <button id="add-symptom-record-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-                            Add Record
-                        </button>
-                    </div>
-                    
-                    ${medicalRecords.length > 0 ? `
-                        <div class="space-y-3">
-                            ${medicalRecords.reverse().map(record => {
-                                const date = new Date(record.timestamp).toLocaleDateString();
-                                const time = new Date(record.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                                const typeLabel = record.incidentType?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Medical Record';
-                                const severityColor = getSeverityColor(record.severity);
-                                
-                                return `
-                                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                                        <div class="flex justify-between items-start">
-                                            <div class="flex-1">
-                                                <div class="flex items-center space-x-2 mb-2">
-                                                    <span class="font-medium text-gray-900">${typeLabel}</span>
-                                                    ${record.severity ? `<span class="px-2 py-1 text-xs rounded-full ${severityColor}">Severity ${record.severity}</span>` : ''}
-                                                </div>
-                                                <div class="text-sm text-gray-600 mb-2">
-                                                    ${date} at ${time}
-                                                    ${record.hospital ? `• ${record.hospital}` : ''}
-                                                    ${record.ambulance ? `• ${record.ambulance}` : ''}
-                                                </div>
-                                                ${record.symptoms ? `<div class="text-sm text-gray-700 mb-2"><strong>Symptoms:</strong> ${record.symptoms}</div>` : ''}
-                                                ${record.treatment ? `<div class="text-sm text-gray-700 mb-2"><strong>Treatment:</strong> ${record.treatment}</div>` : ''}
-                                                ${record.notes ? `<div class="text-sm text-gray-700"><strong>Notes:</strong> ${record.notes}</div>` : ''}
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    ` : `
-                        <div class="text-center py-8 text-gray-500">
-                            <span class="text-4xl mb-4 block">📝</span>
-                            <p>No medical records yet.</p>
-                            <p class="text-sm">Start tracking your health journey by adding your first record.</p>
-                        </div>
-                    `}
-                </div>
-            </div>
-        `;
-    }
-
-    function renderSymptomsTab(userData) {
-        const content = document.getElementById('profile-tab-content');
-        const medicalRecords = userData.medicalRecords || [];
-        const symptomRecords = medicalRecords.filter(r => r.incidentType === 'symptom_log');
-        
-        content.innerHTML = `
-            <!-- Tab Navigation -->
-            <div class="flex flex-wrap border-b border-gray-200 mb-6">
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
-                    Overview
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
-                    Conditions
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
-                    Records
-                </button>
-                <button class="profile-tab-btn active bg-blue-600 text-white px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
-                    Symptom Tracker
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium" data-tab="analytics">
-                    Analytics
-                </button>
-            </div>
-
-            <!-- Symptom Tracker Content -->
-            <div class="space-y-6">
-                <!-- Quick Actions -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button id="add-symptom-record-btn" class="group bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-6 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
-                        <div class="flex items-center space-x-4">
-                            <span class="text-3xl">📝</span>
-                            <div class="text-left">
-                                <div class="text-xl font-semibold">Track Symptoms</div>
-                                <div class="text-sm text-blue-100">Record new symptoms or incidents</div>
-                            </div>
-                        </div>
-                    </button>
-                    
-                    <button id="view-symptom-overview-btn" class="group bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white p-6 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
-                        <div class="flex items-center space-x-4">
-                            <span class="text-3xl">📊</span>
-                            <div class="text-left">
-                                <div class="text-xl font-semibold">View Analytics</div>
-                                <div class="text-sm text-green-100">Charts and trends</div>
-                            </div>
-                        </div>
-                    </button>
-                </div>
-
-                <!-- Recent Symptom Logs -->
-                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Recent Symptom Logs</h3>
-                    
-                    ${symptomRecords.length > 0 ? `
-                        <div class="space-y-3">
-                            ${symptomRecords.slice(-10).reverse().map(record => {
-                                const date = new Date(record.timestamp).toLocaleDateString();
-                                const time = new Date(record.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                                const severityColor = getSeverityColor(record.severity);
-                                
-                                return `
-                                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                                        <div class="flex justify-between items-start">
-                                            <div class="flex-1">
-                                                <div class="flex items-center space-x-2 mb-2">
-                                                    <span class="font-medium text-gray-900">Symptom Log</span>
-                                                    ${record.severity ? `<span class="px-2 py-1 text-xs rounded-full ${severityColor}">Severity ${record.severity}</span>` : ''}
-                                                </div>
-                                                <div class="text-sm text-gray-600 mb-2">
-                                                    ${date} at ${time}
-                                                </div>
-                                                ${record.symptoms ? `<div class="text-sm text-gray-700">${record.symptoms}</div>` : ''}
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    ` : `
-                        <div class="text-center py-8 text-gray-500">
-                            <span class="text-4xl mb-4 block">📊</span>
-                            <p>No symptom logs yet.</p>
-                            <p class="text-sm">Start tracking your symptoms to see patterns and trends.</p>
-                        </div>
-                    `}
-                </div>
-            </div>
-        `;
-    }
-
-    function renderAnalyticsTab(userData) {
-        const content = document.getElementById('profile-tab-content');
-        const medicalRecords = userData.medicalRecords || [];
-        
-        content.innerHTML = `
-            <!-- Tab Navigation -->
-            <div class="flex flex-wrap border-b border-gray-200 mb-6">
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
-                    Overview
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
-                    Conditions
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
-                    Records
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
-                    Symptom Tracker
-                </button>
-                <button class="profile-tab-btn active bg-blue-600 text-white px-6 py-3 rounded-t-lg font-medium" data-tab="analytics">
-                    Analytics
-                </button>
-            </div>
-
-            <!-- Analytics Content -->
-            <div class="space-y-6">
-                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Health Analytics</h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div class="text-center">
-                            <div class="text-3xl font-bold text-blue-600">${medicalRecords.length}</div>
-                            <div class="text-sm text-gray-600">Total Records</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-3xl font-bold text-green-600">${medicalRecords.filter(r => {
-                                const recordDate = new Date(r.timestamp);
-                                const thirtyDaysAgo = new Date();
-                                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                                return recordDate >= thirtyDaysAgo;
-                            }).length}</div>
-                            <div class="text-sm text-gray-600">Last 30 Days</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-3xl font-bold text-purple-600">${medicalRecords.length > 0 ? 
-                                (medicalRecords.reduce((sum, r) => sum + (parseInt(r.severity) || 0), 0) / medicalRecords.length).toFixed(1) : '0'}</div>
-                            <div class="text-sm text-gray-600">Avg Severity</div>
-                        </div>
-                    </div>
-
-                    <button id="view-symptom-overview-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg transition-colors">
-                        View Detailed Analytics & Charts
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    function renderSettingsTab(userData) {
-        const content = document.getElementById('profile-tab-content');
-        
-        content.innerHTML = `
-            <!-- Tab Navigation -->
-            <div class="flex flex-wrap border-b border-gray-200 mb-6">
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
-                    Overview
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
-                    Conditions
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
-                    Records
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
-                    Symptom Tracker
-                </button>
-                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="analytics">
-                    Analytics
-                </button>
-                <button class="profile-tab-btn active bg-blue-600 text-white px-6 py-3 rounded-t-lg font-medium" data-tab="settings">
-                    Settings
-                </button>
-            </div>
-
-            <!-- Settings Content -->
-            <div class="space-y-6">
-                <!-- Profile Settings -->
-                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Profile Settings</h3>
-                    
-                    <div class="space-y-4">
-                        <button id="edit-profile-settings-btn" class="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-3">
-                                    <span class="text-2xl">✏️</span>
-                                    <div>
-                                        <h4 class="font-medium text-gray-900">Edit Profile Information</h4>
-                                        <p class="text-sm text-gray-600">Update your personal details and tracked conditions</p>
-                                    </div>
-                                </div>
-                                <span class="text-gray-400">→</span>
-                            </div>
-                        </button>
-                        
-                        <button id="export-data-btn" class="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-3">
-                                    <span class="text-2xl">📥</span>
-                                    <div>
-                                        <h4 class="font-medium text-gray-900">Export Your Data</h4>
-                                        <p class="text-sm text-gray-600">Download a copy of all your health data</p>
-                                    </div>
-                                </div>
-                                <span class="text-gray-400">→</span>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Privacy Settings -->
-                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Privacy & Data</h3>
-                    
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                            <div class="flex items-center space-x-3">
-                                <span class="text-2xl">📊</span>
-                                <div>
-                                    <h4 class="font-medium text-gray-900">Anonymous Analytics</h4>
-                                    <p class="text-sm text-gray-600">Help improve the app with anonymous usage data</p>
-                                </div>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="analytics-toggle" class="sr-only peer" ${userData.allowAnalytics ? 'checked' : ''}>
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Account Actions -->
-                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Account Actions</h3>
-                    
-                    <div class="space-y-4">
-                        ${!currentUser?.isAnonymous ? `
-                        <button id="delete-account-btn" class="w-full text-left p-4 border-2 border-red-200 rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors group">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-3">
-                                    <span class="text-2xl">🗑️</span>
-                                    <div>
-                                        <h4 class="font-medium text-red-700 group-hover:text-red-800">Delete Account</h4>
-                                        <p class="text-sm text-red-600">Permanently delete your account and all data</p>
-                                    </div>
-                                </div>
-                                <span class="text-red-400 group-hover:text-red-500">⚠️</span>
-                            </div>
-                        </button>
-                        ` : `
-                        <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                            <div class="flex items-center space-x-3">
-                                <span class="text-2xl">👤</span>
-                                <div>
-                                    <h4 class="font-medium text-yellow-800">Guest Account</h4>
-                                    <p class="text-sm text-yellow-700">Your data is stored locally and will be lost when you clear browser data.</p>
-                                </div>
-                            </div>
-                        </div>
-                        `}
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Add event listeners for settings actions
-        setupSettingsEventListeners();
-    }
-
-    function setupSettingsEventListeners() {
-        // Edit Profile Settings
-        const editProfileBtn = document.getElementById('edit-profile-settings-btn');
-        if (editProfileBtn) {
-            editProfileBtn.addEventListener('click', () => {
-                showOnboardingModal(); // Reuse the onboarding modal for editing
-            });
-        }
-
-        // Export Data
-        const exportDataBtn = document.getElementById('export-data-btn');
-        if (exportDataBtn) {
-            exportDataBtn.addEventListener('click', async () => {
-                try {
-                    const dataToExport = {
-                        exportDate: new Date().toISOString(),
-                        user: {
-                            displayName: currentUserData.displayName,
-                            conditions: currentUserData.conditions,
-                            emergencyContact: currentUserData.emergencyContact,
-                            medicalNotes: currentUserData.medicalNotes
-                        },
-                        medicalRecords: currentUserData.medicalRecords || [],
-                        symptomTracking: currentUserData.symptomTracking || []
-                    };
-
-                    const dataStr = JSON.stringify(dataToExport, null, 2);
-                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                    const url = URL.createObjectURL(dataBlob);
-                    
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `health-data-export-${new Date().toISOString().split('T')[0]}.json`;
-                    link.click();
-                    
-                    URL.revokeObjectURL(url);
-                    showStatusMessage('Data exported successfully!', 'success');
-                } catch (error) {
-                    console.error('Error exporting data:', error);
-                    showStatusMessage('Error exporting data. Please try again.', 'error');
-                }
-            });
-        }
-
-        // Analytics Toggle
-        const analyticsToggle = document.getElementById('analytics-toggle');
-        if (analyticsToggle) {
-            analyticsToggle.addEventListener('change', async (e) => {
-                try {
-                    const updatedData = {
-                        ...currentUserData,
-                        allowAnalytics: e.target.checked
-                    };
-                    await saveUserData(currentUser.uid, updatedData);
-                    currentUserData = updatedData;
-                    showStatusMessage('Analytics preference updated', 'success');
-                } catch (error) {
-                    console.error('Error updating analytics preference:', error);
-                    showStatusMessage('Error updating preference', 'error');
-                }
-            });
-        }
-
-        // Delete Account
-        const deleteAccountBtn = document.getElementById('delete-account-btn');
-        if (deleteAccountBtn) {
-            deleteAccountBtn.addEventListener('click', () => {
-                showDeleteAccountModal();
-            });
-        }
-    }
-
-    function showDeleteAccountModal() {
-        const modalContent = `
-            <div class="text-center p-6">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                    <span class="text-2xl">⚠️</span>
-                </div>
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Delete Account</h3>
-                <p class="text-sm text-gray-600 mb-6">
-                    This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
-                </p>
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Type "DELETE" to confirm:
-                    </label>
-                    <input type="text" id="delete-confirmation" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500" placeholder="DELETE">
-                </div>
-                
-                <div class="flex space-x-3 justify-center">
-                    <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
-                        Cancel
-                    </button>
-                    <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        Delete Account
-                    </button>
-                </div>
-            </div>
-        `;
-
-        showModal(modalContent, false);
-
-        // Handle confirmation input
-        const confirmationInput = document.getElementById('delete-confirmation');
-        const confirmBtn = document.getElementById('confirm-delete-btn');
-        const cancelBtn = document.getElementById('cancel-delete-btn');
-
-        confirmationInput.addEventListener('input', (e) => {
-            confirmBtn.disabled = e.target.value !== 'DELETE';
-        });
-
-        cancelBtn.addEventListener('click', () => {
-            hideModal();
-        });
-
-        confirmBtn.addEventListener('click', async () => {
-            try {
-                // Delete user data from Firestore
-                if (enhancedDataManager.docRef) {
-                    await enhancedDataManager.deleteUserData();
-                }
-                
-                // Delete Firebase Auth account
-                await currentUser.delete();
-                
-                hideModal();
-                showStatusMessage('Account deleted successfully. Redirecting...', 'success');
-                
-                setTimeout(() => {
-                    window.location.href = '/index.html';
-                }, 2000);
-                
-            } catch (error) {
-                console.error('Error deleting account:', error);
-                showStatusMessage('Error deleting account. Please try again.', 'error');
-            }
-        });
-    }
-
-    function getSeverityColor(severity) {
-        const level = parseInt(severity);
-        if (level <= 3) return 'bg-green-100 text-green-800';
-        if (level <= 6) return 'bg-yellow-100 text-yellow-800';
-        if (level <= 8) return 'bg-orange-100 text-orange-800';
-        return 'bg-red-100 text-red-800';
-    }
-
     // Global function to refresh profile data (used by symptom tracker)
     window.refreshProfileData = async function() {
-        if (currentUser && currentUserData) {
-            try {
-                const { userData } = await loadUserData(currentUser.uid);
-                currentUserData = userData || {};
-                renderFullProfile(currentUserData, currentUser);
-            } catch (error) {
-                console.error('Error refreshing profile data:', error);
-            }
+        if (currentUser) {
+            await enhancedDataManager.loadUserData();
+            currentUserData = enhancedDataManager.getData();
+            renderFullProfile(currentUserData, currentUser);
         }
     };
 });
