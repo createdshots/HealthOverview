@@ -1,20 +1,20 @@
 {
-  "name": "healthoverview",
-  "version": "1.0.4",
-  "description": "A web application for tracking medical visits and symptoms.",
-  "main": "public/index.html",
+  "name": "health-overview",
+  "version": "1.0.0",
+  "description": "Health tracking application",
+  "main": "index.js",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "echo 'No build needed - static files'",
-    "start": "vercel dev"
+    "start": "npx http-server public -p 3000",
+    "dev": "npx http-server public -p 3000 -c-1",
+    "lint": "eslint public/js/**/*.js",
+    "format": "prettier --write public/js/**/*.js"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "prettier": "^2.0.0",
+    "http-server": "^14.0.0"
   },
   "dependencies": {
-    "chart.js": "^3.7.0"
-  },
-  "author": "Jack Tolley",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/createdshots/healthoverview.git"
+    "firebase": "^9.0.0"
   }
 }
