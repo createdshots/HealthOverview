@@ -315,63 +315,61 @@ document.addEventListener('DOMContentLoaded', async () => {
     await app.init();
     
     // Add version badge (from original embedded code)
-    document.addEventListener('DOMContentLoaded', () => {
-        const badgeContainer = document.createElement('div');
-        badgeContainer.id = 'version-badges';
-        badgeContainer.style.position = 'fixed';
-        badgeContainer.style.bottom = '16px';
-        badgeContainer.style.right = '16px';
-        badgeContainer.style.zIndex = '1000';
-        badgeContainer.style.display = 'flex';
-        badgeContainer.style.flexDirection = 'column';
-        badgeContainer.style.alignItems = 'flex-end';
-        badgeContainer.style.gap = '8px';
-        badgeContainer.style.pointerEvents = 'none';
-        document.body.appendChild(badgeContainer);
+    const badgeContainer = document.createElement('div');
+    badgeContainer.id = 'version-badges';
+    badgeContainer.style.position = 'fixed';
+    badgeContainer.style.bottom = '16px';
+    badgeContainer.style.right = '16px';
+    badgeContainer.style.zIndex = '1000';
+    badgeContainer.style.display = 'flex';
+    badgeContainer.style.flexDirection = 'column';
+    badgeContainer.style.alignItems = 'flex-end';
+    badgeContainer.style.gap = '8px';
+    badgeContainer.style.pointerEvents = 'none';
+    document.body.appendChild(badgeContainer);
 
-        // Build version badge
-        const buildDiv = document.createElement('div');
-        buildDiv.id = 'build-badge';
-        buildDiv.textContent = 'Build: unknown';
-        buildDiv.style.background = '#fff';
-        buildDiv.style.color = '#6b7280';
-        buildDiv.style.fontWeight = '500';
-        buildDiv.style.fontSize = '0.875rem';
-        buildDiv.style.padding = '4px 12px';
-        buildDiv.style.borderRadius = '8px';
-        buildDiv.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-        buildDiv.style.opacity = '0.8';
-        buildDiv.style.fontFamily = 'system-ui, -apple-system, sans-serif';
-        badgeContainer.appendChild(buildDiv);
+    // Build version badge
+    const buildDiv = document.createElement('div');
+    buildDiv.id = 'build-badge';
+    buildDiv.textContent = 'Build: unknown';
+    buildDiv.style.background = '#fff';
+    buildDiv.style.color = '#6b7280';
+    buildDiv.style.fontWeight = '500';
+    buildDiv.style.fontSize = '0.875rem';
+    buildDiv.style.padding = '4px 12px';
+    buildDiv.style.borderRadius = '8px';
+    buildDiv.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    buildDiv.style.opacity = '0.8';
+    buildDiv.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+    badgeContainer.appendChild(buildDiv);
 
-        // Fetch latest commit hash from GitHub API
-        fetch('https://api.github.com/repos/createdshots/ambulance-hospitaltracker/commits/main')
-            .then(res => res.ok ? res.json() : null)
-            .then((data) => {
-                if (data && data.sha) {
-                    const shortSha = data.sha.substring(0, 7);
-                    buildDiv.innerHTML = `<a href="https://github.com/createdshots/ambulance-hospitaltracker/commit/${data.sha}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;pointer-events:auto;">Build: <span style='font-family:monospace;'>${shortSha}</span></a>`;
-                }
-            })
-            .catch(() => {
-                // fallback, already set
-            });
+    // Fetch latest commit hash from GitHub API
+    fetch('https://api.github.com/repos/createdshots/ambulance-hospitaltracker/commits/main')
+        .then(res => res.ok ? res.json() : null)
+        .then((data) => {
+            if (data && data.sha) {
+                const shortSha = data.sha.substring(0, 7);
+                buildDiv.innerHTML = `<a href="https://github.com/createdshots/ambulance-hospitaltracker/commit/${data.sha}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;pointer-events:auto;">Build: <span style='font-family:monospace;'>${shortSha}</span></a>`;
+            }
+        })
+        .catch(() => {
+            // fallback, already set
+        });
 
-        // Work-in-progress badge
-        const wipBadge = document.createElement('div');
-        wipBadge.id = 'wip-badge';
-        wipBadge.innerHTML = `<span style="font-size:1.1em;vertical-align:middle;">🚧</span> <span style="vertical-align:middle;">Work in Progress</span>`;
-        wipBadge.style.background = '#fff';
-        wipBadge.style.color = '#b45309';
-        wipBadge.style.fontWeight = '500';
-        wipBadge.style.fontSize = '1rem';
-        wipBadge.style.padding = '4px 14px';
-        wipBadge.style.borderRadius = '10px';
-        wipBadge.style.boxShadow = '0 1px 4px rgba(0,0,0,0.08)';
-        wipBadge.style.opacity = '0.92';
-        wipBadge.style.pointerEvents = 'none';
-        badgeContainer.appendChild(wipBadge);
-    });
+    // Work-in-progress badge
+    const wipBadge = document.createElement('div');
+    wipBadge.id = 'wip-badge';
+    wipBadge.innerHTML = `<span style="font-size:1.1em;vertical-align:middle;">🚧</span> <span style="vertical-align:middle;">Work in Progress</span>`;
+    wipBadge.style.background = '#fff';
+    wipBadge.style.color = '#b45309';
+    wipBadge.style.fontWeight = '500';
+    wipBadge.style.fontSize = '1rem';
+    wipBadge.style.padding = '4px 14px';
+    wipBadge.style.borderRadius = '10px';
+    wipBadge.style.boxShadow = '0 1px 4px rgba(0,0,0,0.08)';
+    wipBadge.style.opacity = '0.92';
+    wipBadge.style.pointerEvents = 'none';
+    badgeContainer.appendChild(wipBadge);
 });
 
 export { DashboardApp };
