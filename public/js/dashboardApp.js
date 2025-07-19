@@ -56,6 +56,20 @@ class DashboardApp {
             if (user) {
                 console.log('User authenticated:', user.uid);
                 this.dataManager.setUserId(user.uid);
+                
+                // Check if user needs onboarding
+                try {
+                    const { userData, onboardingCompleted } = await this.checkOnboardingStatus(user.uid);
+                    
+                    if (!onboardingCompleted) {
+                        // Redirect to profile with onboarding flag
+                        window.location.href = '/profile.html?onboarding=true';
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error checking onboarding status:', error);
+                }
+                
                 await this.loadUserData();
             } else {
                 console.log('No user authenticated');
@@ -63,6 +77,17 @@ class DashboardApp {
                 this.hideLoading();
             }
         });
+    }
+
+    // Check if user has completed onboarding
+    async checkOnboardingStatus(userId) {
+        try {
+            const { loadUserData } = await import('./data/enhancedDataManager.js');
+            return await loadUserData(userId);
+        } catch (error) {
+            console.error('Error loading user data:', error);
+            return { userData: null, onboardingCompleted: false };
+        }
     }
 
     // Update authentication UI
@@ -107,15 +132,10 @@ class DashboardApp {
         this.showLoading('Loading your data...');
         
         try {
-            const onboardingCompleted = await this.dataManager.loadUserData();
-            
-            if (!onboardingCompleted) {
-                console.log('Onboarding not complete, redirecting to profile page.');
-                window.location.href = '/profile.html?onboarding=true';
-                return;
+            const success = await this.dataManager.loadUserData();
+            if (success) {
+                this.renderAll();
             }
-
-            this.renderAll();
         } catch (error) {
             console.error('Error loading user data:', error);
             this.uiComponents.showStatusMessage('Error loading data. Please refresh the page.', 'error');
