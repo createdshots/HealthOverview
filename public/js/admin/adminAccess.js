@@ -16,8 +16,11 @@ class AdminAccessManager {
         // Check for @healthoverview.info domain and email verification
         const isHealthOverviewDomain = user.email.endsWith('@healthoverview.info');
         const isVerified = user.emailVerified;
+        
+        // Also check session storage for admin status
+        const sessionAdminStatus = sessionStorage.getItem('isHealthOverviewAdmin') === 'true';
 
-        this.isAdminUser = isHealthOverviewDomain && isVerified;
+        this.isAdminUser = isHealthOverviewDomain && isVerified && sessionAdminStatus;
         
         if (this.isAdminUser) {
             this.showAdminButton();
@@ -58,9 +61,16 @@ class AdminAccessManager {
 
     // Helper method to get current user email safely
     getCurrentUserEmail() {
-        // Try to get from Firebase auth
-        if (typeof window !== 'undefined' && window.auth && window.auth.currentUser) {
-            return window.auth.currentUser.email;
+        // Try to get from global auth if available
+        if (typeof window !== 'undefined') {
+            // Try dashboard app first
+            if (window.dashboardApp && window.dashboardApp.auth && window.dashboardApp.auth.currentUser) {
+                return window.dashboardApp.auth.currentUser.email;
+            }
+            // Try global auth
+            if (window.auth && window.auth.currentUser) {
+                return window.auth.currentUser.email;
+            }
         }
         return 'unknown user';
     }
@@ -124,6 +134,8 @@ class AdminAccessManager {
 
         modal.querySelector('#admin-proceed').addEventListener('click', () => {
             modal.remove();
+            // Store admin access timestamp for additional security
+            sessionStorage.setItem('adminAccessTime', new Date().toISOString());
             window.location.href = '/admin.html';
         });
 

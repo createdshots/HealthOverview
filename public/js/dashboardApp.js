@@ -248,8 +248,9 @@ class DashboardApp {
             // Update greeting and summary
             this.updateGreetingAndSummary(displayName);
             
-            // Check for admin access
+            // Check for admin access using the admin access manager
             adminAccessManager.checkAdminAccess(user);
+            
         } else {
             // User is signed out, redirect to login page
             window.location.href = '/index.html';
