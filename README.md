@@ -26,30 +26,6 @@ ambulance-hospitaltracker
 - **Data Visualization**: The application provides visual representations of user data, including charts and statistics.
 - **Responsive Design**: The application is designed to be mobile-friendly and accessible on various devices.
 
-## Setup Instructions
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/ambulance-hospitaltracker.git
-   ```
-2. Navigate to the project directory:
-   ```
-   cd ambulance-hospitaltracker
-   ```
-3. Install the dependencies:
-   ```
-   npm install
-   ```
-4. Start the application:
-   ```
-   npm start
-   ```
-5. Open your browser and go to `http://localhost:3000` to view the application.
-
-## Usage
-- Upon first visiting the application, users will be prompted to set up their profiles.
-- Users can log their medical visits and symptoms through the dashboard.
-- The application allows users to view their recent activities and statistics.
-
 ## Contributing
 Contributions are welcome! Please submit a pull request or open an issue for any enhancements or bug fixes.
 
