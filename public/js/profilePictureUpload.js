@@ -32,8 +32,12 @@ class ProfilePictureUploader {
             console.error('❌ Cropper.js is not loaded. Adding it dynamically...');
             this.loadCropperJS().then(() => {
                 this.setupEventListeners();
+            }).catch((error) => {
+                console.error('Failed to load Cropper.js:', error);
+                this.showError('Failed to load image editor. Please refresh the page.');
             });
         } else {
+            console.log('✅ Cropper.js already available');
             this.setupEventListeners();
         }
         
@@ -42,24 +46,37 @@ class ProfilePictureUploader {
 
     async loadCropperJS() {
         return new Promise((resolve, reject) => {
-            // Load Cropper.js CSS
-            const cssLink = document.createElement('link');
-            cssLink.rel = 'stylesheet';
-            cssLink.href = 'https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css';
-            document.head.appendChild(cssLink);
-
-            // Load Cropper.js JavaScript
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js';
-            script.onload = () => {
-                console.log('✅ Cropper.js loaded successfully');
+            // Check if already loaded
+            if (typeof Cropper !== 'undefined') {
                 resolve();
-            };
-            script.onerror = () => {
-                console.error('❌ Failed to load Cropper.js');
-                reject(new Error('Failed to load Cropper.js'));
-            };
-            document.head.appendChild(script);
+                return;
+            }
+
+            // Load Cropper.js CSS if not already loaded
+            if (!document.querySelector('link[href*="cropper"]')) {
+                const cssLink = document.createElement('link');
+                cssLink.rel = 'stylesheet';
+                cssLink.href = 'https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css';
+                document.head.appendChild(cssLink);
+            }
+
+            // Load Cropper.js JavaScript if not already loaded
+            if (!document.querySelector('script[src*="cropper"]')) {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js';
+                script.onload = () => {
+                    console.log('✅ Cropper.js loaded successfully');
+                    resolve();
+                };
+                script.onerror = () => {
+                    console.error('❌ Failed to load Cropper.js');
+                    reject(new Error('Failed to load Cropper.js'));
+                };
+                document.head.appendChild(script);
+            } else {
+                // Script already exists, just resolve
+                resolve();
+            }
         });
     }
 
@@ -164,6 +181,7 @@ class ProfilePictureUploader {
                 event.target.value = '';
             });
         } else {
+            console.log('✅ Showing crop modal');
             this.showCropModal(file);
         }
     }
@@ -188,29 +206,40 @@ class ProfilePictureUploader {
     showCropModal(file) {
         console.log('🖼️ Showing crop modal for:', file.name);
         
+        // Remove any existing crop modal first
+        const existingModal = document.getElementById('crop-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
         const modalHtml = `
-            <div id="crop-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-                <div class="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-hidden">
+            <div id="crop-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+                <div class="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-bold text-gray-800">Crop Profile Picture</h3>
+                        <h3 class="text-xl font-bold text-gray-800">✂️ Crop Your Profile Picture</h3>
                         <button id="close-crop-modal" class="text-gray-400 hover:text-gray-600 text-2xl font-bold transition-colors">&times;</button>
                     </div>
                     
-                    <div class="mb-6">
-                        <img id="crop-image" class="max-w-full block" style="max-height: 400px;">
+                    <div class="mb-6 bg-gray-100 rounded-lg overflow-hidden" style="height: 400px;">
+                        <img id="crop-image" class="max-w-full max-h-full block mx-auto" style="max-height: 400px;">
                     </div>
                     
-                    <div class="flex justify-between">
-                        <button id="cancel-crop" class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
-                            Cancel
-                        </button>
-                        <button id="save-crop" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                            <span id="save-crop-text">Save Picture</span>
-                            <div id="save-crop-loading" class="hidden flex items-center">
-                                <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                                Uploading...
-                            </div>
-                        </button>
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm text-gray-600">
+                            <p>🔄 Drag to move • 📏 Drag corners to resize</p>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button id="cancel-crop" class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                                Cancel
+                            </button>
+                            <button id="save-crop" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                                <span id="save-crop-text">💾 Save Picture</span>
+                                <div id="save-crop-loading" class="hidden flex items-center">
+                                    <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                                    Uploading...
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -223,11 +252,12 @@ class ProfilePictureUploader {
         const reader = new FileReader();
         
         reader.onload = (e) => {
+            console.log('📸 Image data loaded, setting src...');
             cropImage.src = e.target.result;
             
             // Wait for image to load before initializing cropper
             cropImage.onload = () => {
-                console.log('🖼️ Image loaded, initializing Cropper...');
+                console.log('🖼️ Image element loaded, initializing Cropper...');
                 
                 try {
                     // Initialize Cropper.js
@@ -239,11 +269,12 @@ class ProfilePictureUploader {
                         autoCropArea: 0.8,
                         cropBoxResizable: true,
                         cropBoxMovable: true,
-                        guides: false,
+                        guides: true,
                         center: true,
                         highlight: false,
+                        dragMode: 'move',
                         ready: () => {
-                            console.log('✅ Cropper ready');
+                            console.log('✅ Cropper ready and initialized');
                         }
                     });
                     
@@ -254,6 +285,12 @@ class ProfilePictureUploader {
                     this.closeCropModal();
                 }
             };
+            
+            cropImage.onerror = () => {
+                console.error('❌ Error loading image into crop element');
+                this.showError('Failed to load image for cropping');
+                this.closeCropModal();
+            };
         };
         
         reader.onerror = () => {
@@ -262,12 +299,20 @@ class ProfilePictureUploader {
             this.closeCropModal();
         };
         
+        console.log('📖 Reading file as data URL...');
         reader.readAsDataURL(file);
 
         // Event listeners
         document.getElementById('close-crop-modal').addEventListener('click', () => this.closeCropModal());
         document.getElementById('cancel-crop').addEventListener('click', () => this.closeCropModal());
         document.getElementById('save-crop').addEventListener('click', () => this.saveCroppedImage());
+        
+        // Escape key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeCropModal();
+            }
+        });
     }
 
     closeCropModal() {
@@ -338,7 +383,7 @@ class ProfilePictureUploader {
             // Update UI
             this.updateProfilePicture(uploadResult.url);
 
-            this.showSuccess('Profile picture updated successfully!');
+            this.showSuccess('Profile picture updated successfully! 🎉');
             this.closeCropModal();
 
         } catch (error) {
