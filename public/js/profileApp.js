@@ -3,6 +3,7 @@ import { loadUserData, saveUserData, enhancedDataManager } from './data/enhanced
 import { showModal, hideModal } from './components/modal.js';
 import { showStatusMessage } from './utils/ui.js';
 import { symptomTracker, showSymptomTracker, showSymptomOverview } from './features/symptomTracker.js';
+import { adminAccessManager } from './admin/adminAccess.js';
 
 // Global variables
 let currentUser = null;
@@ -567,6 +568,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         new window.ProfilePictureUploader();
                     }
                 }, 100);
+
+                // Check for admin access after successful login
+                adminAccessManager.checkAdminAccess(user);
 
             } catch (error) {
                 console.error('Error loading user data:', error);
