@@ -25,7 +25,7 @@ class DashboardApp {
         console.log('Initializing Dashboard App...');
         
         // Setup loading indicator
-        this.loadingIndicator = document.querySelector('.loader');
+        this.loadingIndicator = document.getElementById('loading-overlay');
         
         // Setup status message callback
         this.dataManager.onStatusMessage((message, type) => {
@@ -122,7 +122,11 @@ class DashboardApp {
     // Show loading indicator
     showLoading(message = 'Loading...') {
         if (this.loadingIndicator) {
-            this.loadingIndicator.classList.remove('loader-hidden');
+            const loaderText = this.loadingIndicator.querySelector('#loader-text');
+            if (loaderText) {
+                loaderText.textContent = message;
+            }
+            this.loadingIndicator.style.display = 'flex';
         } else {
             this.uiComponents.showLoading(message);
         }
@@ -131,7 +135,7 @@ class DashboardApp {
     // Hide loading indicator
     hideLoading() {
         if (this.loadingIndicator) {
-            this.loadingIndicator.classList.add('loader-hidden');
+            this.loadingIndicator.style.display = 'none';
         } else {
             this.uiComponents.hideLoading();
         }
