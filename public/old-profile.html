@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - Hospital & Ambulance Trust Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="firebase-config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
+        .status-message, .modal-backdrop, .modal-content { transition: all 0.3s ease-in-out; }
+        .loader-hidden { opacity: 0; pointer-events: none; }
+        .profile-tab-btn { transition: all 0.2s ease; }
+        .award { filter: grayscale(1); opacity: 0.5; }
+        .award.unlocked { filter: grayscale(0); opacity: 1; }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Full Page Loader -->
+    <div id="full-page-loader"
+        class="fixed inset-0 bg-gray-900 bg-opacity-75 flex flex-col items-center justify-center z-50 transition-opacity duration-500 loader-hidden">
+        <svg class="animate-spin h-10 w-10 text-white mb-4" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+            </path>
+        </svg>
+        <p id="loader-text" class="text-white text-lg">Loading profile...</p>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="text-xl font-bold text-gray-900">myHealthTracker</a>
+                    <span class="ml-2 text-sm text-gray-500">/ Profile</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="add-record-btn"
+                        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                        Add Record
+                    </button>
+                    <a href="/" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                        ← Back to Tracker
+                    </a>
+                    <div id="auth-signed-in-view" class="hidden items-center">
+                        <span id="user-id-display"
+                            class="text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-l-lg"></span>
+                        <button id="signout-btn"
+                            class="bg-red-500 text-white font-semibold py-2 px-4 rounded-r-lg shadow-md hover:bg-red-600 transition-colors">
+                            Sign Out
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Profile Content -->
+    <div class="container mx-auto p-4 md:p-8 max-w-6xl">
+        <div id="profile-content" class="hidden">
+            <!-- Content will be dynamically inserted here -->
+        </div>
+
+        <!-- Not signed in message -->
+        <div id="not-signed-in" class="text-center py-16">
+            <div class="text-gray-400 text-6xl mb-4">👤</div>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Sign in to view your profile</h2>
+            <p class="text-gray-600 mb-6">Track your visit history, view achievements, and analyze your progress.</p>
+            <a href="/" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
+                Go to Tracker
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Message Area -->
+    <div id="status-message-area" class="fixed top-20 right-4 z-50"></div>
+    
+    <!-- Modals Container -->
+    <div id="modal-container" class="relative z-40"></div>
+
+    <footer class="fixed bottom-4 right-4 z-10">
+        <div class="flex flex-col items-end space-y-2">
+            <!-- Help Button -->
+            <button id="help-btn"
+                class="bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm shadow-lg">
+                ❓ Help
+            </button>
+            
+            <!-- Creator Credit -->
+            <a href="https://github.com/jack-tolley" target="_blank" rel="noopener noreferrer"
+                class="flex items-center text-xs text-gray-400 hover:text-gray-600 bg-white px-2 py-1 rounded shadow">
+                <svg class="w-3 h-3 mr-1" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd"
+                        d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z">
+                    </path>
+                </svg>
+                Jack Tolley
+            </a>
+        </div>
+    </footer>
+
+    <script type="module">
+        // Defensive check for firebase-config.js
+        if (typeof userFirebaseConfig === 'undefined') {
+            alert('FATAL: firebase-config.js not loaded! Please ensure the file exists and is loaded before this script.');
+            throw new Error('FATAL: firebase-config.js not loaded!');
+        }
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        const firebaseConfig = typeof userFirebaseConfig !== 'undefined' ? userFirebaseConfig : {};
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        // Restrict access until signed in
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = '/login.html';
+            }
+        });
+
+        // --- Global Variables ---
+        let app, db, userId, docRef;
+        let localData = { hospitals: [], ambulance: [], awards: [], visitHistory: [], medicalRecords: [], symptomTracking: [], userProfile: {} };
+        let unsubscribe;
+
+        // --- DOM Element References ---
+        const loadingIndicator = document.getElementById('full-page-loader');
+        const loaderText = document.getElementById('loader-text');
+        const statusMessageArea = document.getElementById('status-message-area');
+        const authSignedInView = document.getElementById('auth-signed-in-view');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const profileContent = document.getElementById('profile-content');
+        const notSignedIn = document.getElementById('not-signed-in');
+        const modalContainer = document.getElementById('modal-container');
+
+        // --- Awards Definition ---
+        const awardsDefinition = {
+            'first_visit': { name: 'First Visit!', description: 'Log your first visit to any location.', icon: '🎉' },
+            'hospitals_5': { name: 'Hospital Hopper', description: 'Visit 5 different hospitals.', icon: '🏥' },
+            'hospitals_10': { name: 'Hospital Hero', description: 'Visit 10 different hospitals.', icon: '🦸' },
+            'trusts_all': { name: 'Trust Titan', description: 'Visit every ambulance trust.', icon: '🚑' },
+            'visits_100': { name: 'Century Club', description: 'Accumulate 100 total visits.', icon: '🏆' }
+        };
+
+        // --- Helper Functions ---
+        function showStatusMessage(message, type = 'success') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `status-message p-4 rounded-lg shadow-lg font-medium mb-2 ${type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-green-100 text-green-800 border border-green-200'}`;
+            messageDiv.textContent = message;
+            statusMessageArea.appendChild(messageDiv);
+            setTimeout(() => {
+                messageDiv.style.opacity = '0';
+                setTimeout(() => messageDiv.remove(), 300);
+            }, 5000);
+        }
+
+        // --- Generate Condition Questions for Symptoms (Global Utility) ---
+        function generateConditionQuestionsForSymptoms(userConditions) {
+            if (!userConditions || userConditions.length === 0) return '';
+            const conditionQuestions = {
+                'epilepsy': [
+                    { id: 'seizure_today', type: 'checkbox', label: 'Did you have a seizure today?' },
+                    { id: 'aura_symptoms', type: 'checkbox', label: 'Did you experience aura symptoms?' },
+                    { id: 'trigger_identified', type: 'text', label: 'Potential trigger (if known)', placeholder: 'e.g., stress, lack of sleep, flashing lights' },
+                    { id: 'medication_taken', type: 'checkbox', label: 'Did you take your medication as prescribed?' }
+                ],
+                'autism': [
+                    { id: 'sensory_overload', type: 'select', label: 'Sensory overload level', options: ['None', 'Mild', 'Moderate', 'Severe'] },
+                    { id: 'meltdown_occurred', type: 'checkbox', label: 'Did you experience a meltdown?' },
+                    { id: 'social_fatigue', type: 'select', label: 'Social fatigue level', options: ['None', 'Low', 'Medium', 'High', 'Exhausted'] },
+                    { id: 'stimming_frequency', type: 'select', label: 'Stimming frequency today', options: ['None', 'Occasional', 'Frequent', 'Constant'] }
+                ],
+                'diabetes': [
+                    { id: 'blood_sugar_morning', type: 'text', label: 'Morning blood sugar', placeholder: 'e.g., 120 mg/dL' },
+                    { id: 'blood_sugar_evening', type: 'text', label: 'Evening blood sugar', placeholder: 'e.g., 140 mg/dL' },
+                    { id: 'hypo_episode', type: 'checkbox', label: 'Did you have a hypoglycemic episode?' },
+                    { id: 'insulin_doses', type: 'text', label: 'Insulin doses taken', placeholder: 'e.g., 10 units morning, 8 units evening' }
+                ],
+                'mental_health': [
+                    { id: 'anxiety_level', type: 'select', label: 'Anxiety level today', options: ['Very Low', 'Low', 'Moderate', 'High', 'Very High'] },
+                    { id: 'panic_attack', type: 'checkbox', label: 'Did you have a panic attack?' },
+                    { id: 'mood_rating', type: 'select', label: 'Overall mood', options: ['Very Low', 'Low', 'Neutral', 'Good', 'Very Good'] },
+                    { id: 'sleep_quality', type: 'select', label: 'Sleep quality last night', options: ['Very Poor', 'Poor', 'Fair', 'Good', 'Excellent'] }
+                ],
+                'chronic_pain': [
+                    { id: 'pain_level_morning', type: 'select', label: 'Pain level (morning)', options: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'] },
+                    { id: 'pain_level_evening', type: 'select', label: 'Pain level (evening)', options: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'] },
+                    { id: 'flare_up', type: 'checkbox', label: 'Did you experience a flare-up?' },
+                    { id: 'medication_effectiveness', type: 'select', label: 'Pain medication effectiveness', options: ['Not effective', 'Slightly effective', 'Moderately effective', 'Very effective', 'Completely effective'] }
+                ],
+                'heart_condition': [
+                    { id: 'heart_rate_resting', type: 'text', label: 'Resting heart rate', placeholder: 'e.g., 72 bpm' },
+                    { id: 'blood_pressure', type: 'text', label: 'Blood pressure', placeholder: 'e.g., 120/80' },
+                    { id: 'chest_pain', type: 'checkbox', label: 'Did you experience chest pain?' },
+                    { id: 'palpitations', type: 'checkbox', label: 'Did you notice palpitations?' }
+                ],
+                'respiratory': [
+                    { id: 'breathing_difficulty', type: 'select', label: 'Breathing difficulty level', options: ['None', 'Mild', 'Moderate', 'Severe'] },
+                    { id: 'peak_flow', type: 'text', label: 'Peak flow reading', placeholder: 'e.g., 450 L/min' },
+                    { id: 'inhaler_usage', type: 'text', label: 'Inhaler uses today', placeholder: 'e.g., 3 times' },
+                    { id: 'oxygen_saturation', type: 'text', label: 'Oxygen saturation', placeholder: 'e.g., 98%' }
+                ],
+                'autoimmune': [
+                    { id: 'flare_severity', type: 'select', label: 'Flare-up severity', options: ['None', 'Mild', 'Moderate', 'Severe'] },
+                    { id: 'fatigue_level', type: 'select', label: 'Fatigue level', options: ['None', 'Mild', 'Moderate', 'Severe', 'Debilitating'] },
+                    { id: 'joint_pain', type: 'select', label: 'Joint pain level', options: ['None', 'Mild', 'Moderate', 'Severe'] },
+                    { id: 'medication_side_effects', type: 'checkbox', label: 'Did you experience medication side effects?' }
+                ],
+                'neurological': [
+                    { id: 'migraine_occurred', type: 'checkbox', label: 'Did you have a migraine?' },
+                    { id: 'coordination_issues', type: 'checkbox', label: 'Did you notice coordination problems?' },
+                    { id: 'memory_problems', type: 'checkbox', label: 'Did you experience memory issues?' },
+                    { id: 'speech_difficulties', type: 'checkbox', label: 'Did you have speech difficulties?' }
+                ],
+                'gastrointestinal': [
+                    { id: 'symptom_severity', type: 'select', label: 'Symptom severity today', options: ['None', 'Mild', 'Moderate', 'Severe'] },
+                    { id: 'food_triggers', type: 'text', label: 'Food triggers (if any)', placeholder: 'e.g., dairy, gluten' },
+                    { id: 'bathroom_urgency', type: 'select', label: 'Bathroom urgency episodes', options: ['None', '1-2', '3-5', '6-10', 'More than 10'] },
+                    { id: 'medication_response', type: 'select', label: 'Medication effectiveness', options: ['Not taken', 'Not effective', 'Somewhat effective', 'Very effective'] }
+                ]
+            };
+            let questionsHTML = '';
+            userConditions.forEach(condition => {
+                const questions = conditionQuestions[condition];
+                if (questions) {
+                    questionsHTML += `
+                        <div class="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                            <h5 class="font-medium text-gray-900 mb-3 capitalize">${condition.replace('_', ' ')} Tracking</h5>
+                            <div class="space-y-3">
+                                ${questions.map(q => {
+                                    switch (q.type) {
+                                        case 'checkbox':
+                                            return `
+                                                <label class="flex items-center">
+                                                    <input type="checkbox" name="condition_${condition}_${q.id}" 
+                                                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                                    <span class="ml-2 text-sm text-gray-700">${q.label}</span>
+                                                </label>
+                                            `;
+                                        case 'select':
+                                            return `
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">${q.label}</label>
+                                                    <select name="condition_${condition}_${q.id}" 
+                                                            class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                        <option value="">Select...</option>
+                                                        ${q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                                                    </select>
+                                                </div>
+                                            `;
+                                        default: // text
+                                            return `
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">${q.label}</label>
+                                                    <input type="text" name="condition_${condition}_${q.id}" 
+                                                           placeholder="${q.placeholder || ''}"
+                                                           class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                </div>
+                                            `;
+                                    }
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            return questionsHTML;
+        }
+
+        // --- Main Application Logic ---
+        function initializeAppLogic() {
+            try {
+                // Check if config is loaded
+                if (typeof userFirebaseConfig === 'undefined') {
+                    throw new Error("firebase-config.js not found. App cannot start.");
+                }
+                
+                app = initializeApp(userFirebaseConfig);
+                db = getFirestore(app);
+                // auth is now handled globally by onAuthStateChanged
+
+                // Setup all event listeners for the page
+                setupEventListeners();
+
+                // Start listening for authentication state changes
+                // onAuthStateChanged(auth, handleAuthStateChange); // This line is now redundant as auth is global
+
+                // --- Onboarding check ---
+                if (window.location.search.includes('onboarding=1')) {
+                    // Wait for auth, then show onboarding modal if needed
+                    window._forceOnboarding = true;
+                }
+            } catch (e) {
+                console.error("Initialization failed:", e);
+                document.body.innerHTML = `<div class="p-8 text-center text-red-500"><h1 class="text-2xl font-bold">Fatal Error</h1><p class="mt-2">${e.message}</p></div>`;
+            }
+        }
+
+        async function handleAuthStateChange(user) {
+            if (unsubscribe) unsubscribe();
+
+            if (user) {
+                userId = user.uid;
+                userIdDisplay.textContent = user.isAnonymous ? 'Guest' : user.displayName || user.email;
+                authSignedInView.style.display = 'flex';
+                notSignedIn.style.display = 'none';
+                
+                docRef = doc(db, `users/${userId}`);
+                loadingIndicator.classList.remove('loader-hidden');
+                loaderText.textContent = 'Loading profile...';
+                setupSnapshotListener();
+            } else {
+                userId = null;
+                docRef = null;
+                authSignedInView.style.display = 'none';
+                notSignedIn.style.display = 'block';
+                loadingIndicator.classList.add('loader-hidden');
+                localData = { hospitals: [], ambulance: [], awards: [], visitHistory: [], medicalRecords: [], userProfile: {} };
+                renderProfile();
+            }
+        }
+
+        function setupSnapshotListener() {
+            if (!docRef) return;
+            let initialLoadComplete = false;
+
+            unsubscribe = onSnapshot(docRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    localData = { ...localData, ...snapshot.data() };
+                }
+                
+                if (!initialLoadComplete) {
+                    renderProfile();
+                    profileContent.style.display = 'block';
+                    loadingIndicator.classList.add('loader-hidden');
+                    initialLoadComplete = true;
+
+                    // --- Onboarding Modal Logic ---
+                    if (window._forceOnboarding || (localData.userProfile && !localData.userProfile.onboardingCompleted)) {
+                        showOnboardingModal();
+                    }
+                }
+            }, (error) => {
+                console.error("Snapshot listener error:", error);
+                showStatusMessage("Error loading data.", "error");
+                loadingIndicator.classList.add('loader-hidden');
+            });
+        }
+
+        async function saveData() {
+            if (!docRef) return;
+            try {
+                await setDoc(docRef, localData, { merge: true });
+                console.log("Data saved successfully.");
+            } catch (e) {
+                console.error("Error saving data to Firestore: ", e);
+                showStatusMessage("Error saving data.", "error");
+            }
+        }
+
+        function renderProfile() {
+            // ... (All your rendering functions like createHistoryTab, etc. will be called from here)
+            const history = localData.visitHistory || [];
+            profileContent.innerHTML = `
+                <!-- Profile Header and Stats Grid -->
+                <div id="profile-header-and-stats"></div>
+                <!-- Tabs -->
+                <div class="bg-white rounded-xl shadow-md">
+                    <div class="border-b border-gray-200">
+                        <nav class="-mb-px flex space-x-8 px-6" id="profile-tabs">
+                            <button class="profile-tab-btn border-purple-500 text-purple-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="history">Visit History</button>
+                            <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="records">Medical Records</button>
+                            <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="achievements">Achievements</button>
+                            <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="analytics">Analytics</button>
+                            <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="symptoms">Symptoms</button>
+                        </nav>
+                    </div>
+                    <div id="profile-tab-content" class="p-6">
+                        ${createHistoryTab(history)}
+                    </div>
+                </div>
+            `;
+            renderProfileHeader();
+        }
+
+        // --- Add Record Modal ---
+        function showAddRecordModal() {
+            const modalContent = createAddRecordForm();
+            const modal = createModal('add-record-modal', 'Add Medical Record', modalContent, 'max-w-2xl');
+            openModal(modal);
+            setupAddRecordEventListeners(modal);
+        }
+        window.showAddRecordModal = showAddRecordModal;
+
+        function renderProfileHeader() {
+            const history = localData.visitHistory || [];
+            const totalVisits = (localData.hospitals?.reduce((s, h) => s + h.count, 0) || 0) + (localData.ambulance?.reduce((s, a) => s + a.count, 0) || 0);
+            const visitedHospitals = localData.hospitals?.filter(h => h.visited).length || 0;
+            const visitedAmbulance = localData.ambulance?.filter(a => a.visited).length || 0;
+            const joinDate = history.length > 0 ? new Date(history[history.length - 1].timestamp).toLocaleDateString() : 'Today';
+            const lastActivity = history.length > 0 ? new Date(history[0].timestamp).toLocaleDateString() : 'No activity yet';
+
+            // Use display name from profile if set, else fallback
+            let displayName = localData.userProfile?.displayName?.trim();
+            if (!displayName) {
+                const user = auth.currentUser;
+                displayName = user?.displayName || user?.email || (user?.isAnonymous ? 'Guest' : 'User');
+            }
+
+            const headerContainer = document.getElementById('profile-header-and-stats');
+            if (headerContainer) {
+                headerContainer.innerHTML = `
+                    <div class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-8 rounded-xl mb-8">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h1 class="text-3xl font-bold mb-2">${displayName}</h1>
+                                <p class="text-purple-100">Member since: ${joinDate}</p>
+                                <p class="text-purple-100">Last activity: ${lastActivity}</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-4xl font-bold mb-1">${totalVisits}</div>
+                                <div class="text-purple-100 mb-3">Total Visits</div>
+                                <button id="edit-profile-btn" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-colors text-sm">✏️ Edit Profile</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                            <div class="text-3xl font-bold text-blue-600 mb-2">${visitedHospitals}</div>
+                            <div class="text-sm text-gray-600">Hospitals Visited</div>
+                            <div class="text-xs text-gray-400 mt-1">of ${localData.hospitals.length}</div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                            <div class="text-3xl font-bold text-green-600 mb-2">${visitedAmbulance}</div>
+                            <div class="text-sm text-gray-600">Trusts Visited</div>
+                            <div class="text-xs text-gray-400 mt-1">of ${localData.ambulance.length}</div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                            <div class="text-3xl font-bold text-yellow-600 mb-2">${totalVisits}</div>
+                            <div class="text-sm text-gray-600">Total Visits</div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                            <div class="text-3xl font-bold text-purple-600 mb-2">${localData.awards?.length || 0}</div>
+                            <div class="text-sm text-gray-600">Awards Earned</div>
+                            <div class="text-xs text-gray-400 mt-1">of ${Object.keys(awardsDefinition).length}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // --- All other functions are defined here ---
+        function createHistoryTab(history) { return `<div class="text-center py-12">History content goes here.</div>`; }
+        function createRecordsTab() { return `<div class="text-center py-12">Medical Records content goes here.</div>`; }
+        function createAchievementsTab() { return `<div class="text-center py-12">Achievements content goes here.</div>`; }
+        function createAnalyticsTab() { return `<div class="text-center py-12">Analytics content goes here.</div>`; }
+        function createSymptomsTab() {
+            // Add a Log Symptoms button and show recent symptom entries
+            const recentSymptoms = (localData.symptomTracking || []).slice(0, 10);
+            return `
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-purple-900">Symptom Tracking</h3>
+                    <button id="profile-log-symptom-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                        Log Symptoms
+                    </button>
+                </div>
+                ${recentSymptoms.length > 0 ? `
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${recentSymptoms.map(entry => {
+                            const date = new Date(entry.date);
+                            return `
+                                <div class="bg-white p-4 rounded-lg border border-blue-200">
+                                    <div class="font-medium text-gray-900 text-sm mb-1">${entry.isSymptomOnly ? 'Symptom Log' : (entry.hospital || 'Symptom Log')}</div>
+                                    <div class="text-xs text-gray-600 mb-2">${date.toLocaleDateString()}</div>
+                                    <div class="mb-1">
+                                        ${Object.keys(entry.conditions || {}).map(condition =>
+                                            `<span class="inline-block bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-xs mr-1">${condition.replace('_', ' ')}</span>`
+                                        ).join('')}
+                                    </div>
+                                    <div class="text-xs text-gray-700">${entry.notes ? entry.notes : ''}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                ` : `
+                    <div class="text-center py-8 text-blue-700">No symptoms logged yet. Click 'Log Symptoms' to get started!</div>
+                `}
+            `;
+        }
+        // --- Edit Profile Modal (enhanced layout) ---
+        function showEditProfileModal() {
+            const currentProfile = localData.userProfile || {};
+            const user = auth.currentUser;
+            const availableConditions = [
+                'epilepsy', 'autism', 'diabetes', 'mental_health', 'chronic_pain',
+                'heart_condition', 'respiratory', 'autoimmune', 'neurological', 'gastrointestinal'
+            ];
+            const isSSO = user && user.providerData && user.providerData.length > 0 &&
+                user.providerData.some(provider => provider.providerId !== 'password' && provider.providerId.includes('google.com'));
+            const modalContent = `
+                <form id="edit-profile-form" class="space-y-3">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Left Column: Personal & Emergency Info -->
+                        <div class="space-y-3">
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <h3 class="text-base font-semibold text-gray-900 mb-2">Personal Information</h3>
+                                <div class="space-y-2">
+                                    <div>
+                                        <label for="display-name" class="block text-xs font-medium text-gray-700 mb-1">Display Name</label>
+                                        <input type="text" id="display-name" 
+                                               value="${currentProfile.displayName || user?.displayName || ''}"
+                                               placeholder="How you'd like to be addressed"
+                                               class="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-xs">
+                                    </div>
+                                    ${!isSSO ? `
+                                    <div>
+                                        <label for="email" class="block text-xs font-medium text-gray-700 mb-1">Email Address</label>
+                                        <input type="email" id="email" 
+                                               value="${user?.email || ''}"
+                                               placeholder="your.email@example.com"
+                                               class="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-xs">
+                                        <p class="text-xs text-gray-500 mt-1">Used for account recovery</p>
+                                    </div>
+                                    ` : `
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Email Address</label>
+                                        <div class="w-full p-2 border border-gray-200 rounded bg-gray-100 text-gray-600 text-xs">
+                                            ${user?.email || 'Not available'}
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">Managed by sign-in provider</p>
+                                    </div>
+                                    `}
+                                    <div>
+                                        <label for="date-of-birth" class="block text-xs font-medium text-gray-700 mb-1">Date of Birth (Optional)</label>
+                                        <input type="date" id="date-of-birth" 
+                                               value="${currentProfile.dateOfBirth || ''}"
+                                               class="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-xs">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-red-50 p-3 rounded-lg">
+                                <h3 class="text-base font-semibold text-gray-900 mb-2">🚨 Emergency Info</h3>
+                                <div class="space-y-2">
+                                    <div>
+                                        <label for="emergency-contact" class="block text-xs font-medium text-gray-700 mb-1">Emergency Contact</label>
+                                        <input type="text" id="emergency-contact" 
+                                               value="${currentProfile.emergencyContact || ''}"
+                                               placeholder="Name and phone (e.g., John Smith - 07123456789)"
+                                               class="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-xs">
+                                    </div>
+                                    <div>
+                                        <label for="medical-notes" class="block text-xs font-medium text-gray-700 mb-1">Medical Notes</label>
+                                        <textarea id="medical-notes" rows="2"
+                                                  placeholder="Allergies, medications, special instructions..."
+                                                  class="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-xs">${currentProfile.medicalNotes || ''}</textarea>
+                                        <p class="text-xs text-gray-500 mt-1">Vital for emergency responders</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Right Column: Condition Tracking & Privacy/Settings -->
+                        <div class="space-y-3">
+                            <div class="bg-blue-50 p-3 rounded-lg min-h-[320px] md:min-h-[400px] flex flex-col justify-between">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2">🏥 Condition Tracking</h3>
+                                <p class="text-xs text-gray-600 mb-2">Select conditions you'd like to track:</p>
+                                <div class="grid grid-cols-1 gap-1 max-h-72 min-h-[180px] overflow-y-auto custom-scrollbar flex-1">
+                                    ${availableConditions.map(condition => {
+                                        const isSelected = currentProfile.conditions?.includes(condition) || false;
+                                        const conditionNames = {
+                                            'epilepsy': '🧠 Epilepsy',
+                                            'autism': '🌟 Autism Spectrum',
+                                            'diabetes': '🩸 Diabetes',
+                                            'mental_health': '🧠 Mental Health',
+                                            'chronic_pain': '😣 Chronic Pain',
+                                            'heart_condition': '❤️ Heart Condition',
+                                            'respiratory': '🫁 Respiratory',
+                                            'autoimmune': '🛡️ Autoimmune',
+                                            'neurological': '🧠 Neurological',
+                                            'gastrointestinal': '🫃 Gastrointestinal'
+                                        };
+                                        return `
+                                            <label class="flex items-center p-1.5 border rounded hover:bg-white cursor-pointer transition-colors text-xs ${isSelected ? 'border-purple-500 bg-white' : 'border-gray-300'}">
+                                                <input type="checkbox" name="conditions" value="${condition}" 
+                                                       ${isSelected ? 'checked' : ''}
+                                                       class="h-3 w-3 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+                                                <span class="ml-2 text-xs font-medium text-gray-700">${conditionNames[condition] || condition.replace('_', ' ')}</span>
+                                            </label>
+                                        `;
+                                    }).join('')}
+                                </div>
+                                <div class="mt-2 p-1.5 bg-blue-100 border border-blue-200 rounded">
+                                    <p class="text-xs text-blue-800">
+                                        <strong>Privacy:</strong> Data stored securely, never shared.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <h3 class="text-base font-semibold text-gray-900 mb-2">🔒 Privacy & Settings</h3>
+                                <div class="space-y-2">
+                                    <label class="flex items-start p-2 border rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="checkbox" id="data-sharing" 
+                                               ${currentProfile.dataSharing ? 'checked' : ''}
+                                               class="h-3 w-3 text-purple-600 focus:ring-purple-500 border-gray-300 rounded mt-0.5">
+                                        <div class="ml-2">
+                                            <span class="text-xs font-medium text-gray-700">Help improve the app</span>
+                                            <p class="text-xs text-gray-500">Anonymous analytics only</p>
+                                        </div>
+                                    </label>
+                                    <label class="flex items-start p-2 border rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="checkbox" id="onboarding-completed" 
+                                               ${currentProfile.onboardingCompleted ? 'checked' : ''}
+                                               class="h-3 w-3 text-purple-600 focus:ring-purple-500 border-gray-300 rounded mt-0.5">
+                                        <div class="ml-2">
+                                            <span class="text-xs font-medium text-gray-700">Skip onboarding tips</span>
+                                            <p class="text-xs text-gray-500">Hide tutorial prompts</p>
+                                        </div>
+                                    </label>
+                                    <label class="flex items-start p-2 border rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="checkbox" id="two-factor-auth" 
+                                               ${currentProfile.twoFactorAuth ? 'checked' : ''}
+                                               class="h-3 w-3 text-purple-600 focus:ring-purple-500 border-gray-300 rounded mt-0.5">
+                                        <div class="ml-2">
+                                            <span class="text-xs font-medium text-gray-700">Enable two-factor authentication</span>
+                                            <p class="text-xs text-gray-500">Adds extra security to your account</p>
+                                        </div>
+                                    </label>
+                                    <label class="flex items-start p-2 border rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="checkbox" id="email-notifications" 
+                                               ${currentProfile.emailNotifications ? 'checked' : ''}
+                                               class="h-3 w-3 text-purple-600 focus:ring-purple-500 border-gray-300 rounded mt-0.5">
+                                        <div class="ml-2">
+                                            <span class="text-xs font-medium text-gray-700">Allow email notifications</span>
+                                            <p class="text-xs text-gray-500">Receive updates and reminders</p>
+                                        </div>
+                                    </label>
+                                    <label class="flex items-start p-2 border rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="checkbox" id="show-leaderboard" 
+                                               ${currentProfile.showLeaderboard ? 'checked' : ''}
+                                               class="h-3 w-3 text-purple-600 focus:ring-purple-500 border-gray-300 rounded mt-0.5">
+                                        <div class="ml-2">
+                                            <span class="text-xs font-medium text-gray-700">Show profile in community leaderboard</span>
+                                            <p class="text-xs text-gray-500">Opt-in to appear in public stats</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Account Info: Full width below grid -->
+                    <div class="bg-gray-50 p-3 rounded-lg mt-2">
+                        <h3 class="text-base font-semibold text-gray-900 mb-2">📊 Account Info</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-2 text-xs">
+                            <div class="bg-white p-2 rounded border">
+                                <p class="font-medium text-gray-700">Account Type</p>
+                                <p class="text-gray-600">${user?.isAnonymous ? 'Guest Account' : 'Registered Account'}</p>
+                            </div>
+                            <div class="bg-white p-2 rounded border">
+                                <p class="font-medium text-gray-700">Sign-in Method</p>
+                                <p class="text-gray-600">${isSSO ? 'SSO Provider' : 'Anonymous'}</p>
+                            </div>
+                            <div class="bg-white p-2 rounded border">
+                                <p class="font-medium text-gray-700">Total Records</p>
+                                <p class="text-gray-600">${(localData.medicalRecords?.length || 0) + (localData.symptomTracking?.length || 0)} entries</p>
+                            </div>
+                            <div class="bg-white p-2 rounded border">
+                                <p class="font-medium text-gray-700">Data Storage</p>
+                                <p class="text-gray-600">Cloud synchronized</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Compact Action Buttons -->
+                    <div class="flex justify-between items-center pt-3 border-t">
+                        <button type="button" id="delete-account-btn"
+                                class="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-xs font-medium">
+                            🗑️ Delete Account
+                        </button>
+                        <div class="flex space-x-2">
+                            <button type="button" class="close-modal-btn px-4 py-1.5 text-gray-600 bg-gray-200 rounded hover:bg-gray-300 transition-colors text-xs font-medium">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                    class="px-5 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-xs font-medium">
+                                💾 Save Profile
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            `;
+            // Remove any existing modals
+            modalContainer.innerHTML = '';
+            // Create modal
+            const modal = document.createElement('div');
+            modal.id = 'edit-profile-modal';
+            modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50';
+            modal.innerHTML = `<div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-5xl modal-content">${modalContent}</div>`;
+            modalContainer.appendChild(modal);
+            // Setup close/cancel/delete
+            modal.querySelector('.close-modal-btn').addEventListener('click', () => modal.remove());
+            modal.querySelector('#delete-account-btn').addEventListener('click', showDeleteAccountConfirmation);
+            modal.querySelector('#edit-profile-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const selectedConditions = Array.from(modal.querySelectorAll('input[name="conditions"]:checked')).map(cb => cb.value);
+                if (!localData.userProfile) localData.userProfile = {};
+                localData.userProfile.displayName = modal.querySelector('#display-name').value;
+                localData.userProfile.dateOfBirth = modal.querySelector('#date-of-birth').value;
+                localData.userProfile.emergencyContact = modal.querySelector('#emergency-contact').value;
+                localData.userProfile.medicalNotes = modal.querySelector('#medical-notes').value;
+                localData.userProfile.conditions = selectedConditions;
+                localData.userProfile.dataSharing = modal.querySelector('#data-sharing').checked;
+                localData.userProfile.onboardingCompleted = modal.querySelector('#onboarding-completed').checked; // Keep this line
+                localData.userProfile.twoFactorAuth = modal.querySelector('#two-factor-auth').checked;
+                localData.userProfile.emailNotifications = modal.querySelector('#email-notifications').checked;
+                localData.userProfile.showLeaderboard = modal.querySelector('#show-leaderboard').checked;
+                await saveData();
+                modal.remove();
+                showStatusMessage('Profile updated successfully!', 'success');
+                renderProfile();
+            });
+        }
+
+        // --- Onboarding Modal (Edit Profile, Unskippable) ---
+        function showOnboardingModal() {
+            const currentProfile = localData.userProfile || {};
+            const user = auth.currentUser;
+            const availableConditions = [
+                'epilepsy', 'autism', 'diabetes', 'mental_health', 'chronic_pain',
+                'heart_condition', 'respiratory', 'autoimmune', 'neurological', 'gastrointestinal'
+            ];
+            const modalContent = `
+                <form id="edit-profile-form" class="space-y-4">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Left Column -->
+                        <div class="space-y-4">
+                            <!-- Personal Information -->
+                            <div class="bg-gray-50 p-4 rounded-lg border">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-3">Personal Information</h3>
+                                <div class="grid grid-cols-1 gap-3">
+                                    <div>
+                                        <label for="display-name" class="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+                                        <input type="text" id="display-name" 
+                                               value="${currentProfile.displayName || user?.displayName || ''}"
+                                               placeholder="How you'd like to be addressed"
+                                               class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                                        <div class="w-full p-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-600 text-sm">
+                                            ${user?.email || 'Not available'}
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">Managed by sign-in provider</p>
+                                    </div>
+                                    <div>
+                                        <label for="date-of-birth" class="block text-sm font-medium text-gray-700 mb-1">Date of Birth (Optional)</label>
+                                        <input type="date" id="date-of-birth" 
+                                               value="${currentProfile.dateOfBirth || ''}"
+                                               class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm">
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Emergency Information -->
+                            <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                                <h3 class="text-lg font-semibold text-red-900 mb-3">🚨 Emergency Information</h3>
+                                <div class="grid grid-cols-1 gap-3">
+                                    <div>
+                                        <label for="emergency-contact" class="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
+                                        <input type="text" id="emergency-contact" 
+                                               value="${currentProfile.emergencyContact || ''}"
+                                               placeholder="Name and phone number (e.g., John Smith - 07123456789)"
+                                               class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="medical-notes" class="block text-sm font-medium text-gray-700 mb-1">Important Medical Notes</label>
+                                        <textarea id="medical-notes" rows="2"
+                                                  placeholder="Allergies, current medications, medical conditions, special instructions for emergency responders..."
+                                                  class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm">${currentProfile.medicalNotes || ''}</textarea>
+                                        <p class="text-xs text-gray-500 mt-1">This information could be vital in an emergency</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Right Column -->
+                        <div class="space-y-4">
+                            <!-- Condition Tracking -->
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-3">🏥 Condition Tracking</h3>
+                                <p class="text-sm text-gray-600 mb-3">Select conditions you'd like to track. This enables personalized symptom questions and better analytics.</p>
+                                <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
+                                    ${availableConditions.map(condition => {
+                                        const isSelected = currentProfile.conditions?.includes(condition) || false;
+                                        const conditionNames = {
+                                            'epilepsy': '🧠 Epilepsy',
+                                            'autism': '🌟 Autism Spectrum',
+                                            'diabetes': '🩸 Diabetes',
+                                            'mental_health': '🧠 Mental Health',
+                                            'chronic_pain': '😣 Chronic Pain',
+                                            'heart_condition': '❤️ Heart Condition',
+                                            'respiratory': '🫁 Respiratory',
+                                            'autoimmune': '🛡️ Autoimmune',
+                                            'neurological': '🧠 Neurological',
+                                            'gastrointestinal': '🫃 Gastrointestinal'
+                                        };
+                                        return `
+                                            <label class="flex items-center p-2 border rounded-lg hover:bg-white cursor-pointer transition-colors text-sm ${isSelected ? 'border-purple-500 bg-white' : 'border-gray-200'}">
+                                                <input type="checkbox" name="conditions" value="${condition}" 
+                                                       ${isSelected ? 'checked' : ''}
+                                                       class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+                                                <span class="ml-2 text-sm font-medium text-gray-700">${conditionNames[condition] || condition.replace('_', ' ')}</span>
+                                            </label>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                            <!-- Settings & Account Info -->
+                            <div class="bg-gray-50 p-4 rounded-lg border">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-3">🔒 Privacy & Settings</h3>
+                                <div class="grid grid-cols-1 gap-2 mb-4">
+                                    <label class="flex items-start p-2 border rounded hover:bg-gray-100 cursor-pointer">
+                                        <input type="checkbox" id="data-sharing" 
+                                               ${currentProfile.dataSharing ? 'checked' : ''}
+                                               class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded mt-1">
+                                        <div class="ml-2">
+                                            <span class="text-sm font-medium text-gray-700">Help improve the app</span>
+                                            <p class="text-xs text-gray-500">Share anonymous usage analytics to help development</p>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 text-sm">
+                                    <div class="bg-white p-2 rounded border">
+                                        <p class="font-medium text-gray-700">Account Type</p>
+                                        <p class="text-gray-600 text-xs">${user?.isAnonymous ? 'Guest Account' : 'Registered Account'}</p>
+                                    </div>
+                                    <div class="bg-white p-2 rounded border">
+                                        <p class="font-medium text-gray-700">Sign-in Method</p>
+                                        <p class="text-gray-600 text-xs">${user?.providerData && user.providerData.some(p => p.providerId && p.providerId.includes('google.com')) ? 'Google SSO' : 'Anonymous'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Action Buttons (remain outside grid) -->
+                    <div class="flex flex-col sm:flex-row justify-between items-center pt-4 border-t gap-3 mt-4">
+                        <div class="order-2 sm:order-1">
+                            <button type="button" id="delete-account-btn"
+                                    class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium" disabled style="opacity:0.5;cursor:not-allowed;">
+                                🗑️ Delete Account
+                            </button>
+                        </div>
+                        <div class="flex space-x-3 order-1 sm:order-2">
+                            <button type="button" class="close-modal-btn px-4 py-2 text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm" disabled style="opacity:0.5;cursor:not-allowed;">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                    class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm">
+                                💾 Save Profile
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            `;
+            // Remove any existing modals
+            modalContainer.innerHTML = '';
+            // Create modal
+            const modal = document.createElement('div');
+            modal.id = 'onboarding-modal';
+            modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50';
+            modal.innerHTML = `<div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-5xl modal-content">${modalContent}</div>`;
+            modalContainer.appendChild(modal);
+            // No close on backdrop click
+            // Setup form submit
+            modal.querySelector('#edit-profile-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const selectedConditions = Array.from(modal.querySelectorAll('input[name="conditions"]:checked')).map(cb => cb.value);
+                if (!localData.userProfile) localData.userProfile = {};
+                localData.userProfile.displayName = modal.querySelector('#display-name').value;
+                localData.userProfile.dateOfBirth = modal.querySelector('#date-of-birth').value;
+                localData.userProfile.emergencyContact = modal.querySelector('#emergency-contact').value;
+                localData.userProfile.medicalNotes = modal.querySelector('#medical-notes').value;
+                localData.userProfile.conditions = selectedConditions;
+                localData.userProfile.dataSharing = modal.querySelector('#data-sharing').checked;
+                localData.userProfile.onboardingCompleted = true;
+                await saveData();
+                modal.remove();
+                showStatusMessage('Profile saved! Welcome to the app!', 'success');
+                if (window.location.search.includes('onboarding=1')) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                renderProfile();
+            });
+        }
+
+        // --- Help Modal ---
+        function showHelpModal() {
+            const helpContent = `
+                <div class="space-y-4">
+                    <h2 class="text-xl font-bold mb-2">Help & Support</h2>
+                    <p>Welcome to myHealthTracker! Here you can track your medical visits, symptoms, and more. If you have questions or need support, check the FAQ or contact us.</p>
+                    <ul class="list-disc pl-6 text-sm text-gray-700">
+                        <li>To add a new record, click the <b>Add Record</b> button.</li>
+                        <li>To log symptoms, use the <b>Log Symptoms</b> button on your dashboard or profile.</li>
+                        <li>Update your profile and tracked conditions from the profile page.</li>
+                    </ul>
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                        <h3 class="font-semibold text-yellow-800 mb-1">A Note for Our Community</h3>
+                        <p class="text-yellow-900 text-sm">This is a personal project designed for the chronically ill community to find a little bit of fun and a sense of accomplishment in their health journey. Please do not misuse health services for the purpose of checking off locations. Your health and the resources of the NHS are paramount.</p>
+                    </div>
+                    <div class="text-sm text-blue-600 text-center italic mt-2">Tip: Keep your profile up to date for the best experience!</div>
+                    <button id="close-help-btn" class="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">Close</button>
+                </div>
+            `;
+            const modal = createModal('help-modal', 'Help & Support', helpContent, 'max-w-2xl');
+            openModal(modal);
+            modal.querySelector('#close-help-btn').addEventListener('click', () => closeModal(modal));
+        }
+        
+        // --- Setup Event Listeners ---
+        function setupEventListeners() {
+            document.getElementById('signout-btn').addEventListener('click', () => signOut(auth));
+            document.getElementById('add-record-btn').addEventListener('click', showAddRecordModal);
+            document.getElementById('help-btn').addEventListener('click', showHelpModal);
+            
+            profileContent.addEventListener('click', (e) => {
+                const target = e.target;
+                if (target.closest('.profile-tab-btn')) {
+                    const targetTab = target.closest('.profile-tab-btn').dataset.tab;
+                    document.querySelectorAll('.profile-tab-btn').forEach(b => {
+                        b.className = 'profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm';
+                    });
+                    target.closest('.profile-tab-btn').className = 'profile-tab-btn border-purple-500 text-purple-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm';
+                    
+                    const contentArea = document.getElementById('profile-tab-content');
+                    switch (targetTab) {
+                        case 'history': contentArea.innerHTML = createHistoryTab(localData.visitHistory || []); break;
+                        case 'records': contentArea.innerHTML = createRecordsTab(); break;
+                        case 'achievements': contentArea.innerHTML = createAchievementsTab(); break;
+                        case 'analytics': contentArea.innerHTML = createAnalyticsTab(); break;
+                        case 'symptoms': contentArea.innerHTML = createSymptomsTab(); break;
+                    }
+                } else if (target.id === 'edit-profile-btn') {
+                    showEditProfileModal();
+                } else if (target.id === 'profile-log-symptom-btn') {
+                    showProfileLogSymptomModal();
+                }
+            });
+        }
+
+        // --- Log Symptoms Modal for Profile ---
+        function showProfileLogSymptomModal() {
+            const userConditions = localData.userProfile?.conditions || [];
+            if (userConditions.length === 0) {
+                showStatusMessage('Please set up condition tracking in your profile first.', 'error');
+                return;
+            }
+            const conditionQuestions = typeof generateConditionQuestionsForSymptoms === 'function'
+                ? generateConditionQuestionsForSymptoms(userConditions)
+                : '';
+            const modalContent = `
+                <form id="profile-quick-symptom-form" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="symptom-date" class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                            <input type="date" id="symptom-date" required
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                value="${new Date().toISOString().split('T')[0]}">
+                        </div>
+                        <div>
+                            <label for="symptom-notes" class="block text-sm font-medium text-gray-700 mb-2">Additional Notes (Optional)</label>
+                            <textarea id="symptom-notes" rows="3"
+                                placeholder="Any additional symptoms or notes..."
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        </div>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                        <h4 class="font-semibold text-gray-900 mb-3">📋 Symptom Questions</h4>
+                        <p class="text-sm text-gray-600 mb-4">Based on your tracked conditions:</p>
+                        ${conditionQuestions}
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-4 border-t mt-4">
+                        <button type="button" class="cancel-btn px-4 py-2 text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Log Symptoms
+                        </button>
+                    </div>
+                </form>
+            `;
+            // Remove any existing modals
+            modalContainer.innerHTML = '';
+            // Create modal
+            const modal = document.createElement('div');
+            modal.id = 'profile-quick-symptom-modal';
+            modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50';
+            modal.innerHTML = `<div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl modal-content">${modalContent}</div>`;
+            modalContainer.appendChild(modal);
+            // Cancel button
+            modal.querySelector('.cancel-btn').addEventListener('click', () => modal.remove());
+            // Form submission
+            modal.querySelector('#profile-quick-symptom-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const symptomData = {
+                    id: `${new Date().toISOString()}_${Math.random().toString(36).substr(2, 9)}`,
+                    timestamp: new Date().toISOString(),
+                    date: form.querySelector('#symptom-date').value,
+                    conditions: {},
+                    notes: form.querySelector('#symptom-notes').value || null,
+                    isSymptomOnly: true,
+                    type: 'symptom_log'
+                };
+                const formData = new FormData(form);
+                for (let [key, value] of formData.entries()) {
+                    if (key.startsWith('condition_')) {
+                        const parts = key.split('_');
+                        const condition = parts[1];
+                        const field = parts.slice(2).join('_');
+                        if (!symptomData.conditions[condition]) symptomData.conditions[condition] = {};
+                        if (form.querySelector(`[name="${key}"]`).type === 'checkbox') {
+                            symptomData.conditions[condition][field] = true;
+                        } else if (value) {
+                            symptomData.conditions[condition][field] = value;
+                        }
+                    }
+                }
+                if (!localData.symptomTracking) localData.symptomTracking = [];
+                localData.symptomTracking.unshift(symptomData);
+                await saveData();
+                modal.remove();
+                showStatusMessage('Symptoms logged successfully!', 'success');
+                renderProfile();
+            });
+        }
+
+        // --- Run the app ---
+        initializeAppLogic();
+    </script>
+</body>
+
+</html>

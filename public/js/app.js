@@ -22,32 +22,57 @@ class HospitalTrackerApp {
         try {
             console.log('Initializing Hospital Tracker App...');
             
-            // Initialize components
+            // Initialize UI components first
+            const uiStatus = this.uiManager.initialize();
+            console.log('UI status:', uiStatus);
+            
+            this.modalManager.initialize();
+            
+            // Setup callbacks
             this.setupCallbacks();
             
             // Initialize Firebase Auth
             await this.firebaseAuth.initialize();
             
+            // Setup UI elements
+            this.uiManager.setupBuildTracker();
             this.setupEventListeners();
             
             console.log('App initialization complete');
         } catch (error) {
             console.error('App initialization failed:', error);
+            this.uiManager.showStatusMessage('Failed to initialize app. Please refresh the page.', 'error');
         }
     }
 
     setupCallbacks() {
-        // Set up the connection between auth and data manager
+        // Data manager callbacks
+        this.dataManager.onStatus((msg, type) => this.uiManager.showStatusMessage(msg, type));
+        this.dataManager.onLoading((loading, text) => this.uiManager.setLoading(loading, text));
         this.dataManager.setFirebaseAuth(this.firebaseAuth);
+
+        // Component data manager setup
+        this.listRenderer.setDataManager(this.dataManager);
+        this.medicalRecordsManager.setDataManager(this.dataManager);
 
         // Auth callbacks
         this.firebaseAuth.onAuthChange(async ({ user }) => {
             console.log('Auth state changed:', user ? `User: ${user.uid}` : 'No user');
             
-            if (user && user.isAnonymous) {
-                console.log('Anonymous user detected, initializing with default data');
-                await this.dataManager.initializeDefaultData();
-                this.renderAll();
+            // Update UI to reflect auth state
+            this.uiManager.updateUserDisplay(user, user?.uid);
+            this.uiManager.updateProfileButtonVisibility(!!user);
+            
+            if (user) {
+                this.uiManager.setLoading(true, 'Loading your data...');
+                
+                // For anonymous users, initialize with default data immediately
+                if (user.isAnonymous) {
+                    console.log('Anonymous user detected, initializing with default data');
+                    await this.dataManager.initializeDefaultData();
+                    this.renderAll();
+                    this.uiManager.setLoading(false);
+                }
             }
         });
 
@@ -56,12 +81,19 @@ class HospitalTrackerApp {
             
             if (exists && data) {
                 this.dataManager.setData(data);
-            } else if (!this.firebaseAuth.getCurrentUser()?.isAnonymous) {
+                console.log('Loaded user data:', data);
+            } else {
+                // If no data exists for authenticated user, initialize defaults
+                console.log('No user data found, initializing defaults');
                 await this.dataManager.initializeDefaultData();
             }
             
             this.renderAll();
+            this.uiManager.setLoading(false);
         });
+
+        // Awards manager callback
+        this.awardsManager.onStatus((msg, type) => this.uiManager.showStatusMessage(msg, type));
     }
 
     setupEventListeners() {
@@ -92,6 +124,18 @@ class HospitalTrackerApp {
         
         // Logout functionality
         document.getElementById('logout-btn')?.addEventListener('click', async () => {
+            console.log('Logout button clicked');
+            const success = await this.firebaseAuth.logout();
+            if (success) {
+                window.location.href = '/';
+            } else {
+                this.uiManager.showStatusMessage('Failed to logout. Please try again.', 'error');
+            }
+        });
+        
+        // Also handle the signout button in the auth area
+        document.getElementById('signout-btn')?.addEventListener('click', async () => {
+            console.log('Signout button clicked');
             const success = await this.firebaseAuth.logout();
             if (success) {
                 window.location.href = '/';
@@ -192,19 +236,12 @@ class HospitalTrackerApp {
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => this.modalManager.closeModal(modal));
         }
-        
-        const ambulanceCheckbox = modal.querySelector('#ambulance-involved');
-        const ambulanceSection = modal.querySelector('#ambulance-section');
-        if (ambulanceCheckbox && ambulanceSection) {
-            ambulanceCheckbox.addEventListener('change', (e) => {
-                ambulanceSection.classList.toggle('hidden', !e.target.checked);
-            });
-        }
     }
 
     renderAll() {
         try {
             const data = this.dataManager.getData();
+            console.log('Rendering with data:', data);
             
             // Check for new awards
             this.awardsManager.checkAwards(data);
@@ -212,12 +249,17 @@ class HospitalTrackerApp {
             // Render greeting
             this.uiManager.renderGreeting(data, this.firebaseAuth.getAuth());
             
-            // Render all lists and stats
+            // Update stats
+            this.uiManager.updateStats('hospitals', data.hospitals || []);
+            this.uiManager.updateStats('ambulance', data.ambulance || []);
+            
+            // Render all lists
             this.listRenderer.renderAll();
             
             console.log('Render complete');
         } catch (error) {
             console.error('Error during render:', error);
+            this.uiManager.showStatusMessage('Error rendering data', 'error');
         }
     }
 }

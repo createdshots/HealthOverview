@@ -9,16 +9,16 @@ export class AwardsManager {
             'visits_100': { name: 'Century Club', description: 'Accumulate 100 total visits.', icon: '&#127941;' }
         };
         
-        this.statusCallback = null;
+        this.onStatusCallback = null;
     }
 
     onStatus(callback) {
-        this.statusCallback = callback;
+        this.onStatusCallback = callback;
     }
 
     showStatus(message, type = 'success') {
-        if (this.statusCallback) {
-            this.statusCallback(message, type);
+        if (this.onStatusCallback) {
+            this.onStatusCallback(message, type);
         }
     }
 

@@ -1,58 +1,193 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Profile Setup</title>
-    <link rel="stylesheet" href="styles/main.css">
+    <title>My Profile - Health Overview</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/styles/main.css">
+    <script src="/firebase-config-values.js"></script>
+    
+    <style>
+        .profile-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .profile-tab-btn {
+            transition: all 0.2s ease;
+        }
+        .profile-tab-btn:hover {
+            transform: translateY(-1px);
+        }
+        .profile-tab-btn.active {
+            border-color: #8b5cf6;
+            color: #8b5cf6;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .condition-badge {
+            background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%);
+            border: 1px solid #a78bfa;
+        }
+        
+        /* Animation delays for floating elements */
+        .animation-delay-2000 {
+            animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+            animation-delay: 4s;
+        }
+        
+        .loading-dots {
+            animation: loading 1.4s infinite ease-in-out;
+        }
+        .loading-dots:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes loading {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        /* Custom scrollbar styles */
+        .custom-scrollbar::-webkit-scrollbar { 
+            width: 8px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-track { 
+            background: #f1f1f1; 
+            border-radius: 10px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+            background: #c7d2fe; 
+            border-radius: 10px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+            background: #a78bfa; 
+        }
+        
+        /* Onboarding modal styles */
+        .onboarding-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .onboarding-user-info {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+        .onboarding-condition-card {
+            background: linear-gradient(135deg, #fafbff 0%, #f1f5f9 100%);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .onboarding-condition-card:hover {
+            border-color: #8b5cf6;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.15);
+        }
+        .onboarding-condition-card.selected {
+            border-color: #8b5cf6;
+            background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%);
+        }
+        .privacy-card {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            border: 1px solid #bbf7d0;
+        }
+        
+        /* Enhanced modal sizing for onboarding */
+        #modal-backdrop {
+            padding: 1rem;
+        }
+        
+        #modal-content {
+            max-width: 95vw !important;
+            width: 95vw !important;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
-    <div class="container mx-auto p-4 md:p-8 max-w-2xl">
-        <h1 class="text-2xl font-bold mb-4">Set Up Your Profile</h1>
-        <form id="profile-form" class="space-y-4">
-            <div>
-                <label for="display-name" class="block text-sm font-medium text-gray-700">Display Name</label>
-                <input type="text" id="display-name" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Enter your display name">
-            </div>
-            <div>
-                <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-                <input type="email" id="email" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Enter your email">
-            </div>
-            <div>
-                <label for="conditions" class="block text-sm font-medium text-gray-700">Tracked Conditions</label>
-                <select id="conditions" multiple class="mt-1 block w-full p-2 border border-gray-300 rounded-md">
-                    <option value="epilepsy">Epilepsy</option>
-                    <option value="autism">Autism</option>
-                    <option value="diabetes">Diabetes</option>
-                    <option value="mental_health">Mental Health</option>
-                    <option value="chronic_pain">Chronic Pain</option>
-                </select>
-                <p class="text-xs text-gray-500 mt-1">Hold Ctrl (Windows) or Command (Mac) to select multiple conditions.</p>
-            </div>
-            <div class="flex justify-end space-x-3 pt-4 border-t mt-4">
-                <button type="button" id="cancel-btn" class="px-4 py-2 text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300">Cancel</button>
-                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Profile</button>
-            </div>
-        </form>
+
+<body class="bg-gray-100 min-h-screen">
+    <!-- Loading Indicator -->
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-3 shadow-xl">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span id="loader-text" class="text-gray-700">Loading your profile...</span>
+        </div>
     </div>
-    <script type="module">
-        document.getElementById('profile-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const displayName = document.getElementById('display-name').value;
-            const email = document.getElementById('email').value;
-            const conditions = Array.from(document.getElementById('conditions').selectedOptions).map(option => option.value);
 
-            // Save the profile data (this should be implemented in your app logic)
-            localData.userProfile = { displayName, email, conditions };
-            await saveData(); // Assume saveData is a function that saves localData
+    <!-- Modal Container -->
+    <div id="modal-container"></div>
 
-            // Redirect to the main application page after saving
-            window.location.href = '/dashboard.html';
-        });
+    <!-- Header -->
+    <header class="bg-white shadow-sm p-4 sticky top-0 z-40">
+        <div class="container mx-auto flex justify-between items-center max-w-7xl">
+            <div class="flex items-center space-x-3">
+                <img src="/logo.svg" alt="Health Tracker" class="h-10 w-10">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">My Profile</h1>
+                    <p id="personal-greeting" class="text-sm text-gray-600">Manage your health journey</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span id="user-display-name" class="text-gray-700 font-medium hidden"></span>
+                <a href="/dashboard.html" 
+                   class="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2 rounded-full hover:from-purple-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium text-sm">
+                    📊 Dashboard
+                </a>
+                <button id="add-record-btn"
+                        class="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-full hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium text-sm">
+                    ➕ Add Record
+                </button>
+                <button id="signout-btn"
+                        class="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-full hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium text-sm">
+                    🚪 Sign Out
+                </button>
+            </div>
+        </div>
+    </header>
 
-        document.getElementById('cancel-btn').addEventListener('click', () => {
-            window.location.href = '/dashboard.html'; // Redirect to the main page
-        });
-    </script>
+    <!-- Main Content -->
+    <main id="profile-content" class="container mx-auto p-4 md:p-8 max-w-7xl hidden">
+        <!-- Profile Header and Stats Grid -->
+        <div id="profile-header-and-stats"></div>
+        
+        <!-- Profile Tabs -->
+        <div class="bg-white rounded-xl shadow-md mt-6">
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8 px-6" id="profile-tabs">
+                    <button class="profile-tab-btn border-purple-500 text-purple-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="overview">Overview</button>
+                    <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="conditions">My Conditions</button>
+                    <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="records">Medical Records</button>
+                    <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="analytics">Analytics</button>
+                    <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="symptoms">Symptoms</button>
+                </nav>
+            </div>
+            <div id="profile-tab-content" class="p-6">
+                <!-- Tab content will be dynamically inserted here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Not signed in message -->
+    <div id="not-signed-in" class="text-center py-16">
+        <div class="text-gray-400 text-6xl mb-4">👤</div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">Sign in to view your profile</h2>
+        <p class="text-gray-600 mb-6">Track your visit history, view achievements, and analyze your progress.</p>
+        <a href="/" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
+            Go to Sign In
+        </a>
+    </div>
+
+    <!-- Status Message Area -->
+    <div id="status-message-area" class="fixed top-20 right-4 z-50"></div>
+
+    <!-- Load Modular JavaScript -->
+    <script type="module" src="/js/profileApp.js"></script>
 </body>
+
 </html>
