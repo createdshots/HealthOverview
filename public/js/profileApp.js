@@ -857,12 +857,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 medicalNotes: formData.get('medicalNotes') || '',
                 conditions: Array.from(selectedConditions),
                 onboardingCompleted: true,
-                profileSetupDate: new Date().toISOString()
+                profileSetupDate: new Date().toISOString(),
+                lastUpdated: new Date().toISOString()
             };
 
-            // Save to enhanced data manager
+            // Save to enhanced data manager and ensure it's persisted
             enhancedDataManager.setData(userData);
-            await enhancedDataManager.saveData();
+            
+            // Wait for save to complete
+            const saveSuccess = await enhancedDataManager.saveData();
+            if (!saveSuccess) {
+                throw new Error('Failed to save user data');
+            }
+            
+            // Update current data to reflect saved state
             currentUserData = enhancedDataManager.getData();
             
             hideModal();
@@ -873,10 +881,14 @@ document.addEventListener('DOMContentLoaded', () => {
             url.searchParams.delete('onboarding');
             window.history.replaceState({}, '', url);
             
-            // Redirect to dashboard after a short delay to show the success message
+            // Add onboarding completion flag to localStorage as backup
+            localStorage.setItem('onboardingCompleted', 'true');
+            localStorage.setItem('onboardingCompletedTime', new Date().toISOString());
+            
+            // Redirect to dashboard after ensuring data is saved
             setTimeout(() => {
                 window.location.href = '/dashboard.html';
-            }, 1500);
+            }, 2000); // Increased delay to ensure Firestore consistency
             
         } catch (error) {
             console.error('Error completing onboarding:', error);

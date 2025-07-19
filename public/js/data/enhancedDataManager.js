@@ -236,10 +236,18 @@ export class EnhancedDataManager {
         }
 
         try {
+            // Ensure onboardingCompleted is at the top level for easy access
+            if (this.localData.onboardingCompleted !== undefined) {
+                // Make sure it's set at both locations for compatibility
+                this.localData.userProfile = this.localData.userProfile || {};
+                this.localData.userProfile.onboardingCompleted = this.localData.onboardingCompleted;
+            }
+
             console.log("Attempting to save data to Firestore...", {
                 userId: this.userId,
                 docPath: this.docRef.path,
-                dataKeys: Object.keys(this.localData)
+                dataKeys: Object.keys(this.localData),
+                onboardingCompleted: this.localData.onboardingCompleted
             });
 
             await setDoc(this.docRef, this.localData, { merge: true });

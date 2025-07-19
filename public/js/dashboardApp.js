@@ -43,8 +43,17 @@ class DashboardApp {
                 try {
                     const onboardingCompleted = await this.dataManager.loadUserData();
                     
+                    // Check localStorage as fallback for recent onboarding completion
+                    const localOnboardingCompleted = localStorage.getItem('onboardingCompleted') === 'true';
+                    const localOnboardingTime = localStorage.getItem('onboardingCompletedTime');
+                    const recentOnboardingCompletion = localOnboardingTime && 
+                        (new Date() - new Date(localOnboardingTime)) < 30000; // Within last 30 seconds
+                    
+                    const isOnboardingComplete = onboardingCompleted || 
+                                               (localOnboardingCompleted && recentOnboardingCompletion);
+                    
                     // For non-anonymous users, check if onboarding is completed
-                    if (!user.isAnonymous && !onboardingCompleted) {
+                    if (!user.isAnonymous && !isOnboardingComplete) {
                         console.log('User has not completed onboarding, redirecting...');
                         this.hideLoading();
                         showStatusMessage('Please complete your profile setup first.', 'info');
@@ -52,6 +61,12 @@ class DashboardApp {
                             window.location.href = '/profile.html?onboarding=true';
                         }, 1000);
                         return;
+                    }
+                    
+                    // Clear localStorage flags if onboarding is confirmed complete
+                    if (onboardingCompleted) {
+                        localStorage.removeItem('onboardingCompleted');
+                        localStorage.removeItem('onboardingCompletedTime');
                     }
                     
                     // If anonymous user and no data, initialize defaults
