@@ -3,7 +3,7 @@ import { enhancedDataManager } from './data/enhancedDataManager.js';
 import { modalManager } from './components/modal.js';
 import { uiComponents } from './utils/uiComponents.js';
 import { medicalRecordsManager } from './features/medicalRecords.js';
-import { auth, signInWithPopup, GoogleAuthProvider, OAuthProvider, signInAnonymously, signOut, onAuthStateChanged } from './firebaseConfig.js';
+import { auth, signInWithPopup, GoogleAuthProvider, OAuthProvider, signInAnonymously, signOut, onAuthStateChanged } from '../firebaseConfig.js';
 
 class DashboardApp {
     constructor() {
