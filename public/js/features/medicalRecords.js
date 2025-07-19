@@ -22,7 +22,10 @@ export class MedicalRecordsManager {
             return;
         }
 
-        console.log('Data manager found, generating modal...');
+        // Make hideModal globally available BEFORE showing the modal
+        window.hideModal = hideModal;
+        window.showStatusMessage = showStatusMessage;
+
         const data = this.dataManager.getData();
         const hospitalOptions = (data.hospitals || []).map(h => 
             `<option value="${h.name}">${h.name}</option>`
@@ -85,19 +88,14 @@ export class MedicalRecordsManager {
             </script>
         `;
 
-        console.log('About to show modal with content length:', modalContent.length);
         showModal(modalContent, false);
-        console.log('Modal show command executed');
         
-        // Adjust modal size for new layout - with a delay to ensure modal is created
         setTimeout(() => {
             const modalContent = document.getElementById('modal-content');
-            console.log('Modal content element found:', !!modalContent);
             if (modalContent) {
                 modalContent.style.width = '95vw';
                 modalContent.style.maxWidth = '95vw';
                 modalContent.style.maxHeight = '90vh';
-                console.log('Modal size adjusted');
             }
             this.setupRecordFormListeners();
         }, 50);
@@ -360,12 +358,12 @@ export class MedicalRecordsManager {
                         </label>
                         <div class="relative">
                             <input type="range" 
+                                   id="severity-slider"
                                    name="severity" 
                                    min="1" 
                                    max="10" 
                                    value="5" 
-                                   class="w-full h-3 bg-gradient-to-r from-green-300 via-yellow-300 to-red-500 rounded-lg appearance-none cursor-pointer severity-slider"
-                                   oninput="updateSeverityLabel(this.value)">
+                                   class="w-full h-3 bg-gradient-to-r from-green-300 via-yellow-300 to-red-500 rounded-lg appearance-none cursor-pointer severity-slider">
                             <div class="flex justify-between text-xs text-rose-600 mt-2 font-medium">
                                 <span class="flex items-center"><span class="w-2 h-2 bg-green-400 rounded-full mr-1"></span>1 - Minimal</span>
                                 <span id="severity-label" class="font-bold text-rose-800 bg-white px-2 py-1 rounded-full shadow">5 - Moderate</span>
@@ -466,6 +464,20 @@ export class MedicalRecordsManager {
 
     // Setup medical record form event handlers
     setupRecordFormListeners() {
+        // Severity slider event listener
+        const severitySlider = document.getElementById('severity-slider');
+        if (severitySlider) {
+            severitySlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                const labels = {
+                    1: '1 - Minimal', 2: '2 - Mild', 3: '3 - Mild', 4: '4 - Moderate', 5: '5 - Moderate',
+                    6: '6 - Moderate', 7: '7 - Severe', 8: '8 - Severe', 9: '9 - Very Severe', 10: '10 - Unbearable'
+                };
+                const label = document.getElementById('severity-label');
+                if (label) label.textContent = labels[value] || value;
+            });
+        }
+
         // Incident type selection with enhanced visual feedback
         const incidentCards = document.querySelectorAll('.incident-type-card');
         const selectedTypeInput = document.getElementById('selected-type');
@@ -511,10 +523,11 @@ export class MedicalRecordsManager {
             });
         });
 
-        // Cancel button
+        // Cancel button - this should now work
         const cancelBtn = document.getElementById('cancel-record-btn');
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
+                console.log('Cancel button clicked');
                 hideModal();
             });
         }
@@ -523,6 +536,7 @@ export class MedicalRecordsManager {
         const form = document.getElementById('add-record-form');
         if (form) {
             form.addEventListener('submit', (e) => {
+                console.log('Form submitted');
                 // Validate incident type selection
                 if (!selectedTypeInput.value) {
                     e.preventDefault();
@@ -585,42 +599,53 @@ export class MedicalRecordsManager {
         }
     }
 
-    // Handle medical record form submission
-    handleRecordSubmission(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(e.target);
-        const symptoms = [];
-        
-        // Collect general symptoms
-        const generalSymptoms = formData.getAll('symptoms');
-        symptoms.push(...generalSymptoms);
-        
-        // Collect condition-specific symptoms
-        const conditionSymptoms = formData.getAll('condition_symptoms');
-        symptoms.push(...conditionSymptoms);
-        
-        const recordData = {
-            id: Date.now().toString(),
-            type: formData.get('incidentType'),
-            datetime: formData.get('datetime'),
-            location: formData.get('location'),
-            symptoms: symptoms,
-            severity: parseInt(formData.get('severity')),
-            impact: formData.get('impact'),
-            notes: formData.get('notes'),
-            createdAt: new Date().toISOString()
-        };
-        
-        // Save the record
-        if (this.dataManager) {
-            this.dataManager.addMedicalRecord(recordData);
-            showStatusMessage('Medical record saved successfully!', 'success');
+    // Handle form submission
+    handleSubmit() {
+        const form = document.getElementById('add-record-form');
+        if (!form) return;
+
+        // Basic validation
+        const incidentType = form.elements['incidentType'].value;
+        const datetime = form.elements['datetime'].value;
+        const location = form.elements['location'].value;
+
+        if (!incidentType) {
+            this.showValidationError('Please select an incident type');
+            return;
         }
-        
+
+        if (!datetime) {
+            this.showValidationError('Please select a date and time');
+            return;
+        }
+
+        if (!location) {
+            this.showValidationError('Please select a location');
+            return;
+        }
+
+        // Gather form data
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        // For symptoms and condition symptoms, convert to arrays
+        data.symptoms = (data.symptoms || '').split(',').map(s => s.trim()).filter(s => s);
+        data.condition_symptoms = (data.condition_symptoms || '').split(',').map(s => s.trim()).filter(s => s);
+
+        // TODO: Handle the actual data saving logic, e.g., send to server or save to local storage
+
+        console.log('Saving medical record:', data);
+
+        // Close the modal after saving
         hideModal();
     }
-}
 
-// Create and export singleton instance
-export const medicalRecordsManager = new MedicalRecordsManager();
+    // Show validation error message
+    showValidationError(message) {
+        const typeValidation = document.getElementById('type-validation');
+        if (typeValidation) {
+            typeValidation.textContent = message;
+            typeValidation.classList.remove('hidden');
+        }
+    }
+}
