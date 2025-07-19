@@ -9,6 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="/styles/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
     <script src="/firebase-config-values.js"></script>
     
     <style>
@@ -336,7 +337,7 @@
     </style>
     
     <!-- Add Cropper.js CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" integrity="sha512-h6CYjE9j5tKnqXF5N6B5A+GdvJqt5uKGU1KYjJwWCqh3yQgkNBWnNNaGGvKqzKZT2/PKhJ6P2dqhS1jfgx2lDQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
 </head>
 
 <body class="min-h-screen relative">
@@ -451,8 +452,8 @@
     <!-- Hidden file input for profile picture upload -->
     <input type="file" id="profile-pic-input" accept="image/*" style="display: none;">
 
-    <!-- Add Cropper.js Script -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js" integrity="sha512-2K4l3D1Wt/Lk5j0WZ8k9oO9/g9P2Q3U0k3VJQ7eM3dz6FgWoAUOmSiWqZXFW4/Q0qRCi6VB8gDjFhtCR9WtGJw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Add Cropper.js Script (updated version without integrity) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
     
     <!-- Load Profile Picture Upload Module -->
     <script type="module" src="/js/profilePictureUpload.js"></script>

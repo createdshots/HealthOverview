@@ -45,19 +45,19 @@ class ProfilePictureUploader {
             // Load Cropper.js CSS
             const cssLink = document.createElement('link');
             cssLink.rel = 'stylesheet';
-            cssLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css';
+            cssLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css';
             document.head.appendChild(cssLink);
 
             // Load Cropper.js JavaScript
             const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js';
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js';
             script.onload = () => {
                 console.log('✅ Cropper.js loaded successfully');
                 resolve();
             };
             script.onerror = () => {
                 console.error('❌ Failed to load Cropper.js');
-                reject();
+                reject(new Error('Failed to load Cropper.js'));
             };
             document.head.appendChild(script);
         });
