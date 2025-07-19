@@ -148,10 +148,12 @@ class DashboardApp {
 
     // Render ambulance services
     renderAmbulance() {
+        console.log('=== AMBULANCE RENDER START ===');
         const searchTerm = document.getElementById('ambulance-search')?.value || '';
         const data = this.dataManager.getData();
         
         console.log('Rendering ambulance data:', data.ambulance);
+        console.log('Ambulance data length:', data.ambulance?.length || 0);
         
         // Ensure ambulance data exists
         if (!data.ambulance || data.ambulance.length === 0) {
@@ -165,9 +167,30 @@ class DashboardApp {
         }
         
         const filteredData = this.dataManager.getFilteredData('ambulance', searchTerm);
+        console.log('Filtered ambulance data:', filteredData);
+        console.log('Filtered data length:', filteredData.length);
+        
+        // Check if container exists
+        const container = document.getElementById('ambulance-list');
+        console.log('Ambulance container found:', !!container);
+        if (container) {
+            console.log('Container current children count:', container.children.length);
+        }
         
         this.uiComponents.renderList('ambulance', filteredData, searchTerm);
         this.uiComponents.renderStats('ambulance', data.ambulance || []);
+        
+        // Verify rendering worked
+        setTimeout(() => {
+            const containerAfter = document.getElementById('ambulance-list');
+            if (containerAfter) {
+                console.log('Container children after render:', containerAfter.children.length);
+                console.log('Container visibility:', window.getComputedStyle(containerAfter).display);
+                console.log('Container opacity:', window.getComputedStyle(containerAfter).opacity);
+            }
+        }, 100);
+        
+        console.log('=== AMBULANCE RENDER END ===');
     }
 
     // Update quick stats
@@ -314,30 +337,50 @@ class DashboardApp {
 
     // Add entrance animations method
     animateElementsEntrance() {
-        // Animate main content cards
-        const cards = document.querySelectorAll('.bg-white');
+        // Animate main content cards with more specific selectors to avoid ambulance list interference
+        const cards = document.querySelectorAll('.bg-white.rounded-lg.shadow-sm:not(#ambulance-list .bg-white):not(#hospitals-list .bg-white)');
         cards.forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = 'all 0.6s ease';
-            
-            setTimeout(() => {
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, index * 150);
+            // Only animate if this card doesn't have list items
+            if (!card.closest('#ambulance-list') && !card.closest('#hospitals-list')) {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'all 0.6s ease';
+                
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 150);
+            }
+        });
+        
+        // Animate list containers themselves (not individual items)
+        const listContainers = document.querySelectorAll('#hospitals-list, #ambulance-list');
+        listContainers.forEach((container, index) => {
+            if (container && container.children.length > 0) {
+                container.style.opacity = '0';
+                container.style.transform = 'translateY(20px)';
+                container.style.transition = 'all 0.8s ease';
+                
+                setTimeout(() => {
+                    container.style.opacity = '1';
+                    container.style.transform = 'translateY(0)';
+                }, 200 + (index * 200));
+            }
         });
         
         // Animate action buttons
-        const buttons = document.querySelectorAll('#show-stats-btn, #show-map-btn, #show-awards-btn');
+        const buttons = document.querySelectorAll('#show-stats-btn, #show-map-btn, #show-awards-btn, #add-record-btn');
         buttons.forEach((button, index) => {
-            button.style.opacity = '0';
-            button.style.transform = 'scale(0.8)';
-            button.style.transition = 'all 0.4s ease';
-            
-            setTimeout(() => {
-                button.style.opacity = '1';
-                button.style.transform = 'scale(1)';
-            }, 800 + (index * 100));
+            if (button) {
+                button.style.opacity = '0';
+                button.style.transform = 'scale(0.8)';
+                button.style.transition = 'all 0.4s ease';
+                
+                setTimeout(() => {
+                    button.style.opacity = '1';
+                    button.style.transform = 'scale(1)';
+                }, 800 + (index * 100));
+            }
         });
     }
 }

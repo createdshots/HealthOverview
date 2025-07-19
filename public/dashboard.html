@@ -33,21 +33,42 @@
             background: #64748b;
         }
 
-        /* Ensure ambulance list is visible */
+        /* Ensure ambulance list is always visible and prevent animation interference */
         #ambulance-list {
             display: block !important;
             visibility: visible !important;
-            opacity: 1 !important;
             min-height: 50px;
-            background: white;
         }
         
-        /* Debug styles to see if container exists */
+        #hospitals-list {
+            display: block !important;
+            visibility: visible !important;
+            min-height: 50px;
+        }
+        
+        /* Prevent animation conflicts with list containers */
+        #ambulance-list, #hospitals-list {
+            opacity: 1 !important;
+            transform: none !important;
+        }
+        
+        /* Debug styles to see if containers exist */
         #ambulance-list:empty::before {
             content: "Loading ambulance services...";
             color: #6b7280;
             font-style: italic;
             padding: 1rem;
+            display: block;
+        }
+        
+        #hospitals-list:empty::before {
+            content: "Loading hospitals...";
+            color: #6b7280;
+            font-style: italic;
+            padding: 1rem;
+            display: block;
+        }
+    </style>
             display: block;
         }
     </style>
