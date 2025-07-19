@@ -1,147 +1,62 @@
 console.log('dashboardApp.js loaded');
-// Main Dashboard Application - modular version
+
+import { auth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, signInAnonymously } from '/firebaseConfig.js';
 import { enhancedDataManager } from './data/enhancedDataManager.js';
-import { modalManager } from './components/modal.js';
-import { uiComponents } from './utils/uiComponents.js';
-import { medicalRecordsManager } from './features/medicalRecords.js';
-import { auth, signOut, onAuthStateChanged } from '../firebaseConfig.js';
+import { showStatusMessage } from './utils/ui.js';
 
 class DashboardApp {
     constructor() {
         this.dataManager = enhancedDataManager;
-        this.modalManager = modalManager;
-        this.uiComponents = uiComponents;
-        this.medicalRecords = medicalRecordsManager;
         this.loadingIndicator = null;
-        this.currentUser = null;
+        this.uiComponents = new UIComponents();
         
-        // Bind methods to preserve context
-        this.handleInteraction = this.handleInteraction.bind(this);
-        this.renderAll = this.renderAll.bind(this);
+        // Set up data manager callbacks
+        this.dataManager.onStatusMessage((message, type) => {
+            showStatusMessage(message, type);
+        });
     }
 
-    // Initialize the dashboard application
     async init() {
         console.log('Initializing Dashboard App...');
         
-        // Setup loading indicator
         this.loadingIndicator = document.getElementById('loading-overlay');
         
-        // Setup status message callback
-        this.dataManager.onStatusMessage((message, type) => {
-            this.uiComponents.showStatusMessage(message, type);
-        });
-
-        // Setup medical records manager
-        this.medicalRecords.setDataManager(this.dataManager);
-        
-        // Setup UI event listeners
-        this.setupEventListeners();
-        
-        // Initialize authentication
-        this.initAuth();
-        
-        // Make app globally accessible for legacy compatibility
-        window.dashboardApp = this;
-        
-        console.log('Dashboard App initialized');
-    }
-
-    // Initialize authentication
-    initAuth() {
+        // Set up auth state listener
         onAuthStateChanged(auth, async (user) => {
-            this.currentUser = user;
-            this.updateAuthUI(user);
+            console.log('Auth state changed:', user ? 'User signed in' : 'No user');
             
             if (user) {
-                console.log('User authenticated:', user.uid);
+                this.showLoading('Loading your data...');
+                
+                // Set user ID in data manager
                 this.dataManager.setUserId(user.uid);
                 
-                // Check if user needs onboarding
-                try {
-                    const { userData, onboardingCompleted } = await this.checkOnboardingStatus(user.uid);
-                    
-                    if (!onboardingCompleted) {
-                        // Redirect to profile with onboarding flag
-                        window.location.href = '/profile.html?onboarding=true';
-                        return;
-                    }
-                } catch (error) {
-                    console.error('Error checking onboarding status:', error);
+                // Load user data or initialize defaults
+                const onboardingCompleted = await this.dataManager.loadUserData();
+                
+                if (!onboardingCompleted && !user.isAnonymous) {
+                    // Redirect to onboarding for non-anonymous users
+                    window.location.href = '/profile.html?onboarding=true';
+                    return;
                 }
                 
-                await this.loadUserData();
-            } else {
-                console.log('No user authenticated');
-                this.dataManager.setUserId(null);
+                // If anonymous user or onboarding completed, proceed to dashboard
+                if (user.isAnonymous && this.dataManager.getData().hospitals.length === 0) {
+                    // Initialize with default data for anonymous users
+                    await this.dataManager.initializeDefaultData();
+                }
+                
+                this.updateAuthUI(user);
+                this.renderAll();
                 this.hideLoading();
+                
+            } else {
+                // Not signed in, redirect to login
+                window.location.href = '/index.html';
             }
         });
-    }
-
-    // Check if user has completed onboarding
-    async checkOnboardingStatus(userId) {
-        try {
-            const { loadUserData } = await import('./data/enhancedDataManager.js');
-            return await loadUserData(userId);
-        } catch (error) {
-            console.error('Error loading user data:', error);
-            return { userData: null, onboardingCompleted: false };
-        }
-    }
-
-    // Update authentication UI
-    updateAuthUI(user) {
-        const signedInView = document.getElementById('auth-signed-in-view');
-        const userIdDisplay = document.getElementById('user-id-display');
-        const addRecordBtn = document.getElementById('add-record-btn');
-        const showProfileBtn = document.getElementById('show-profile-btn');
-
-        if (user) {
-            // User is signed in
-            if (signedInView) {
-                signedInView.classList.remove('hidden');
-                signedInView.classList.add('flex');
-            }
-            
-            const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
-            if (userIdDisplay) userIdDisplay.textContent = displayName;
-            
-            // Show authenticated user buttons
-            if (addRecordBtn) addRecordBtn.classList.remove('hidden');
-            if (showProfileBtn) showProfileBtn.classList.remove('hidden');
-            
-            // Update greeting
-            this.updateGreeting(displayName);
-        } else {
-            // User is signed out, redirect to login page
-            window.location.href = '/index.html';
-        }
-    }
-
-    // Update greeting
-    updateGreeting(name) {
-        const greetingDiv = document.getElementById('personal-greeting');
-        if (greetingDiv) {
-            greetingDiv.textContent = `Hello, ${name}!`;
-        }
-    }
-
-    // Load user data
-    async loadUserData() {
-        this.showLoading('Loading your data...');
         
-        try {
-            const success = await this.dataManager.loadUserData();
-            if (success) {
-                this.renderAll();
-            }
-        } catch (error) {
-            console.error('Error loading user data:', error);
-            this.uiComponents.showStatusMessage('Error loading data. Please refresh the page.', 'error');
-        } finally {
-            this.hideLoading();
-        }
+        this.setupEventListeners();
     }
 
     // Show loading indicator
@@ -152,8 +67,6 @@ class DashboardApp {
                 loaderText.textContent = message;
             }
             this.loadingIndicator.style.display = 'flex';
-        } else {
-            this.uiComponents.showLoading(message);
         }
     }
 
@@ -161,14 +74,16 @@ class DashboardApp {
     hideLoading() {
         if (this.loadingIndicator) {
             this.loadingIndicator.style.display = 'none';
-        } else {
-            this.uiComponents.hideLoading();
         }
     }
 
     // Render all data
     renderAll() {
         try {
+            console.log('Rendering dashboard data...');
+            const data = this.dataManager.getData();
+            console.log('Data to render:', data);
+            
             this.uiComponents.renderGreetingAndActions();
             this.renderHospitals();
             this.renderAmbulance();
@@ -176,7 +91,7 @@ class DashboardApp {
             this.updateQuickStats();
         } catch (error) {
             console.error("Error rendering data:", error);
-            this.uiComponents.showStatusMessage("Error displaying data.", "error");
+            showStatusMessage("Error displaying data.", "error");
         }
     }
 
@@ -217,52 +132,46 @@ class DashboardApp {
         }
     }
 
-    // Authentication methods
-    async signInWithGoogle() {
-        try {
-            const provider = new GoogleAuthProvider();
-            provider.addScope('profile');
-            provider.addScope('email');
-            const result = await signInWithPopup(auth, provider);
-            console.log('Google sign-in successful:', result.user);
-        } catch (error) {
-            console.error('Google sign-in error:', error);
-            this.uiComponents.showStatusMessage('Error signing in with Google. Please try again.', 'error');
-        }
-    }
+    // Update authentication UI
+    updateAuthUI(user) {
+        const signedInView = document.getElementById('auth-signed-in-view');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const addRecordBtn = document.getElementById('add-record-btn');
+        const showProfileBtn = document.getElementById('show-profile-btn');
 
-    async signInWithMicrosoft() {
-        try {
-            const provider = new OAuthProvider('microsoft.com');
-            provider.addScope('profile');
-            provider.addScope('email');
-            const result = await signInWithPopup(auth, provider);
-            console.log('Microsoft sign-in successful:', result.user);
-        } catch (error) {
-            console.error('Microsoft sign-in error:', error);
-            this.uiComponents.showStatusMessage('Error signing in with Microsoft. Please try again.', 'error');
-        }
-    }
-
-    async signInAsGuest() {
-        try {
-            const result = await signInAnonymously(auth);
-            console.log('Anonymous sign-in successful:', result.user);
-        } catch (error) {
-            console.error('Anonymous sign-in error:', error);
-            this.uiComponents.showStatusMessage('Error signing in as guest. Please try again.', 'error');
-        }
-    }
-
-    async signOut() {
-        try {
-            await signOut(auth);
-            console.log('Sign-out successful');
-            // Redirect to login page after sign out
+        if (user) {
+            // User is signed in
+            if (signedInView) {
+                signedInView.classList.remove('hidden');
+                signedInView.classList.add('flex');
+            }
+            
+            const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
+            if (userIdDisplay) userIdDisplay.textContent = displayName;
+            
+            // Show authenticated user buttons
+            if (addRecordBtn) addRecordBtn.classList.remove('hidden');
+            if (showProfileBtn) showProfileBtn.classList.remove('hidden');
+            
+            // Update greeting
+            this.updateGreeting(displayName);
+        } else {
+            // User is signed out, redirect to login page
             window.location.href = '/index.html';
-        } catch (error) {
-            console.error('Sign-out error:', error);
-            this.uiComponents.showStatusMessage('Error signing out. Please try again.', 'error');
+        }
+    }
+
+    // Update greeting
+    updateGreeting(displayName) {
+        const greetingElement = document.getElementById('personal-greeting');
+        if (greetingElement) {
+            const data = this.dataManager.getData();
+            const hospitalCount = data.hospitals?.length || 0;
+            const ambulanceCount = data.ambulance?.length || 0;
+            const visitedHospitals = data.hospitals?.filter(h => h.visited)?.length || 0;
+            const visitedAmbulance = data.ambulance?.filter(a => a.visited)?.length || 0;
+            
+            greetingElement.textContent = `Welcome ${displayName}! You've visited ${visitedHospitals}/${hospitalCount} hospitals and ${visitedAmbulance}/${ambulanceCount} ambulance services.`;
         }
     }
 
@@ -278,16 +187,37 @@ class DashboardApp {
         // Feature buttons
         const addRecordBtn = document.getElementById('add-record-btn');
         const showProfileBtn = document.getElementById('show-profile-btn');
+        const showStatsBtn = document.getElementById('show-stats-btn');
+        const showMapBtn = document.getElementById('show-map-btn');
+        const showAwardsBtn = document.getElementById('show-awards-btn');
 
         if (addRecordBtn) {
             addRecordBtn.addEventListener('click', () => {
-                this.medicalRecords.showAddRecordModal();
+                showStatusMessage('Add record feature coming soon!', 'info');
             });
         }
 
         if (showProfileBtn) {
             showProfileBtn.addEventListener('click', () => {
                 window.location.href = '/profile.html';
+            });
+        }
+
+        if (showStatsBtn) {
+            showStatsBtn.addEventListener('click', () => {
+                showStatusMessage('Statistics feature coming soon!', 'info');
+            });
+        }
+
+        if (showMapBtn) {
+            showMapBtn.addEventListener('click', () => {
+                showStatusMessage('Map feature coming soon!', 'info');
+            });
+        }
+
+        if (showAwardsBtn) {
+            showAwardsBtn.addEventListener('click', () => {
+                showStatusMessage('Awards feature coming soon!', 'info');
             });
         }
 
@@ -303,42 +233,163 @@ class DashboardApp {
             ambulanceSearch.addEventListener('input', () => this.renderAmbulance());
         }
 
-        // Delegate click events for list interactions
-        document.addEventListener('click', (event) => {
-            const target = event.target;
-            
-            // Handle data interactions
-            if (target.dataset.type && (target.type === 'checkbox' || target.dataset.action)) {
-                this.handleInteraction(event);
-            }
-        });
+        // List interaction handlers
+        const hospitalsList = document.getElementById('hospitals-list');
+        const ambulanceList = document.getElementById('ambulance-list');
 
-        // Feature modals
-        const showStatsBtn = document.getElementById('show-stats-btn');
-        const showMapBtn = document.getElementById('show-map-btn');
-        const showAwardsBtn = document.getElementById('show-awards-btn');
-
-        if (showStatsBtn) {
-            showStatsBtn.addEventListener('click', () => {
-                this.uiComponents.showStatusMessage('Charts feature coming soon!', 'info');
-            });
+        if (hospitalsList) {
+            hospitalsList.addEventListener('click', (e) => this.handleInteraction(e));
         }
 
-        if (showMapBtn) {
-            showMapBtn.addEventListener('click', () => {
-                this.uiComponents.showStatusMessage('Map feature coming soon!', 'info');
-            });
+        if (ambulanceList) {
+            ambulanceList.addEventListener('click', (e) => this.handleInteraction(e));
         }
+    }
 
-        if (showAwardsBtn) {
-            showAwardsBtn.addEventListener('click', () => {
-                this.uiComponents.showStatusMessage('Awards feature coming soon!', 'info');
-            });
+    async signOut() {
+        try {
+            await signOut(auth);
+            console.log('Sign-out successful');
+            window.location.href = '/index.html';
+        } catch (error) {
+            console.error('Sign-out error:', error);
+            showStatusMessage('Error signing out. Please try again.', 'error');
         }
     }
 }
 
-// Helper function to create version badges
+// UI Components class to handle rendering
+class UIComponents {
+    renderGreetingAndActions() {
+        // This method can be expanded as needed
+        console.log('Rendering greeting and actions');
+    }
+
+    renderList(type, data, searchTerm = '') {
+        const containerId = type === 'hospitals' ? 'hospitals-list' : 'ambulance-list';
+        const container = document.getElementById(containerId);
+        
+        if (!container) {
+            console.warn(`Container ${containerId} not found`);
+            return;
+        }
+
+        container.innerHTML = '';
+
+        if (!data || data.length === 0) {
+            container.innerHTML = `
+                <div class="text-gray-500 text-center py-8">
+                    <p>No ${type} found${searchTerm ? ` for "${searchTerm}"` : ''}.</p>
+                </div>
+            `;
+            return;
+        }
+
+        data.forEach((item, index) => {
+            const listItem = this.createListItem(type, item, index);
+            container.appendChild(listItem);
+        });
+    }
+
+    createListItem(type, item, index) {
+        const listItem = document.createElement('div');
+        listItem.className = 'bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 hover:shadow-md transition-shadow';
+        
+        const isVisited = item.visited || false;
+        const count = item.count || 0;
+        
+        listItem.innerHTML = `
+            <div class="flex items-start justify-between">
+                <div class="flex items-start space-x-3 flex-1">
+                    <div class="flex-shrink-0 mt-1">
+                        <input 
+                            type="checkbox" 
+                            ${isVisited ? 'checked' : ''} 
+                            data-type="${type}" 
+                            data-index="${index}" 
+                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        >
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-lg font-medium text-gray-900 ${isVisited ? 'text-green-600' : ''}">
+                            ${item.name || 'Unnamed Location'}
+                        </h4>
+                        ${item.city ? `<p class="text-sm text-gray-600 mt-1">${item.city}</p>` : ''}
+                        ${count > 0 ? `<p class="text-xs text-blue-600 mt-1">Visits: ${count}</p>` : ''}
+                    </div>
+                </div>
+                <div class="flex-shrink-0 ml-4">
+                    <div class="flex items-center space-x-2">
+                        <button 
+                            data-type="${type}" 
+                            data-index="${index}" 
+                            data-action="increase"
+                            class="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-green-600 transition-colors text-sm"
+                            title="Add visit"
+                        >
+                            +
+                        </button>
+                        ${count > 0 ? `
+                        <button 
+                            data-type="${type}" 
+                            data-index="${index}" 
+                            data-action="decrease"
+                            class="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 transition-colors text-sm"
+                            title="Remove visit"
+                        >
+                            -
+                        </button>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        return listItem;
+    }
+
+    renderStats(type, data) {
+        const statsElement = document.getElementById(`${type}-stats`);
+        if (!statsElement) return;
+        
+        const total = data.length;
+        const visited = data.filter(item => item.visited).length;
+        const percentage = total > 0 ? Math.round((visited / total) * 100) : 0;
+        
+        statsElement.innerHTML = `
+            <div class="text-sm text-gray-600">
+                Progress: ${visited}/${total} (${percentage}%)
+                <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                    <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                         style="width: ${percentage}%"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    addRecentActivitySection() {
+        // Implementation for recent activity
+        console.log('Adding recent activity section');
+    }
+
+    updateQuickStats(hospitalStats, ambulanceStats) {
+        // Implementation for quick stats update
+        console.log('Updating quick stats:', hospitalStats, ambulanceStats);
+    }
+}
+
+// Initialize the dashboard when the DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApp);
+} else {
+    startApp();
+}
+
+async function startApp() {
+    const app = new DashboardApp();
+    await app.init();
+    createVersionBadges();
+}
+
 function createVersionBadges() {
     const badgeContainer = document.createElement('div');
     badgeContainer.id = 'version-badges';
@@ -395,19 +446,6 @@ function createVersionBadges() {
     wipBadge.style.opacity = '0.92';
     wipBadge.style.pointerEvents = 'none';
     badgeContainer.appendChild(wipBadge);
-}
-
-// Initialize the dashboard when the DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startApp);
-} else {
-    startApp();
-}
-
-async function startApp() {
-    const app = new DashboardApp();
-    await app.init();
-    createVersionBadges();
 }
 
 export { DashboardApp };
