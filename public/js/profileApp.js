@@ -1112,8 +1112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 100);
     }
 
-}); // Close DOMContentLoaded event handler
-function setupOnboardingEventListeners() {
+    function setupOnboardingEventListeners() {
     const form = document.getElementById('onboarding-form');
     const conditionCards = document.querySelectorAll('.onboarding-condition-card');
     const skipBtn = document.getElementById('skip-onboarding');
