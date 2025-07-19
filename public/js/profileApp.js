@@ -810,9 +810,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderOverviewTab(userData) {
         const content = document.getElementById('profile-tab-content');
+        if (!content) return;
+
         const medicalRecords = userData.medicalRecords || [];
         const recentRecords = medicalRecords.slice(-5).reverse();
-        const conditions = userData.conditions || [];
+        
+        // Fix: Get conditions from the right place in the data structure
+        const conditions = userData.conditions || userData.userProfile?.conditions || [];
+        
+        console.log('Rendering overview with conditions:', conditions);
+        console.log('Full userData:', userData);
         
         content.innerHTML = `
             <div class="space-y-6">
@@ -890,6 +897,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="text-4xl mb-3">🏥</div>
                             <p>No conditions selected yet.</p>
                             <p class="text-sm mt-1">Edit your profile to add conditions you'd like to track.</p>
+                            <button onclick="document.getElementById('edit-profile-btn').click()" class="mt-4 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                                Add Conditions
+                            </button>
                         </div>
                     </div>
                 `}
@@ -899,7 +909,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderConditionsTab(userData) {
         const content = document.getElementById('profile-tab-content');
-        const conditions = userData.conditions || [];
+        if (!content) return;
+
+        // Fix: Get conditions from the right place in the data structure
+        const conditions = userData.conditions || userData.userProfile?.conditions || [];
+        
+        console.log('Rendering conditions tab with:', conditions);
         
         content.innerHTML = `
             <div class="space-y-6">
@@ -950,154 +965,12 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    function renderRecordsTab(userData) {
-        const content = document.getElementById('profile-tab-content');
-        const records = userData.medicalRecords || [];
-        
-        content.innerHTML = `
-            <div class="space-y-6">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-xl font-semibold text-gray-900">Medical Records</h3>
-                    <button id="add-new-record-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
-                        Add New Record
-                    </button>
-                </div>
-                
-                ${records.length > 0 ? `
-                    <div class="space-y-4">
-                        ${records.map(record => `
-                            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                                <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h4 class="text-lg font-semibold text-gray-900">${record.incidentType?.replace('_', ' ').toUpperCase() || 'Medical Record'}</h4>
-                                        <p class="text-sm text-gray-600">${record.timestamp ? new Date(record.timestamp).toLocaleString() : 'No date'}</p>
-                                    </div>
-                                    ${record.severity ? `<span class="px-3 py-1 text-sm rounded-full ${getSeverityColor(record.severity)}">Severity: ${record.severity}/10</span>` : ''}
-                                </div>
-                                
-                                ${record.hospital ? `<p class="text-sm text-gray-700 mb-2"><strong>Hospital:</strong> ${record.hospital}</p>` : ''}
-                                ${record.ambulance ? `<p class="text-sm text-gray-700 mb-2"><strong>Ambulance:</strong> ${record.ambulance}</p>` : ''}
-                                ${record.symptoms ? `<p class="text-sm text-gray-700 mb-2"><strong>Symptoms:</strong> ${record.symptoms}</p>` : ''}
-                                ${record.treatment ? `<p class="text-sm text-gray-700 mb-2"><strong>Treatment:</strong> ${record.treatment}</p>` : ''}
-                                ${record.notes ? `<p class="text-sm text-gray-700"><strong>Notes:</strong> ${record.notes}</p>` : ''}
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : `
-                    <div class="text-center py-12">
-                        <div class="text-6xl mb-4">📋</div>
-                        <h3 class="text-xl font-semibold text-gray-900 mb-2">No Medical Records Yet</h3>
-                        <p class="text-gray-600 mb-6">Start building your health history by adding your first medical record.</p>
-                        <button id="add-first-record-btn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
-                            Add Your First Record
-                        </button>
-                    </div>
-                `}
-            </div>
-        `;
-
-        // Add event listeners for new record buttons
-        document.getElementById('add-new-record-btn')?.addEventListener('click', () => showSymptomTracker());
-        document.getElementById('add-first-record-btn')?.addEventListener('click', () => showSymptomTracker());
-    }
-
-    function renderSymptomsTab(userData) {
-        const content = document.getElementById('profile-tab-content');
-        
-        content.innerHTML = `
-            <div class="space-y-6">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-xl font-semibold text-gray-900">Symptom Tracker</h3>
-                    <button id="track-symptoms-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                        Track Symptoms
-                    </button>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <button id="log-symptom-btn" class="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-xl p-6 hover:from-green-100 hover:to-green-200 transition-all duration-200 text-left">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-green-500 text-white rounded-lg flex items-center justify-center text-xl">📝</div>
-                            <div>
-                                <h4 class="font-semibold text-gray-900">Log New Symptom</h4>
-                                <p class="text-sm text-gray-600">Record symptoms and track severity</p>
-                            </div>
-                        </div>
-                    </button>
-                    
-                    <button id="view-trends-btn" class="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl p-6 hover:from-blue-100 hover:to-blue-200 transition-all duration-200 text-left">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-blue-500 text-white rounded-lg flex items-center justify-center text-xl">📊</div>
-                            <div>
-                                <h4 class="font-semibold text-gray-900">View Trends</h4>
-                                <p class="text-sm text-gray-600">Analyze your health patterns</p>
-                            </div>
-                        </div>
-                    </button>
-                </div>
-                
-                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h4 class="font-semibold text-gray-900 mb-4">Recent Symptom Logs</h4>
-                    <div class="text-center py-8 text-gray-500">
-                        <div class="text-4xl mb-3">📊</div>
-                        <p>No symptom logs yet.</p>
-                        <p class="text-sm mt-1">Start tracking to see trends and patterns!</p>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Add event listeners
-        document.getElementById('track-symptoms-btn')?.addEventListener('click', () => showSymptomTracker());
-        document.getElementById('log-symptom-btn')?.addEventListener('click', () => showSymptomTracker());
-        document.getElementById('view-trends-btn')?.addEventListener('click', () => showSymptomOverview());
-    }
-
-    function renderAnalyticsTab(userData) {
-        const content = document.getElementById('profile-tab-content');
-        
-        content.innerHTML = `
-            <div class="space-y-6">
-                <h3 class="text-xl font-semibold text-gray-900">Health Analytics</h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                        <h4 class="font-semibold text-gray-900 mb-4">Symptom Trends</h4>
-                        <div class="text-center py-8 text-gray-500">
-                            <div class="text-4xl mb-3">📈</div>
-                            <p>No data to analyze yet.</p>
-                            <p class="text-sm mt-1">Start logging symptoms to see trends!</p>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                        <h4 class="font-semibold text-gray-900 mb-4">Visit History</h4>
-                        <div class="text-center py-8 text-gray-500">
-                            <div class="text-4xl mb-3">🏥</div>
-                            <p>No visit history yet.</p>
-                            <p class="text-sm mt-1">Add medical records to track visits!</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <button id="view-full-analytics-btn" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200">
-                    View Detailed Analytics
-                </button>
-            </div>
-        `;
-
-        // Add event listener
-        document.getElementById('view-full-analytics-btn')?.addEventListener('click', () => showSymptomOverview());
-    }
-
-    function getSeverityColor(severity) {
-        const level = parseInt(severity);
-        if (level <= 3) return 'bg-green-100 text-green-800';
-        if (level <= 6) return 'bg-yellow-100 text-yellow-800';
-        if (level <= 8) return 'bg-orange-100 text-orange-800';
-        return 'bg-red-100 text-red-800';
-    }
-
     function showOnboardingModal() {
+        // Get existing conditions to pre-select them
+        const existingConditions = currentUserData?.conditions || currentUserData?.userProfile?.conditions || [];
+        
+        console.log('Showing onboarding modal with existing conditions:', existingConditions);
+        
         const modalContent = `
             <div class="onboarding-gradient text-white p-4 rounded-t-xl">
                 <div class="text-center">
@@ -1128,7 +1001,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <input type="text" 
                                            id="display-name" 
                                            name="displayName"
-                                           value="${currentUserData?.displayName || currentUser?.displayName || ''}"
+                                           value="${currentUserData?.displayName || currentUserData?.userProfile?.displayName || currentUser?.displayName || ''}"
                                            class="w-full px-2 py-1 border border-gray-300 rounded-lg text-xs focus:ring-purple-500 focus:border-purple-500"
                                            placeholder="How should we address you?">
                                 </div>
@@ -1137,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <input type="text" 
                                            id="emergency-contact" 
                                            name="emergencyContact"
-                                           value="${currentUserData?.emergencyContact || ''}"
+                                           value="${currentUserData?.emergencyContact || currentUserData?.userProfile?.emergencyContact || ''}"
                                            class="w-full px-2 py-1 border border-gray-300 rounded-lg text-xs focus:ring-purple-500 focus:border-purple-500"
                                            placeholder="Optional">
                                 </div>
@@ -1147,7 +1020,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                               name="medicalNotes"
                                               rows="2"
                                               class="w-full px-2 py-1 border border-gray-300 rounded-lg text-xs focus:ring-purple-500 focus:border-purple-500"
-                                              placeholder="Allergies, important info...">${currentUserData?.medicalNotes || ''}</textarea>
+                                              placeholder="Allergies, important info...">${currentUserData?.medicalNotes || currentUserData?.userProfile?.medicalNotes || ''}</textarea>
                                 </div>
                             </div>
                         </div>
@@ -1193,7 +1066,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <!-- SCROLLABLE CONDITIONS AREA -->
                             <div class="onboarding-conditions-scroll" id="conditions-grid">
                                 ${availableConditions.map(condition => `
-                                    <div class="onboarding-condition-card p-2 rounded-lg cursor-pointer mb-1.5" 
+                                    <div class="onboarding-condition-card p-2 rounded-lg cursor-pointer mb-1.5 ${existingConditions.includes(condition.id) ? 'selected' : ''}" 
                                          data-condition="${condition.id}">
                                         <div class="flex items-center space-x-2">
                                             <div class="text-sm">${condition.icon}</div>
@@ -1201,7 +1074,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                                 <h4 class="font-medium text-gray-800 text-xs leading-tight">${condition.name}</h4>
                                                 <p class="text-xs text-gray-600 leading-tight">${condition.description}</p>
                                             </div>
-                                            <div class="condition-checkbox hidden">
+                                            <div class="condition-checkbox ${existingConditions.includes(condition.id) ? '' : 'hidden'}">
                                                 <svg class="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                                 </svg>
@@ -1264,21 +1137,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        let selectedConditions = new Set(currentUserData?.conditions || []);
+        // Initialize with existing conditions
+        const existingConditions = currentUserData?.conditions || currentUserData?.userProfile?.conditions || [];
+        let selectedConditions = new Set(existingConditions);
+        
+        console.log('Initializing onboarding with existing conditions:', existingConditions);
 
         // Handle condition selection
         conditionCards.forEach(card => {
             const conditionId = card.dataset.condition;
             
-            // Set initial state
-            if (selectedConditions.has(conditionId)) {
-                card.classList.add('selected');
-                const checkbox = card.querySelector('.condition-checkbox');
-                if (checkbox) {
-                    checkbox.classList.remove('hidden');
-                }
-            }
-
             // Add click handler for condition selection
             card.addEventListener('click', () => {
                 const checkbox = card.querySelector('.condition-checkbox');
@@ -1298,12 +1166,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         checkbox.classList.remove('hidden');
                     }
                 }
+                
+                console.log('Condition selection changed:', Array.from(selectedConditions));
             });
         });
 
         // Handle form submission
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log('Form submitted with conditions:', Array.from(selectedConditions));
             await completeOnboarding(selectedConditions);
         });
 
@@ -1322,25 +1193,38 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const formData = new FormData(form);
             
+            // Get current data to preserve existing information
+            const currentData = enhancedDataManager.getData();
+            
             const userData = {
-                ...currentUserData,
                 displayName: formData.get('displayName') || currentUser?.displayName || 'User',
                 emergencyContact: formData.get('emergencyContact') || '',
                 medicalNotes: formData.get('medicalNotes') || '',
-                conditions: Array.from(selectedConditions),
+                conditions: Array.from(selectedConditions), // Save as array
                 onboardingCompleted: true,
+                onboardingDate: new Date().toISOString(),
                 profileSetupDate: new Date().toISOString()
             };
 
-            // Save user data
-            await enhancedDataManager.setData({
-                ...enhancedDataManager.getData(),
+            // Update the data structure correctly
+            const updatedData = {
+                ...currentData,
                 userProfile: userData,
+                conditions: Array.from(selectedConditions), // Also save at root level for compatibility
                 onboardingCompleted: true
-            });
+            };
+
+            // Set the data in the data manager
+            enhancedDataManager.setData(updatedData);
             
+            // Save to Firestore
             await enhancedDataManager.saveData();
+            
+            // Update current user data reference
             currentUserData = enhancedDataManager.getData();
+            
+            console.log('Onboarding completed with conditions:', Array.from(selectedConditions));
+            console.log('Saved data structure:', updatedData);
             
             hideModal();
             showStatusMessage('Profile setup completed successfully! Refreshing profile...', 'success');
