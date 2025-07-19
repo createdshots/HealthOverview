@@ -1,3 +1,4 @@
+console.log('enhancedDataManager.js loaded');
 // Enhanced Data Management system for Hospital Tracker
 import { db, doc, getDoc, setDoc } from '../../firebaseConfig.js';
 

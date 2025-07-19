@@ -1,9 +1,10 @@
+console.log('dashboardApp.js loaded');
 // Main Dashboard Application - modular version
 import { enhancedDataManager } from './data/enhancedDataManager.js';
 import { modalManager } from './components/modal.js';
 import { uiComponents } from './utils/uiComponents.js';
 import { medicalRecordsManager } from './features/medicalRecords.js';
-import { auth, signInWithPopup, GoogleAuthProvider, OAuthProvider, signInAnonymously, signOut, onAuthStateChanged } from '../firebaseConfig.js';
+import { auth, signOut, onAuthStateChanged } from '../firebaseConfig.js';
 
 class DashboardApp {
     constructor() {
@@ -346,7 +347,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fetch latest commit hash from GitHub API
         fetch('https://api.github.com/repos/createdshots/ambulance-hospitaltracker/commits/main')
             .then(res => res.ok ? res.json() : null)
-            .then(data => {
+            .then data => {
                 if (data && data.sha) {
                     const shortSha = data.sha.substring(0, 7);
                     buildDiv.innerHTML = `<a href="https://github.com/createdshots/ambulance-hospitaltracker/commit/${data.sha}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;pointer-events:auto;">Build: <span style='font-family:monospace;'>${shortSha}</span></a>`;
