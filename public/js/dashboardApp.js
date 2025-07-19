@@ -271,7 +271,13 @@ class DashboardApp {
 
         if (addRecordBtn) {
             addRecordBtn.addEventListener('click', () => {
-                showSymptomTracker();
+                // Use the enhanced medical records modal from profileApp.js
+                if (window.medicalRecordsManager && window.medicalRecordsManager.showAddRecordModal) {
+                    window.medicalRecordsManager.showAddRecordModal();
+                } else {
+                    // Import the enhanced modal system and create it
+                    this.createEnhancedMedicalRecordsModal();
+                }
             });
         }
 
@@ -333,6 +339,247 @@ class DashboardApp {
             console.error('Sign-out error:', error);
             showStatusMessage('Error signing out. Please try again.', 'error');
         }
+    }
+
+    // Create enhanced medical records modal
+    createEnhancedMedicalRecordsModal() {
+        // Create a simplified version of the enhanced modal inline
+        const userData = this.dataManager.getData();
+        const userConditions = userData.userProfile?.conditions || userData.conditions || [];
+        
+        const modalContent = `
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-700 text-white p-6 rounded-t-xl">
+                <div class="text-center">
+                    <div class="text-4xl mb-3">📋</div>
+                    <h2 class="text-2xl font-bold mb-2">Add Medical Record</h2>
+                    <p class="text-indigo-100">Track your health journey with detailed records</p>
+                </div>
+            </div>
+            
+            <div class="max-h-[70vh] overflow-y-auto" style="scrollbar-width: thin; scrollbar-color: #a78bfa #f1f5f9;">
+                <form id="enhanced-record-form" class="p-6 space-y-6">
+                    <!-- Incident Type Selection -->
+                    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-5 rounded-2xl border border-indigo-200">
+                        <h3 class="text-xl font-bold text-indigo-800 mb-4 flex items-center">
+                            <span class="text-2xl mr-3">🏥</span>
+                            What type of incident?
+                        </h3>
+                        <input type="hidden" id="selected-type" name="incidentType" required>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <div class="incident-type-card p-4 border-2 border-indigo-200 rounded-xl cursor-pointer hover:border-indigo-400 transition-all duration-300 bg-white" data-type="emergency_visit">
+                                <div class="text-center">
+                                    <div class="text-3xl mb-2">🚨</div>
+                                    <div class="font-semibold text-indigo-800 text-sm">Emergency Visit</div>
+                                </div>
+                            </div>
+                            <div class="incident-type-card p-4 border-2 border-indigo-200 rounded-xl cursor-pointer hover:border-indigo-400 transition-all duration-300 bg-white" data-type="scheduled_appointment">
+                                <div class="text-center">
+                                    <div class="text-3xl mb-2">📅</div>
+                                    <div class="font-semibold text-indigo-800 text-sm">Scheduled Appointment</div>
+                                </div>
+                            </div>
+                            <div class="incident-type-card p-4 border-2 border-indigo-200 rounded-xl cursor-pointer hover:border-indigo-400 transition-all duration-300 bg-white" data-type="symptom_episode">
+                                <div class="text-center">
+                                    <div class="text-3xl mb-2">🤒</div>
+                                    <div class="font-semibold text-indigo-800 text-sm">Symptom Episode</div>
+                                </div>
+                            </div>
+                            <div class="incident-type-card p-4 border-2 border-indigo-200 rounded-xl cursor-pointer hover:border-indigo-400 transition-all duration-300 bg-white" data-type="medication_reaction">
+                                <div class="text-center">
+                                    <div class="text-3xl mb-2">💊</div>
+                                    <div class="font-semibold text-indigo-800 text-sm">Medication Reaction</div>
+                                </div>
+                            </div>
+                            <div class="incident-type-card p-4 border-2 border-indigo-200 rounded-xl cursor-pointer hover:border-indigo-400 transition-all duration-300 bg-white" data-type="follow_up">
+                                <div class="text-center">
+                                    <div class="text-3xl mb-2">🔄</div>
+                                    <div class="font-semibold text-indigo-800 text-sm">Follow-up Visit</div>
+                                </div>
+                            </div>
+                            <div class="incident-type-card p-4 border-2 border-indigo-200 rounded-xl cursor-pointer hover:border-indigo-400 transition-all duration-300 bg-white" data-type="test_results">
+                                <div class="text-center">
+                                    <div class="text-3xl mb-2">📊</div>
+                                    <div class="font-semibold text-indigo-800 text-sm">Test Results</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Basic Info -->
+                    <div class="bg-gradient-to-r from-emerald-500 to-teal-600 p-5 rounded-2xl shadow-lg">
+                        <h3 class="text-xl font-bold text-white mb-4 flex items-center">
+                            <span class="text-2xl mr-3">📍</span>
+                            When and where?
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-white bg-opacity-90 p-4 rounded-xl">
+                                <label class="block text-sm font-bold text-emerald-800 mb-2">Date & Time</label>
+                                <input type="datetime-local" 
+                                       name="datetime" 
+                                       value="${new Date().toISOString().slice(0, 16)}"
+                                       class="w-full px-3 py-2 border-2 border-emerald-200 rounded-lg focus:ring-4 focus:ring-emerald-300 focus:border-emerald-500 transition-all duration-300"
+                                       required>
+                            </div>
+                            <div class="bg-white bg-opacity-90 p-4 rounded-xl">
+                                <label class="block text-sm font-bold text-emerald-800 mb-2">Location</label>
+                                <input type="text" 
+                                       name="location" 
+                                       placeholder="Hospital, home, work..."
+                                       class="w-full px-3 py-2 border-2 border-emerald-200 rounded-lg focus:ring-4 focus:ring-emerald-300 focus:border-emerald-500 transition-all duration-300">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Severity -->
+                    <div class="bg-gradient-to-r from-rose-500 to-red-600 p-5 rounded-2xl shadow-lg">
+                        <h3 class="text-xl font-bold text-white mb-4 flex items-center">
+                            <span class="text-2xl mr-3">📊</span>
+                            How severe is it?
+                        </h3>
+                        <div class="bg-white bg-opacity-90 p-4 rounded-xl">
+                            <label class="block text-sm font-bold text-rose-800 mb-3">Pain/Discomfort Level (1-10)</label>
+                            <input type="range" 
+                                   id="severity-slider"
+                                   name="severity" 
+                                   min="1" 
+                                   max="10" 
+                                   value="5" 
+                                   class="w-full h-3 bg-gradient-to-r from-green-300 via-yellow-300 to-red-500 rounded-lg appearance-none cursor-pointer">
+                            <div class="flex justify-between text-xs text-rose-600 mt-2 font-medium">
+                                <span>1 - Minimal</span>
+                                <span id="severity-label" class="font-bold">5 - Moderate</span>
+                                <span>10 - Severe</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="bg-gradient-to-r from-slate-500 to-gray-600 p-5 rounded-2xl shadow-lg">
+                        <h3 class="text-xl font-bold text-white mb-4 flex items-center">
+                            <span class="text-2xl mr-3">📝</span>
+                            Additional details
+                        </h3>
+                        <div class="bg-white bg-opacity-90 p-4 rounded-xl">
+                            <textarea name="notes" 
+                                      rows="4" 
+                                      placeholder="Describe what happened, triggers, treatments used, how you felt..."
+                                      class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-gray-300 focus:border-gray-500 transition-all duration-300 resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex justify-between items-center pt-6 border-t-2 border-gray-200">
+                        <button type="button" 
+                                id="cancel-enhanced-record-btn"
+                                class="flex items-center px-6 py-3 text-gray-600 hover:text-gray-800 font-medium border-2 border-gray-300 rounded-xl hover:border-gray-400 transition-all duration-300 transform hover:scale-105">
+                            <span class="mr-2">❌</span>
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="flex items-center bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-bold shadow-lg transform hover:scale-105 hover:shadow-xl">
+                            <span class="mr-2">💾</span>
+                            Save Medical Record
+                            <span class="ml-2 animate-pulse">✨</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        // Import and show the modal
+        import('./components/modal.js').then(({ showModal, hideModal }) => {
+            showModal(modalContent, false);
+            
+            // Set up event listeners
+            this.setupEnhancedRecordFormListeners();
+        });
+    }
+
+    // Setup event listeners for the enhanced record form
+    setupEnhancedRecordFormListeners() {
+        // Severity slider
+        const severitySlider = document.getElementById('severity-slider');
+        if (severitySlider) {
+            severitySlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                const labels = {
+                    1: '1 - Minimal', 2: '2 - Mild', 3: '3 - Mild', 4: '4 - Moderate', 5: '5 - Moderate',
+                    6: '6 - Moderate', 7: '7 - Severe', 8: '8 - Severe', 9: '9 - Very Severe', 10: '10 - Unbearable'
+                };
+                const label = document.getElementById('severity-label');
+                if (label) label.textContent = labels[value] || value;
+            });
+        }
+
+        // Incident type selection
+        const incidentCards = document.querySelectorAll('.incident-type-card');
+        const selectedTypeInput = document.getElementById('selected-type');
+
+        incidentCards.forEach(card => {
+            card.addEventListener('click', () => {
+                incidentCards.forEach(c => c.classList.remove('border-indigo-500', 'bg-indigo-50'));
+                card.classList.add('border-indigo-500', 'bg-indigo-50');
+                selectedTypeInput.value = card.dataset.type;
+            });
+        });
+
+        // Cancel button
+        const cancelBtn = document.getElementById('cancel-enhanced-record-btn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                import('./components/modal.js').then(({ hideModal }) => {
+                    hideModal();
+                });
+            });
+        }
+
+        // Form submission
+        const form = document.getElementById('enhanced-record-form');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleEnhancedRecordSubmit(e);
+            });
+        }
+    }
+
+    // Handle enhanced record form submission
+    handleEnhancedRecordSubmit(e) {
+        const formData = new FormData(e.target);
+        
+        const recordData = {
+            id: Date.now().toString(),
+            incidentType: formData.get('incidentType'),
+            timestamp: formData.get('datetime'),
+            location: formData.get('location'),
+            severity: parseInt(formData.get('severity')),
+            notes: formData.get('notes'),
+            createdAt: new Date().toISOString()
+        };
+        
+        // Validate required fields
+        if (!recordData.incidentType) {
+            import('./utils/ui.js').then(({ showStatusMessage }) => {
+                showStatusMessage('Please select an incident type.', 'error');
+            });
+            return;
+        }
+        
+        // Save the record
+        this.dataManager.addMedicalRecord(recordData);
+        
+        // Hide modal
+        import('./components/modal.js').then(({ hideModal }) => {
+            hideModal();
+        });
+        
+        // Show success message
+        import('./utils/ui.js').then(({ showStatusMessage }) => {
+            showStatusMessage('Medical record saved successfully!', 'success');
+        });
+        
+        // Refresh display
+        this.renderAll();
     }
 
     // Add entrance animations method
