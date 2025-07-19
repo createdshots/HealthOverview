@@ -53,14 +53,6 @@ class AdminAccessManager {
         // Add to body
         document.body.appendChild(this.adminButton);
 
-        // Add entrance animation
-        setTimeout(() => {
-            if (this.adminButton) {
-                this.adminButton.style.transform = 'translateY(0)';
-                this.adminButton.style.opacity = '1';
-            }
-        }, 100);
-
         console.log('🛡️ Admin button shown for', this.getCurrentUserEmail());
     }
 
@@ -102,12 +94,12 @@ class AdminAccessManager {
                     <div class="text-4xl mb-4">🛡️</div>
                     <h3 class="text-xl font-bold text-gray-800 mb-2">Admin Panel Access</h3>
                     <p class="text-gray-600 mb-2">You are about to access the admin panel.</p>
-                    <p class="text-sm text-red-600 mb-6">⚠️ You will need to re-authenticate with Microsoft for security.</p>
+                    <p class="text-sm text-orange-600 mb-6">⚠️ You will be redirected to the secure admin interface.</p>
                     
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
-                        <p class="text-sm text-yellow-800">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+                        <p class="text-sm text-blue-800">
                             <strong>Security Notice:</strong><br>
-                            Admin access requires Microsoft 2FA verification.
+                            Access is logged and monitored for security purposes.
                         </p>
                     </div>
                     
