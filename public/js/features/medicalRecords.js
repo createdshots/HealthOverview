@@ -1,5 +1,6 @@
 // Medical Records management system
-import { modalManager } from '../components/modal.js';
+import { showModal, hideModal } from '../components/modal.js';
+import { showStatusMessage } from '../utils/ui.js';
 
 export class MedicalRecordsManager {
     constructor() {
@@ -13,335 +14,312 @@ export class MedicalRecordsManager {
 
     // Show add medical record modal
     showAddRecordModal() {
-        if (!this.dataManager) {
-            console.error('Data manager not set');
-            return;
-        }
-
-        const data = this.dataManager.getData();
-        const hospitalOptions = data.hospitals.map(h => 
-            `<option value="${h.name}">${h.name}</option>`
-        ).join('');
-        
-        const ambulanceOptions = data.ambulance.map(a => 
-            `<option value="${a.name}">${a.name}</option>`
-        ).join('');
-
-        const userConditions = data.userProfile?.conditions || [];
-        const conditionQuestions = this.generateConditionQuestionsForRecord(userConditions);
-
-        const content = this.generateMedicalRecordForm(hospitalOptions, ambulanceOptions, conditionQuestions);
-        
-        const modal = modalManager.createModal('add-record-modal', 'Add Medical Record', content, 'max-w-6xl');
-        
-        // Setup form submission
-        this.setupMedicalRecordForm(modal);
-        
-        modalManager.openModal(modal);
-    }
-
-    // Generate medical record form HTML
-    generateMedicalRecordForm(hospitalOptions, ambulanceOptions, conditionQuestions) {
-        return `
-            <form id="add-record-form" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Left Column: Main Visit Info -->
-                    <div class="space-y-4">
-                        <div>
-                            <label for="visit-date" class="block text-sm font-medium text-gray-700 mb-2">Visit Date</label>
-                            <input type="date" id="visit-date" required
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                value="${new Date().toISOString().split('T')[0]}">
+        const modalContent = `
+            <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-t-2xl">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <span class="text-2xl">🏥</span>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold">Add Medical Record</h2>
+                        <p class="text-blue-100">Track your health incidents and symptoms</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-6 max-h-[70vh] overflow-y-auto">
+                <form id="add-record-form" class="space-y-6">
+                    <!-- Incident Type Selection -->
+                    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                            <span class="text-xl mr-2">🚨</span>
+                            Incident Type
+                        </h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="incident-types">
+                            <div class="incident-type-card p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-400 transition-all" data-type="emergency">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">🚑</div>
+                                    <div class="text-sm font-medium text-gray-700">Emergency</div>
+                                </div>
+                            </div>
+                            <div class="incident-type-card p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-400 transition-all" data-type="appointment">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">📅</div>
+                                    <div class="text-sm font-medium text-gray-700">Appointment</div>
+                                </div>
+                            </div>
+                            <div class="incident-type-card p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-400 transition-all" data-type="symptom">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">🩺</div>
+                                    <div class="text-sm font-medium text-gray-700">Symptom Log</div>
+                                </div>
+                            </div>
+                            <div class="incident-type-card p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-400 transition-all" data-type="medication">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">💊</div>
+                                    <div class="text-sm font-medium text-gray-700">Medication</div>
+                                </div>
+                            </div>
+                            <div class="incident-type-card p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-400 transition-all" data-type="test">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">🧪</div>
+                                    <div class="text-sm font-medium text-gray-700">Test Result</div>
+                                </div>
+                            </div>
+                            <div class="incident-type-card p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-400 transition-all" data-type="other">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-1">📝</div>
+                                    <div class="text-sm font-medium text-gray-700">Other</div>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label for="visit-time" class="block text-sm font-medium text-gray-700 mb-2">Visit Time (Optional)</label>
-                            <input type="time" id="visit-time"
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                        <input type="hidden" id="selected-type" name="incidentType" required>
+                    </div>
+
+                    <!-- Basic Information -->
+                    <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                            <span class="text-xl mr-2">📋</span>
+                            Basic Information
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
+                                <input type="datetime-local" 
+                                       name="datetime" 
+                                       value="${new Date().toISOString().slice(0, 16)}"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                       required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                                <input type="text" 
+                                       name="location" 
+                                       placeholder="Hospital, clinic, home..."
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                            </div>
                         </div>
-                        <div>
-                            <label for="hospital-select" class="block text-sm font-medium text-gray-700 mb-2">Hospital/Medical Facility</label>
-                            <select id="hospital-select" required
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                                <option value="">Select a hospital...</option>
-                                ${hospitalOptions}
-                            </select>
+                    </div>
+
+                    <!-- Condition-Specific Symptoms -->
+                    <div id="condition-symptoms-section" class="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200 hidden">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                            <span class="text-xl mr-2">🧠</span>
+                            Condition-Specific Symptoms
+                        </h3>
+                        <div id="condition-symptoms-content"></div>
+                    </div>
+
+                    <!-- General Symptoms -->
+                    <div class="bg-gradient-to-br from-orange-50 to-red-50 p-4 rounded-xl border border-orange-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                            <span class="text-xl mr-2">🌡️</span>
+                            General Symptoms
+                        </h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="general-symptoms">
+                            ${this.getGeneralSymptoms().map(symptom => `
+                                <label class="flex items-center space-x-2 p-2 rounded-lg hover:bg-orange-100 cursor-pointer">
+                                    <input type="checkbox" name="symptoms" value="${symptom.id}" class="text-orange-500 rounded">
+                                    <span class="text-sm">${symptom.icon} ${symptom.name}</span>
+                                </label>
+                            `).join('')}
                         </div>
-                        <div>
-                            <label class="flex items-center">
-                                <input type="checkbox" id="ambulance-involved"
-                                    class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
-                                <span class="ml-2 text-sm font-medium text-gray-700">Ambulance service was involved</span>
-                            </label>
-                            <div id="ambulance-section" class="hidden mt-2">
-                                <label for="ambulance-select" class="block text-sm font-medium text-gray-700 mb-2">Ambulance Trust</label>
-                                <select id="ambulance-select"
-                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                                    <option value="">Select an ambulance trust...</option>
-                                    ${ambulanceOptions}
+                    </div>
+
+                    <!-- Severity Scale -->
+                    <div class="bg-gradient-to-br from-yellow-50 to-amber-50 p-4 rounded-xl border border-yellow-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                            <span class="text-xl mr-2">📊</span>
+                            Severity & Impact
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Pain/Discomfort Level (1-10)</label>
+                                <input type="range" name="severity" min="1" max="10" value="5" 
+                                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                       onchange="updateSeverityLabel(this.value)">
+                                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>1 - Minimal</span>
+                                    <span id="severity-label" class="font-medium">5 - Moderate</span>
+                                    <span>10 - Severe</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Impact on Daily Activities</label>
+                                <select name="impact" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="none">No impact</option>
+                                    <option value="minimal">Minimal impact</option>
+                                    <option value="moderate">Moderate impact</option>
+                                    <option value="significant">Significant impact</option>
+                                    <option value="severe">Unable to function normally</option>
                                 </select>
                             </div>
                         </div>
-                        <div>
-                            <label for="visit-type" class="block text-sm font-medium text-gray-700 mb-2">Type of Visit</label>
-                            <select id="visit-type" required
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                                <option value="">Select visit type...</option>
-                                <option value="emergency">Emergency</option>
-                                <option value="outpatient">Outpatient Appointment</option>
-                                <option value="inpatient">Inpatient Stay</option>
-                                <option value="procedure">Procedure/Surgery</option>
-                                <option value="test">Tests/Diagnostic</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="visit-notes" class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
-                            <textarea id="visit-notes" rows="4"
-                                placeholder="Add any additional details about your visit..."
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"></textarea>
-                        </div>
                     </div>
-                    <!-- Right Column: Condition-Specific Questions -->
-                    <div class="space-y-4">
-                        ${conditionQuestions ? `
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 h-full flex flex-col">
-                                <h4 class="font-semibold text-gray-900 mb-3">📋 Condition-Specific Questions</h4>
-                                <p class="text-sm text-gray-600 mb-4">Based on your tracked conditions:</p>
-                                <div class="flex-1 overflow-y-auto">${conditionQuestions}</div>
-                            </div>
-                        ` : `<div class='text-gray-500 text-sm'>No tracked conditions. Add some in your profile for personalized questions.</div>`}
+
+                    <!-- Notes -->
+                    <div class="bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-xl border border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                            <span class="text-xl mr-2">📝</span>
+                            Additional Notes
+                        </h3>
+                        <textarea name="notes" 
+                                  rows="4" 
+                                  placeholder="Describe what happened, triggers, treatments used, how you felt..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
                     </div>
-                </div>
-                <div class="flex justify-end space-x-3 pt-4 border-t mt-4">
-                    <button type="button" class="cancel-btn px-4 py-2 text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                        class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                        Add Record
-                    </button>
-                </div>
-            </form>
+
+                    <!-- Action Buttons -->
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                        <button type="button" 
+                                onclick="hideModal()"
+                                class="px-6 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium">
+                            Save Record
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <script>
+                // Make hideModal available globally for onclick handlers
+                window.hideModal = () => {
+                    const modal = document.getElementById('modal-backdrop');
+                    if (modal) modal.remove();
+                };
+
+                // Severity label update function
+                window.updateSeverityLabel = (value) => {
+                    const labels = {
+                        1: '1 - Minimal', 2: '2 - Mild', 3: '3 - Mild', 4: '4 - Moderate', 5: '5 - Moderate',
+                        6: '6 - Moderate', 7: '7 - Severe', 8: '8 - Severe', 9: '9 - Very Severe', 10: '10 - Unbearable'
+                    };
+                    document.getElementById('severity-label').textContent = labels[value] || value;
+                };
+            </script>
         `;
+
+        showModal(modalContent, false);
+        this.setupRecordFormListeners();
     }
 
-    // Generate condition-specific questions for medical records
-    generateConditionQuestionsForRecord(userConditions) {
-        if (!userConditions || userConditions.length === 0) return '';
-
-        const conditionQuestions = {
-            'epilepsy': [
-                { id: 'seizure_occurred', type: 'checkbox', label: 'Did you have a seizure during this visit?' },
-                { id: 'seizure_frequency', type: 'text', label: 'Recent seizure frequency', placeholder: 'e.g., 2 this week' }
-            ],
-            'autism': [
-                { id: 'sensory_issues', type: 'checkbox', label: 'Did you experience sensory overload?' },
-                { id: 'anxiety_level', type: 'select', label: 'Anxiety level during visit', options: ['Low', 'Medium', 'High', 'Severe'] }
-            ],
-            'diabetes': [
-                { id: 'blood_sugar_check', type: 'text', label: 'Blood sugar level (if checked)', placeholder: 'e.g., 120 mg/dL' },
-                { id: 'hypo_symptoms', type: 'checkbox', label: 'Did you experience hypoglycemic symptoms?' }
-            ],
-            'mental_health': [
-                { id: 'panic_attack', type: 'checkbox', label: 'Did you have a panic attack?' },
-                { id: 'mood_rating', type: 'select', label: 'Overall mood during visit', options: ['Very Low', 'Low', 'Neutral', 'Good', 'Very Good'] }
-            ],
-            'chronic_pain': [
-                { id: 'pain_level', type: 'select', label: 'Pain level (1-10)', options: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'] }
-            ]
-        };
-
-        let questionsHTML = '';
-
-        userConditions.forEach(condition => {
-            const questions = conditionQuestions[condition];
-            if (questions) {
-                questionsHTML += `
-                    <div class="mb-4 p-3 bg-white rounded-lg border border-gray-200">
-                        <h5 class="font-medium text-gray-900 mb-3 capitalize">${condition.replace('_', ' ')} Related</h5>
-                        <div class="space-y-3">
-                            ${questions.map(q => this.generateQuestionHTML(condition, q)).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-        });
-
-        return questionsHTML;
-    }
-
-    // Generate individual question HTML
-    generateQuestionHTML(condition, question) {
-        switch (question.type) {
-            case 'checkbox':
-                return `
-                    <label class="flex items-center">
-                        <input type="checkbox" name="condition_${condition}_${question.id}" 
-                               class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
-                        <span class="ml-2 text-sm text-gray-700">${question.label}</span>
-                    </label>
-                `;
-            case 'select':
-                return `
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">${question.label}</label>
-                        <select name="condition_${condition}_${question.id}" 
-                                class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                            <option value="">Select...</option>
-                            ${question.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
-                        </select>
-                    </div>
-                `;
-            default: // text
-                return `
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">${question.label}</label>
-                        <input type="text" name="condition_${condition}_${question.id}" 
-                               placeholder="${question.placeholder || ''}"
-                               class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                    </div>
-                `;
-        }
+    // Get general symptoms list
+    getGeneralSymptoms() {
+        return [
+            { id: 'headache', name: 'Headache', icon: '🤕' },
+            { id: 'nausea', name: 'Nausea', icon: '🤢' },
+            { id: 'dizziness', name: 'Dizziness', icon: '😵' },
+            { id: 'fatigue', name: 'Fatigue', icon: '😴' },
+            { id: 'fever', name: 'Fever', icon: '🌡️' },
+            { id: 'chills', name: 'Chills', icon: '🥶' },
+            { id: 'sweating', name: 'Sweating', icon: '💦' },
+            { id: 'breathing_difficulty', name: 'Breathing Issues', icon: '🫁' },
+            { id: 'chest_pain', name: 'Chest Pain', icon: '💔' },
+            { id: 'abdominal_pain', name: 'Stomach Pain', icon: '🫃' },
+            { id: 'muscle_pain', name: 'Muscle Pain', icon: '💪' },
+            { id: 'joint_pain', name: 'Joint Pain', icon: '🦴' }
+        ];
     }
 
     // Setup medical record form event handlers
-    setupMedicalRecordForm(modal) {
-        const form = modal.querySelector('#add-record-form');
-        const ambulanceCheckbox = modal.querySelector('#ambulance-involved');
-        const ambulanceSection = modal.querySelector('#ambulance-section');
-        const cancelBtn = modal.querySelector('.cancel-btn');
+    setupRecordFormListeners() {
+        // Incident type selection
+        const incidentCards = document.querySelectorAll('.incident-type-card');
+        const selectedTypeInput = document.getElementById('selected-type');
+        const conditionSymptomsSection = document.getElementById('condition-symptoms-section');
 
-        // Handle ambulance checkbox
-        if (ambulanceCheckbox && ambulanceSection) {
-            ambulanceCheckbox.addEventListener('change', () => {
-                if (ambulanceCheckbox.checked) {
-                    ambulanceSection.classList.remove('hidden');
+        incidentCards.forEach(card => {
+            card.addEventListener('click', () => {
+                // Remove previous selection
+                incidentCards.forEach(c => c.classList.remove('border-blue-500', 'bg-blue-50'));
+                
+                // Add selection to clicked card
+                card.classList.add('border-blue-500', 'bg-blue-50');
+                selectedTypeInput.value = card.dataset.type;
+
+                // Show condition-specific symptoms for symptom logs
+                if (card.dataset.type === 'symptom') {
+                    conditionSymptomsSection.classList.remove('hidden');
+                    this.loadConditionSpecificSymptoms();
                 } else {
-                    ambulanceSection.classList.add('hidden');
-                    ambulanceSection.querySelector('#ambulance-select').value = '';
+                    conditionSymptomsSection.classList.add('hidden');
                 }
             });
-        }
+        });
 
-        // Handle cancel button
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => {
-                modalManager.closeModal(modal);
-            });
-        }
+        // Form submission
+        const form = document.getElementById('add-record-form');
+        form.addEventListener('submit', this.handleRecordSubmission.bind(this));
+    }
 
-        // Handle form submission
-        if (form) {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleMedicalRecordSubmission(form, modal);
-            });
-        }
+    // Load condition-specific symptoms based on user's conditions
+    loadConditionSpecificSymptoms() {
+        // This would load based on user's tracked conditions
+        const conditionSymptomsContent = document.getElementById('condition-symptoms-content');
+        
+        // Example for epilepsy - you'd load this based on user's actual conditions
+        conditionSymptomsContent.innerHTML = `
+            <div class="space-y-4">
+                <div class="p-3 bg-purple-100 rounded-lg">
+                    <h4 class="font-medium text-purple-800 mb-2">🧠 Epilepsy Symptoms</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="epilepsy_symptoms" value="aura" class="text-purple-500 rounded">
+                            <span class="text-sm">Aura/Warning signs</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="epilepsy_symptoms" value="confusion" class="text-purple-500 rounded">
+                            <span class="text-sm">Confusion</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="epilepsy_symptoms" value="memory_loss" class="text-purple-500 rounded">
+                            <span class="text-sm">Memory loss</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="epilepsy_symptoms" value="muscle_jerking" class="text-purple-500 rounded">
+                            <span class="text-sm">Muscle jerking</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     // Handle medical record form submission
-    handleMedicalRecordSubmission(form, modal) {
-        const formData = new FormData(form);
+    handleRecordSubmission(e) {
+        e.preventDefault();
         
-        // Collect basic form data
-        const record = {
-            date: formData.get('visit-date') || form.querySelector('#visit-date').value,
-            time: form.querySelector('#visit-time').value,
-            hospital: form.querySelector('#hospital-select').value,
-            ambulance: form.querySelector('#ambulance-involved').checked ? form.querySelector('#ambulance-select').value : '',
-            visitType: form.querySelector('#visit-type').value,
-            notes: form.querySelector('#visit-notes').value,
-            conditionData: {}
+        const formData = new FormData(e.target);
+        const symptoms = [];
+        
+        // Collect general symptoms
+        const generalSymptoms = formData.getAll('symptoms');
+        symptoms.push(...generalSymptoms);
+        
+        // Collect condition-specific symptoms
+        const epilepsySymptoms = formData.getAll('epilepsy_symptoms');
+        symptoms.push(...epilepsySymptoms);
+        
+        const recordData = {
+            id: Date.now().toString(),
+            type: formData.get('incidentType'),
+            datetime: formData.get('datetime'),
+            location: formData.get('location'),
+            symptoms: symptoms,
+            severity: parseInt(formData.get('severity')),
+            impact: formData.get('impact'),
+            notes: formData.get('notes'),
+            createdAt: new Date().toISOString()
         };
-
-        // Collect condition-specific data
-        const conditionInputs = form.querySelectorAll('[name^="condition_"]');
-        conditionInputs.forEach(input => {
-            const name = input.name;
-            let value;
-            
-            if (input.type === 'checkbox') {
-                value = input.checked;
-            } else {
-                value = input.value;
-            }
-            
-            if (value) {
-                record.conditionData[name] = value;
-            }
-        });
-
-        // Validate required fields
-        if (!record.date || !record.hospital || !record.visitType) {
-            alert('Please fill in all required fields.');
-            return;
-        }
-
-        // Add the record
-        this.dataManager.addMedicalRecord(record);
         
-        // Close modal and show success message
-        modalManager.closeModal(modal);
+        // Save the record (you'll need to implement this in your data manager)
+        console.log('Saving medical record:', recordData);
         
-        if (this.dataManager.showStatusMessage) {
-            this.dataManager.showStatusMessage('Medical record added successfully!', 'success');
-        }
-
-        // Trigger re-render if callback exists
-        if (window.dashboardApp && window.dashboardApp.renderAll) {
-            window.dashboardApp.renderAll();
-        }
-    }
-
-    // Show medical records list
-    showMedicalRecordsList() {
-        if (!this.dataManager) return;
-        
-        const data = this.dataManager.getData();
-        const records = data.medicalRecords || [];
-        
-        const content = this.generateMedicalRecordsListHTML(records);
-        const modal = modalManager.createModal('medical-records-modal', 'Medical Records', content, 'max-w-4xl');
-        modalManager.openModal(modal);
-    }
-
-    // Generate medical records list HTML
-    generateMedicalRecordsListHTML(records) {
-        if (records.length === 0) {
-            return `
-                <div class="text-center py-8 text-gray-500">
-                    <p>No medical records found.</p>
-                    <p class="text-sm">Add your first record using the "Add Record" button.</p>
-                </div>
-            `;
-        }
-
-        const recordsHTML = records.map(record => `
-            <div class="border border-gray-200 rounded-lg p-4 mb-4">
-                <div class="flex justify-between items-start mb-3">
-                    <div>
-                        <h4 class="font-semibold text-gray-900">${record.hospital}</h4>
-                        <p class="text-sm text-gray-600">${record.date}${record.time ? ` at ${record.time}` : ''}</p>
-                    </div>
-                    <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full capitalize">
-                        ${record.visitType}
-                    </span>
-                </div>
-                ${record.ambulance ? `<p class="text-sm text-gray-600 mb-2"><strong>Ambulance:</strong> ${record.ambulance}</p>` : ''}
-                ${record.notes ? `<p class="text-sm text-gray-700 mb-2">${record.notes}</p>` : ''}
-                ${Object.keys(record.conditionData || {}).length > 0 ? `
-                    <div class="mt-3 pt-3 border-t border-gray-200">
-                        <p class="text-xs text-gray-500 mb-2">Condition-specific data recorded</p>
-                    </div>
-                ` : ''}
-            </div>
-        `).join('');
-
-        return `
-            <div class="max-h-96 overflow-y-auto">
-                ${recordsHTML}
-            </div>
-        `;
+        hideModal();
+        showStatusMessage('Medical record saved successfully!', 'success');
     }
 }
 

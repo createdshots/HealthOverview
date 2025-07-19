@@ -121,6 +121,8 @@ class DashboardApp {
             console.log('Rendering dashboard data...');
             const data = this.dataManager.getData();
             console.log('Data to render:', data);
+            console.log('Hospitals:', data.hospitals?.length || 0);
+            console.log('Ambulance services:', data.ambulance?.length || 0);
             
             this.uiComponents.renderGreetingAndActions();
             this.renderHospitals();
@@ -148,11 +150,24 @@ class DashboardApp {
     renderAmbulance() {
         const searchTerm = document.getElementById('ambulance-search')?.value || '';
         const data = this.dataManager.getData();
-        const allData = data.ambulance || [];
+        
+        console.log('Rendering ambulance data:', data.ambulance);
+        
+        // Ensure ambulance data exists
+        if (!data.ambulance || data.ambulance.length === 0) {
+            console.log('No ambulance data found, checking if we need to initialize...');
+            // Try to trigger data initialization if ambulance array is empty
+            this.dataManager.initializeDefaultData().then(() => {
+                console.log('Data initialized, re-rendering ambulance list');
+                this.renderAmbulance(); // Re-render after initialization
+            });
+            return;
+        }
+        
         const filteredData = this.dataManager.getFilteredData('ambulance', searchTerm);
         
-        this.uiComponents.renderList('ambulance', filteredData, searchTerm, allData);
-        this.uiComponents.renderStats('ambulance', allData);
+        this.uiComponents.renderList('ambulance', filteredData, searchTerm);
+        this.uiComponents.renderStats('ambulance', data.ambulance || []);
     }
 
     // Update quick stats
