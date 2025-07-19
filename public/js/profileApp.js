@@ -1,8 +1,7 @@
-import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { auth } from '/src/firebase/auth.js';
-import { loadUserData, saveUserData } from '/js/data/enhancedDataManager.js';
-import { showModal, hideModal } from '/js/components/modal.js';
-import { showStatusMessage } from '/js/utils/ui.js';
+import { auth, onAuthStateChanged, signOut } from '/firebaseConfig.js';
+import { loadUserData, saveUserData } from './data/enhancedDataManager.js';
+import { showModal, hideModal } from './components/modal.js';
+import { showStatusMessage } from './utils/ui.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loading-overlay');

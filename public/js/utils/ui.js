@@ -22,23 +22,52 @@ export class UIManager {
         };
     }
 
-    showStatusMessage(message, type = 'success') {
-        console.log(`Status: ${message} (${type})`);
-        
-        if (this.statusMessageArea) {
-            this.statusMessageArea.innerHTML = `
-                <div class="text-center p-2 rounded-lg ${this.getStatusClasses(type)}">
-                    ${message}
-                </div>
-            `;
-            
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                if (this.statusMessageArea) {
-                    this.statusMessageArea.innerHTML = '';
-                }
-            }, 5000);
+    /**
+     * Displays a status message at the top of the screen.
+     * @param {string} message The message to display.
+     * @param {'success'|'error'|'info'} type The type of message.
+     */
+    showStatusMessage(message, type = 'info') {
+        // Remove any existing status message
+        const existingMessage = document.getElementById('status-message');
+        if (existingMessage) {
+            existingMessage.remove();
         }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.id = 'status-message';
+        messageDiv.textContent = message;
+
+        // Base styles
+        messageDiv.className = 'fixed top-5 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white font-semibold z-50 transition-all duration-300 transform opacity-0 -translate-y-full';
+
+        // Type-specific styles
+        switch (type) {
+            case 'success':
+                messageDiv.classList.add('bg-green-600');
+                break;
+            case 'error':
+                messageDiv.classList.add('bg-red-600');
+                break;
+            default:
+                messageDiv.classList.add('bg-blue-600');
+                break;
+        }
+
+        document.body.appendChild(messageDiv);
+
+        // Animate in
+        setTimeout(() => {
+            messageDiv.classList.remove('opacity-0', '-translate-y-full');
+            messageDiv.classList.add('opacity-100', 'translate-y-0');
+        }, 100);
+
+        // Automatically hide after 5 seconds
+        setTimeout(() => {
+            messageDiv.classList.remove('opacity-100', 'translate-y-0');
+            messageDiv.classList.add('opacity-0', '-translate-y-full');
+            setTimeout(() => messageDiv.remove(), 300);
+        }, 5000);
     }
 
     getStatusClasses(type) {

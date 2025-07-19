@@ -1,7 +1,46 @@
 console.log('enhancedDataManager.js loaded');
 // Enhanced Data Management system for Hospital Tracker
-import { db, doc, getDoc, setDoc } from '../../firebaseConfig.js';
+import { db, doc, getDoc, setDoc } from '/firebaseConfig.js';
 
+/**
+ * Loads user data from Firestore.
+ * @param {string} userId The user's unique ID.
+ * @returns {Promise<{userData: object, onboardingCompleted: boolean}>}
+ */
+export async function loadUserData(userId) {
+    if (!userId) throw new Error("User ID is required to load data.");
+    
+    const userDocRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(userDocRef);
+
+    if (docSnap.exists()) {
+        const userData = docSnap.data();
+        return {
+            userData,
+            onboardingCompleted: userData.onboardingCompleted || false
+        };
+    } else {
+        // No document yet
+        return { userData: null, onboardingCompleted: false };
+    }
+}
+
+/**
+ * Saves user data to Firestore.
+ * @param {string} userId The user's unique ID.
+ * @param {object} data The data to save.
+ */
+export async function saveUserData(userId, data) {
+    if (!userId) throw new Error("User ID is required to save data.");
+    
+    const userDocRef = doc(db, 'users', userId);
+    // Use merge: true to avoid overwriting fields unintentionally
+    await setDoc(userDocRef, data, { merge: true });
+}
+
+/**
+ * Enhanced Data Manager class for managing hospital and ambulance data.
+ */
 export class EnhancedDataManager {
     constructor() {
         this.localData = {

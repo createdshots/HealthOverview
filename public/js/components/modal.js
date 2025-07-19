@@ -159,3 +159,52 @@ export function closeModal(modal) {
 }
 
 export { modalManager };
+
+/**
+ * Creates and shows a modal with the given content.
+ * @param {string} htmlContent The HTML content to display inside the modal.
+ * @param {boolean} isDismissible If true, clicking the background will close the modal.
+ */
+export function showModal(htmlContent, isDismissible = true) {
+    // Remove any existing modal first
+    hideModal();
+
+    const modalContainer = document.createElement('div');
+    modalContainer.id = 'modal-backdrop';
+    modalContainer.className = 'fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50';
+    
+    modalContainer.innerHTML = `
+        <div id="modal-content" class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-11/12 max-w-lg transform transition-all scale-95 opacity-0">
+            ${htmlContent}
+        </div>
+    `;
+
+    document.body.appendChild(modalContainer);
+
+    // Animate the modal in
+    setTimeout(() => {
+        const modalContent = document.getElementById('modal-content');
+        if (modalContent) {
+            modalContent.classList.remove('scale-95', 'opacity-0');
+            modalContent.classList.add('scale-100', 'opacity-100');
+        }
+    }, 10);
+
+    if (isDismissible) {
+        modalContainer.addEventListener('click', (e) => {
+            if (e.target.id === 'modal-backdrop') {
+                hideModal();
+            }
+        });
+    }
+}
+
+/**
+ * Hides and removes the currently active modal.
+ */
+export function hideModal() {
+    const modalBackdrop = document.getElementById('modal-backdrop');
+    if (modalBackdrop) {
+        modalBackdrop.remove();
+    }
+}
