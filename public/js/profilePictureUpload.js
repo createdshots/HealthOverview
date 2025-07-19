@@ -18,16 +18,29 @@ class ProfilePictureUploader {
     }
 
     init() {
+        console.log('🔧 Initializing ProfilePictureUploader...');
         // Target the main profile picture container instead of header
         const profilePicContainer = document.getElementById('main-profile-pic-container');
         const fileInput = document.getElementById('profile-pic-input');
 
+        console.log('🎯 Profile pic container:', profilePicContainer);
+        console.log('📁 File input:', fileInput);
+
         if (profilePicContainer) {
-            profilePicContainer.addEventListener('click', () => this.openFileDialog());
+            console.log('✅ Adding click listener to profile container');
+            profilePicContainer.addEventListener('click', () => {
+                console.log('🖱️ Profile picture clicked!');
+                this.openFileDialog();
+            });
+        } else {
+            console.log('❌ Profile picture container not found');
         }
 
         if (fileInput) {
+            console.log('✅ Adding change listener to file input');
             fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        } else {
+            console.log('❌ File input not found');
         }
     }
 
@@ -39,14 +52,22 @@ class ProfilePictureUploader {
     }
 
     handleFileSelect(event) {
+        console.log('🖼️ File selected for upload');
         const file = event.target.files[0];
-        if (!file) return;
-
-        // Validate file
-        if (!this.validateFile(file)) {
+        if (!file) {
+            console.log('❌ No file selected');
             return;
         }
 
+        console.log('📁 Selected file:', file.name, file.size, file.type);
+
+        // Validate file
+        if (!this.validateFile(file)) {
+            console.log('❌ File validation failed');
+            return;
+        }
+
+        console.log('✅ File validation passed');
         this.currentFile = file;
         this.showCropModal(file);
     }
@@ -150,7 +171,9 @@ class ProfilePictureUploader {
     }
 
     async saveCroppedImage() {
+        console.log('💾 Starting save process...');
         if (!this.cropper || !auth.currentUser) {
+            console.log('❌ Missing cropper or user auth');
             this.showError('Unable to save image');
             return;
         }
@@ -165,6 +188,7 @@ class ProfilePictureUploader {
         saveLoading.classList.remove('hidden');
 
         try {
+            console.log('🖼️ Getting cropped canvas...');
             // Get cropped canvas
             const canvas = this.cropper.getCroppedCanvas({
                 width: 400,
@@ -173,18 +197,24 @@ class ProfilePictureUploader {
                 imageSmoothingQuality: 'high'
             });
 
+            console.log('📦 Converting to blob...');
             // Convert to blob
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
             
             // Create file from blob
             const croppedFile = new File([blob], 'profile-picture.jpg', { type: 'image/jpeg' });
+            console.log('📁 Created cropped file:', croppedFile.size, 'bytes');
 
+            console.log('☁️ Uploading to Cloudinary...');
             // Upload to Cloudinary
             const uploadResult = await uploadToCloudinary(croppedFile);
+            console.log('✅ Upload result:', uploadResult);
 
+            console.log('💾 Updating user profile...');
             // Update user profile in Firestore
             await this.updateUserProfile(uploadResult.url, uploadResult.publicId);
 
+            console.log('🔄 Updating UI...');
             // Update UI
             this.updateProfilePicture(uploadResult.url);
 
@@ -192,7 +222,7 @@ class ProfilePictureUploader {
             this.closeCropModal();
 
         } catch (error) {
-            console.error('Error saving profile picture:', error);
+            console.error('💥 Error saving profile picture:', error);
             this.showError('Failed to save profile picture. Please try again.');
             
             // Reset button state

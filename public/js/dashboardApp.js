@@ -4,17 +4,13 @@ import { auth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup,
 import { enhancedDataManager } from './data/enhancedDataManager.js';
 import { showStatusMessage } from './utils/ui.js';
 import { symptomTracker, showSymptomTracker } from './features/symptomTracker.js';
+import { mapViewer, showMapModal } from './features/mapViewer.js';
 
 class DashboardApp {
     constructor() {
         this.dataManager = enhancedDataManager;
-        this.loadingIndicator = null;
         this.uiComponents = new UIComponents();
-        
-        // Set up data manager callbacks
-        this.dataManager.onStatusMessage((message, type) => {
-            showStatusMessage(message, type);
-        });
+        this.loadingIndicator = null;
     }
 
     async init() {
@@ -38,6 +34,9 @@ class DashboardApp {
                 symptomTracker.onStatus((message, type) => {
                     showStatusMessage(message, type);
                 });
+                
+                // Initialize map viewer
+                mapViewer.setDataManager(this.dataManager);
                 
                 // Load user data and check onboarding status
                 try {
@@ -392,7 +391,8 @@ class DashboardApp {
 
         if (showMapBtn) {
             showMapBtn.addEventListener('click', () => {
-                showStatusMessage('Map feature coming soon!', 'info');
+                console.log('Map button clicked');
+                showMapModal();
             });
         }
 
