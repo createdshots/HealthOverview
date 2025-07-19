@@ -43,11 +43,11 @@ export class SymptomTracker {
         const userConditions = data.userProfile?.conditions || [];
 
         // Generate hospital and ambulance options
-        const hospitalOptions = data.hospitals?.map(h => 
+        const hospitalOptions = data.hospitals?.map(h =>
             `<option value="${h.name}">${h.name}</option>`
         ).join('') || '';
-        
-        const ambulanceOptions = data.ambulance?.map(a => 
+
+        const ambulanceOptions = data.ambulance?.map(a =>
             `<option value="${a.name}">${a.name}</option>`
         ).join('') || '';
 
@@ -55,7 +55,7 @@ export class SymptomTracker {
         const conditionQuestions = this.generateConditionQuestions(userConditions);
 
         const modalContent = this.generateSymptomTrackerHTML(hospitalOptions, ambulanceOptions, conditionQuestions);
-        
+
         showModal(modalContent, false);
         this.setupSymptomTrackerEventListeners();
     }
@@ -140,7 +140,7 @@ export class SymptomTracker {
                         <div class="flex items-center space-x-4">
                             <span class="text-sm text-gray-500">Mild</span>
                             <div class="flex space-x-2">
-                                ${[1,2,3,4,5,6,7,8,9,10].map(num => `
+                                ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => `
                                     <label class="cursor-pointer">
                                         <input type="radio" name="severity" value="${num}" class="sr-only">
                                         <div class="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center text-sm font-medium hover:border-blue-500 transition-colors severity-btn">
@@ -253,12 +253,12 @@ export class SymptomTracker {
             const questions = conditionQuestionMap[condition.toLowerCase()];
             if (questions) {
                 questionsHTML += `<div class="bg-blue-50 p-4 rounded-lg"><h4 class="font-medium text-blue-900 mb-3">${condition.charAt(0).toUpperCase() + condition.slice(1)} Related</h4>`;
-                
+
                 questions.forEach((q, index) => {
                     const fieldName = `${condition}_${index}`;
                     questionsHTML += `<div class="mb-3">`;
                     questionsHTML += `<label for="${fieldName}" class="block text-sm font-medium text-gray-700 mb-1">${q.question}</label>`;
-                    
+
                     if (q.type === 'select') {
                         questionsHTML += `<select id="${fieldName}" name="${fieldName}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">`;
                         questionsHTML += `<option value="">Select...</option>`;
@@ -276,10 +276,10 @@ export class SymptomTracker {
                     } else {
                         questionsHTML += `<input type="${q.type}" id="${fieldName}" name="${fieldName}" placeholder="${q.placeholder || ''}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">`;
                     }
-                    
+
                     questionsHTML += `</div>`;
                 });
-                
+
                 questionsHTML += `</div>`;
             }
         });
@@ -294,7 +294,7 @@ export class SymptomTracker {
         const now = new Date();
         const dateInput = document.getElementById('incident-date');
         const timeInput = document.getElementById('incident-time');
-        
+
         if (dateInput) {
             dateInput.value = now.toISOString().split('T')[0];
         }
@@ -308,11 +308,11 @@ export class SymptomTracker {
             radio.addEventListener('change', (e) => {
                 const hospitalSection = document.getElementById('hospital-selection');
                 const ambulanceSection = document.getElementById('ambulance-selection');
-                
+
                 // Hide both sections first
                 hospitalSection.classList.add('hidden');
                 ambulanceSection.classList.add('hidden');
-                
+
                 // Show relevant section based on selection
                 if (e.target.value === 'hospital_visit') {
                     hospitalSection.classList.remove('hidden');
@@ -331,11 +331,11 @@ export class SymptomTracker {
                     b.classList.remove('bg-blue-600', 'border-blue-600', 'text-white');
                     b.classList.add('border-gray-300');
                 });
-                
+
                 // Add active class to clicked button
                 btn.classList.add('bg-blue-600', 'border-blue-600', 'text-white');
                 btn.classList.remove('border-gray-300');
-                
+
                 // Set the radio button value
                 const radio = btn.previousElementSibling;
                 if (radio) radio.checked = true;
@@ -422,7 +422,7 @@ export class SymptomTracker {
             }
 
             const data = this.dataManager.getData();
-            
+
             // Initialize medicalRecords array if it doesn't exist
             if (!data.medicalRecords) {
                 data.medicalRecords = [];
@@ -494,7 +494,6 @@ export class SymptomTracker {
         showModal(overviewHTML, true);
         this.setupOverviewChart(records);
     }
-
     // Generate symptom overview HTML with chart
     generateSymptomOverviewHTML(records) {
         const totalRecords = records.length;
@@ -505,7 +504,7 @@ export class SymptomTracker {
             return recordDate >= thirtyDaysAgo;
         }).length;
 
-        const averageSeverity = records.length > 0 ? 
+        const averageSeverity = records.length > 0 ?
             (records.reduce((sum, r) => sum + (parseInt(r.severity) || 0), 0) / records.length).toFixed(1) : 'N/A';
 
         return `
@@ -562,10 +561,10 @@ export class SymptomTracker {
 
         return records.map(record => {
             const date = new Date(record.timestamp).toLocaleDateString();
-            const time = new Date(record.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const time = new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const typeLabel = record.incidentType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
             const severityColor = this.getSeverityColor(record.severity);
-            
+
             return `
                 <div class="border border-gray-200 rounded-lg p-3 hover:bg-gray-50">
                     <div class="flex justify-between items-start">
@@ -613,7 +612,7 @@ export class SymptomTracker {
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
             const dailyData = {};
-            
+
             // Initialize all days with 0
             for (let i = 0; i < 30; i++) {
                 const date = new Date();
@@ -643,7 +642,7 @@ export class SymptomTracker {
             });
 
             const sortedDates = Object.keys(dailyData).sort();
-            const labels = sortedDates.map(date => new Date(date).toLocaleDateString([], {month: 'short', day: 'numeric'}));
+            const labels = sortedDates.map(date => new Date(date).toLocaleDateString([], { month: 'short', day: 'numeric' }));
             const countData = sortedDates.map(date => dailyData[date].count);
             const severityData = sortedDates.map(date => dailyData[date].avgSeverity);
 

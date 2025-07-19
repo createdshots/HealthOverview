@@ -5,6 +5,7 @@ import { showStatusMessage } from './utils/ui.js';
 import { symptomTracker, showSymptomTracker, showSymptomOverview } from './features/symptomTracker.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Get DOM elements
     const loadingOverlay = document.getElementById('loading-overlay');
     const profileContent = document.getElementById('profile-content');
     const notSignedInDiv = document.getElementById('not-signed-in');
@@ -18,10 +19,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentUserData = null;
     let currentUser = null;
-    let enhancedDataManager = null;
+    let medicalRecordsManager = null;
 
-    // Instead of importing, let's add the medical records functionality directly to profileApp.js
-    // Add this before the DOMContentLoaded event:
+    window.refreshProfileData = function () {
+        if (currentUserData && currentUser) {
+            renderFullProfile(currentUserData, currentUser);
+        }
+    };
 
     class ProfileMedicalRecordsManager {
         constructor() {
@@ -34,21 +38,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showAddRecordModal() {
             console.log('Showing enhanced medical records modal from profile');
-            
+
             // Import the required functions
             import('./components/modal.js').then(({ showModal, hideModal }) => {
                 import('./utils/ui.js').then(({ showStatusMessage }) => {
-                    
+
                     // Make functions globally available
                     window.hideModal = hideModal;
                     window.showStatusMessage = showStatusMessage;
 
                     const data = this.dataManager.getData();
                     const userConditions = data.userProfile?.conditions || [];
-                    
+
                     const modalContent = this.generateEnhancedModalContent(userConditions);
                     showModal(modalContent, false);
-                    
+
                     setTimeout(() => {
                         const modalContent = document.getElementById('modal-content');
                         if (modalContent) {
@@ -389,7 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setupRecordFormListeners() {
             console.log('Setting up record form listeners');
-            
+
             // Severity slider
             const severitySlider = document.getElementById('severity-slider');
             if (severitySlider) {
@@ -437,15 +441,15 @@ document.addEventListener('DOMContentLoaded', () => {
         handleSubmit(e) {
             const formData = new FormData(e.target);
             const symptoms = [];
-            
+
             // Collect general symptoms
             const generalSymptoms = formData.getAll('symptoms');
             symptoms.push(...generalSymptoms);
-            
+
             // Collect condition-specific symptoms
             const conditionSymptoms = formData.getAll('condition_symptoms');
             symptoms.push(...conditionSymptoms);
-            
+
             const recordData = {
                 id: Date.now().toString(),
                 type: formData.get('incidentType'),
@@ -456,13 +460,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 notes: formData.get('notes'),
                 createdAt: new Date().toISOString()
             };
-            
+
             // Save the record
             this.dataManager.addMedicalRecord(recordData);
-            
+
             window.hideModal();
             window.showStatusMessage('Medical record saved successfully!', 'success');
-            
+
             // Refresh profile data if function exists
             if (window.refreshProfileData) {
                 window.refreshProfileData();
@@ -531,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('Error loading user data:', error);
                 showStatusMessage('Error loading profile data', 'error');
-                
+
                 // Try to initialize default data as fallback
                 await enhancedDataManager.initializeDefaultData();
                 currentUserData = enhancedDataManager.getData();
@@ -573,7 +577,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Calculate join date
         const joinDate = userData.onboardingDate ? new Date(userData.onboardingDate) : new Date();
         const daysSinceJoin = Math.floor((new Date() - joinDate) / (1000 * 60 * 60 * 24));
-        
+
         // Calculate stats
         const totalRecords = userData.medicalRecords?.length || 0;
         const totalConditions = userData.conditions?.length || 0;
@@ -582,21 +586,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const visitedHospitals = userData.hospitals?.filter(h => h.visited)?.length || 0;
         const totalAmbulance = userData.ambulance?.length || 0;
         const visitedAmbulance = userData.ambulance?.filter(a => a.visited)?.length || 0;
-        
+
         // Render profile header with beautiful gradient
         renderProfileHeader(userData, user, joinDate, daysSinceJoin, {
             totalRecords,
-            totalConditions, 
+            totalConditions,
             totalHospitals,
             visitedHospitals,
             totalAmbulance,
             visitedAmbulance,
             daysSinceJoin
         });
-        
+
         // Render the overview tab by default
         renderOverviewTab(userData);
-        
+
         // Setup tab switching
         setupTabSwitching(userData);
     }
@@ -605,7 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const headerContainer = document.getElementById('profile-header-and-stats');
         const displayName = userData.displayName || user.displayName || 'Health Tracker User';
         const memberSince = joinDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-        
+
         headerContainer.innerHTML = `
             <!-- Profile Header with Beautiful Gradient -->
             <div class="relative overflow-hidden rounded-xl mb-6">
@@ -759,7 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tabName = e.target.dataset.tab;
 
                 // Render the appropriate tab content
-                switch(tabName) {
+                switch (tabName) {
                     case 'overview':
                         renderOverviewTab(userData);
                         break;
@@ -797,7 +801,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const medicalRecords = userData.medicalRecords || [];
         const recentRecords = medicalRecords.slice(-5).reverse();
         const conditions = userData.conditions || [];
-        
+
         content.innerHTML = `
             <div class="space-y-6">
                 <!-- Quick Actions -->
@@ -854,8 +858,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h3 class="text-xl font-semibold text-gray-900 mb-4">Your Conditions</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             ${conditions.map(conditionId => {
-                                const condition = availableConditions.find(c => c.id === conditionId);
-                                return condition ? `
+            const condition = availableConditions.find(c => c.id === conditionId);
+            return condition ? `
                                     <div class="flex items-center space-x-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
                                         <span class="text-2xl">${condition.icon}</span>
                                         <div>
@@ -864,7 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         </div>
                                     </div>
                                 ` : '';
-                            }).join('')}
+        }).join('')}
                         </div>
                     </div>
                 ` : `
@@ -884,7 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderConditionsTab(userData) {
         const content = document.getElementById('profile-tab-content');
         const conditions = userData.conditions || [];
-        
+
         content.innerHTML = `
             <div class="space-y-6">
                 <div class="flex justify-between items-center">
@@ -897,10 +901,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${conditions.length > 0 ? `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         ${conditions.map(conditionId => {
-                            const condition = availableConditions.find(c => c.id === conditionId);
-                            if (!condition) return '';
-                            
-                            return `
+            const condition = availableConditions.find(c => c.id === conditionId);
+            if (!condition) return '';
+
+            return `
                                 <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
                                     <div class="flex items-center space-x-4 mb-4">
                                         <div class="w-16 h-16 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center text-2xl">
@@ -918,7 +922,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                 </div>
                             `;
-                        }).join('')}
+        }).join('')}
                     </div>
                 ` : `
                     <div class="text-center py-12">
@@ -937,7 +941,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderRecordsTab(userData) {
         const content = document.getElementById('profile-tab-content');
         const records = userData.medicalRecords || [];
-        
+
         content.innerHTML = `
             <div class="space-y-6">
                 <div class="flex justify-between items-center">
@@ -987,7 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderSymptomsTab(userData) {
         const content = document.getElementById('profile-tab-content');
-        
+
         content.innerHTML = `
             <div class="space-y-6">
                 <div class="flex justify-between items-center">
@@ -1038,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderAnalyticsTab(userData) {
         const content = document.getElementById('profile-tab-content');
-        
+
         content.innerHTML = `
             <div class="space-y-6">
                 <h3 class="text-xl font-semibold text-gray-900">Health Analytics</h3>
@@ -1223,7 +1227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         showModal(modalContent, false);
-        
+
         // Use a small delay to ensure DOM elements are rendered
         setTimeout(() => {
             setupOnboardingEventListeners();
@@ -1231,131 +1235,131 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Complete the setupOnboardingEventListeners function
-function setupOnboardingEventListeners() {
-    const form = document.getElementById('onboarding-form');
-    const conditionCards = document.querySelectorAll('.onboarding-condition-card');
-    const skipBtn = document.getElementById('skip-onboarding');
-    
-    // Check if elements exist before setting up listeners
-    if (!form) {
-        console.error('Onboarding form not found');
-        return;
-    }
-    
-    if (!skipBtn) {
-        console.error('Skip button not found');
-        return;
-    }
-    
-    if (conditionCards.length === 0) {
-        console.error('No condition cards found');
-        return;
-    }
-    
-    let selectedConditions = new Set(currentUserData?.conditions || []);
+    function setupOnboardingEventListeners() {
+        const form = document.getElementById('onboarding-form');
+        const conditionCards = document.querySelectorAll('.onboarding-condition-card');
+        const skipBtn = document.getElementById('skip-onboarding');
 
-    // Handle condition selection
-    conditionCards.forEach(card => {
-        const conditionId = card.dataset.condition;
-        
-        // Set initial state
-        if (selectedConditions.has(conditionId)) {
-            card.classList.add('selected');
-            const checkbox = card.querySelector('.condition-checkbox');
-            if (checkbox) {
-                checkbox.classList.remove('hidden');
-            }
+        // Check if elements exist before setting up listeners
+        if (!form) {
+            console.error('Onboarding form not found');
+            return;
         }
 
-        // Add click handler for condition selection
-        card.addEventListener('click', () => {
-            const checkbox = card.querySelector('.condition-checkbox');
-            
+        if (!skipBtn) {
+            console.error('Skip button not found');
+            return;
+        }
+
+        if (conditionCards.length === 0) {
+            console.error('No condition cards found');
+            return;
+        }
+
+        let selectedConditions = new Set(currentUserData?.conditions || []);
+
+        // Handle condition selection
+        conditionCards.forEach(card => {
+            const conditionId = card.dataset.condition;
+
+            // Set initial state
             if (selectedConditions.has(conditionId)) {
-                // Deselect condition
-                selectedConditions.delete(conditionId);
-                card.classList.remove('selected');
-                if (checkbox) {
-                    checkbox.classList.add('hidden');
-                }
-            } else {
-                // Select condition
-                selectedConditions.add(conditionId);
                 card.classList.add('selected');
+                const checkbox = card.querySelector('.condition-checkbox');
                 if (checkbox) {
                     checkbox.classList.remove('hidden');
                 }
             }
+
+            // Add click handler for condition selection
+            card.addEventListener('click', () => {
+                const checkbox = card.querySelector('.condition-checkbox');
+
+                if (selectedConditions.has(conditionId)) {
+                    // Deselect condition
+                    selectedConditions.delete(conditionId);
+                    card.classList.remove('selected');
+                    if (checkbox) {
+                        checkbox.classList.add('hidden');
+                    }
+                } else {
+                    // Select condition
+                    selectedConditions.add(conditionId);
+                    card.classList.add('selected');
+                    if (checkbox) {
+                        checkbox.classList.remove('hidden');
+                    }
+                }
+            });
         });
-    });
 
-    // Handle form submission
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await completeOnboarding(selectedConditions);
-    });
-
-    // Handle skip button
-    skipBtn.addEventListener('click', async () => {
-        await completeOnboarding(new Set());
-    });
-}
-
-// Add the missing completeOnboarding function
-async function completeOnboarding(selectedConditions) {
-    try {
-        const form = document.getElementById('onboarding-form');
-        if (!form) {
-            throw new Error('Form not found');
-        }
-        
-        const formData = new FormData(form);
-        
-        const userData = {
-            ...currentUserData,
-            displayName: formData.get('displayName') || currentUser?.displayName || 'User',
-            emergencyContact: formData.get('emergencyContact') || '',
-            medicalNotes: formData.get('medicalNotes') || '',
-            conditions: Array.from(selectedConditions),
-            onboardingCompleted: true,
-            profileSetupDate: new Date().toISOString()
-        };
-
-        // Save user data
-        await enhancedDataManager.setData({
-            ...enhancedDataManager.getData(),
-            userProfile: userData,
-            onboardingCompleted: true
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await completeOnboarding(selectedConditions);
         });
-        
-        await enhancedDataManager.saveData();
-        currentUserData = enhancedDataManager.getData();
-        
-        hideModal();
-        showStatusMessage('Profile setup completed successfully! Redirecting to dashboard...', 'success');
-        
-        // Clear the onboarding parameter from URL
-        const url = new URL(window.location);
-        url.searchParams.delete('onboarding');
-        window.history.replaceState({}, '', url);
-        
-        // Set localStorage flag to prevent redirect loop
-        localStorage.setItem('onboardingCompleted', 'true');
-        
-        // Redirect to dashboard after a short delay
-        setTimeout(() => {
-            window.location.href = '/dashboard.html';
-        }, 1500);
-        
-    } catch (error) {
-        console.error('Error completing onboarding:', error);
-        showStatusMessage('Error saving profile. Please try again.', 'error');
+
+        // Handle skip button
+        skipBtn.addEventListener('click', async () => {
+            await completeOnboarding(new Set());
+        });
     }
-}
 
-// Add the missing CSS for selected condition cards
-const onboardingStyles = document.createElement('style');
-onboardingStyles.textContent = `
+    // Add the missing completeOnboarding function
+    async function completeOnboarding(selectedConditions) {
+        try {
+            const form = document.getElementById('onboarding-form');
+            if (!form) {
+                throw new Error('Form not found');
+            }
+
+            const formData = new FormData(form);
+
+            const userData = {
+                ...currentUserData,
+                displayName: formData.get('displayName') || currentUser?.displayName || 'User',
+                emergencyContact: formData.get('emergencyContact') || '',
+                medicalNotes: formData.get('medicalNotes') || '',
+                conditions: Array.from(selectedConditions),
+                onboardingCompleted: true,
+                profileSetupDate: new Date().toISOString()
+            };
+
+            // Save user data
+            await enhancedDataManager.setData({
+                ...enhancedDataManager.getData(),
+                userProfile: userData,
+                onboardingCompleted: true
+            });
+
+            await enhancedDataManager.saveData();
+            currentUserData = enhancedDataManager.getData();
+
+            hideModal();
+            showStatusMessage('Profile setup completed successfully! Redirecting to dashboard...', 'success');
+
+            // Clear the onboarding parameter from URL
+            const url = new URL(window.location);
+            url.searchParams.delete('onboarding');
+            window.history.replaceState({}, '', url);
+
+            // Set localStorage flag to prevent redirect loop
+            localStorage.setItem('onboardingCompleted', 'true');
+
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+                window.location.href = '/dashboard.html';
+            }, 1500);
+
+        } catch (error) {
+            console.error('Error completing onboarding:', error);
+            showStatusMessage('Error saving profile. Please try again.', 'error');
+        }
+    }
+
+    // Add the missing CSS for selected condition cards
+    const onboardingStyles = document.createElement('style');
+    onboardingStyles.textContent = `
     .onboarding-condition-card.selected {
         border-color: #8b5cf6 !important;
         background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
@@ -1436,21 +1440,21 @@ onboardingStyles.textContent = `
     }
 `;
 
-// Add styles to head if not already present
-if (!document.getElementById('onboarding-styles')) {
-    onboardingStyles.id = 'onboarding-styles';
-    document.head.appendChild(onboardingStyles);
-}
+    // Add styles to head if not already present
+    if (!document.getElementById('onboarding-styles')) {
+        onboardingStyles.id = 'onboarding-styles';
+        document.head.appendChild(onboardingStyles);
+    }
 
-// Fix the data manager setup for medical records
-medicalRecordsManager.setDataManager(enhancedDataManager);
+    // Fix the data manager setup for medical records
+    medicalRecordsManager.setDataManager(enhancedDataManager);
 
-// Add the profile tabs HTML structure to the profile content
-function renderProfileTabs() {
-    const profileContent = document.getElementById('profile-content');
-    if (!profileContent) return;
-    
-    profileContent.innerHTML = `
+    // Add the profile tabs HTML structure to the profile content
+    function renderProfileTabs() {
+        const profileContent = document.getElementById('profile-content');
+        if (!profileContent) return;
+
+        profileContent.innerHTML = `
         <!-- Profile Header and Stats -->
         <div id="profile-header-and-stats"></div>
         
@@ -1481,47 +1485,47 @@ function renderProfileTabs() {
             </div>
         </div>
     `;
-}
+    }
 
-// Update the renderFullProfile function to use the new tab structure
-function renderFullProfile(userData, user) {
-    // First render the tab structure
-    renderProfileTabs();
-    
-    // Calculate join date
-    const joinDate = userData.profileSetupDate ? new Date(userData.profileSetupDate) : new Date();
-    const daysSinceJoin = Math.floor((new Date() - joinDate) / (1000 * 60 * 60 * 24));
-    
-    // Calculate stats
-    const totalRecords = userData.medicalRecords?.length || 0;
-    const totalConditions = userData.conditions?.length || 0;
-    const totalSymptoms = userData.symptoms?.length || 0;
-    const totalHospitals = userData.hospitals?.length || 0;
-    const visitedHospitals = userData.hospitals?.filter(h => h.visited)?.length || 0;
-    const totalAmbulance = userData.ambulance?.length || 0;
-    const visitedAmbulance = userData.ambulance?.filter(a => a.visited)?.length ||  0;
-    
-    // Render profile header with beautiful gradient
-    renderProfileHeader(userData, user, joinDate, daysSinceJoin, {
-        totalRecords,
-        totalConditions, 
-        totalHospitals,
-        visitedHospitals,
-        totalAmbulance,
-        visitedAmbulance,
-        daysSinceJoin
-    });
-    
-    // Render the overview tab by default
-    renderOverviewTab(userData);
-    
-    // Setup tab switching
-    setupTabSwitching(userData);
-}
+    // Update the renderFullProfile function to use the new tab structure
+    function renderFullProfile(userData, user) {
+        // First render the tab structure
+        renderProfileTabs();
 
-// Also fix the showOnboardingModal form structure to be properly nested
-function showOnboardingModal() {
-    const modalContent = `
+        // Calculate join date
+        const joinDate = userData.profileSetupDate ? new Date(userData.profileSetupDate) : new Date();
+        const daysSinceJoin = Math.floor((new Date() - joinDate) / (1000 * 60 * 60 * 24));
+
+        // Calculate stats
+        const totalRecords = userData.medicalRecords?.length || 0;
+        const totalConditions = userData.conditions?.length || 0;
+        const totalSymptoms = userData.symptoms?.length || 0;
+        const totalHospitals = userData.hospitals?.length || 0;
+        const visitedHospitals = userData.hospitals?.filter(h => h.visited)?.length || 0;
+        const totalAmbulance = userData.ambulance?.length || 0;
+        const visitedAmbulance = userData.ambulance?.filter(a => a.visited)?.length || 0;
+
+        // Render profile header with beautiful gradient
+        renderProfileHeader(userData, user, joinDate, daysSinceJoin, {
+            totalRecords,
+            totalConditions,
+            totalHospitals,
+            visitedHospitals,
+            totalAmbulance,
+            visitedAmbulance,
+            daysSinceJoin
+        });
+
+        // Render the overview tab by default
+        renderOverviewTab(userData);
+
+        // Setup tab switching
+        setupTabSwitching(userData);
+    }
+
+    // Also fix the showOnboardingModal form structure to be properly nested
+    function showOnboardingModal() {
+        const modalContent = `
         <div class="onboarding-gradient text-white p-4 rounded-t-xl">
             <div class="text-center">
                 <div class="text-2xl mb-2">🏥</div>
@@ -1658,10 +1662,10 @@ function showOnboardingModal() {
         </form>
     `;
 
-    showModal(modalContent, false);
-    
-    // Use a small delay to ensure DOM elements are rendered
-    setTimeout(() => {
-        setupOnboardingEventListeners();
-    }, 100);
-}
+        showModal(modalContent, false);
+
+        // Use a small delay to ensure DOM elements are rendered
+        setTimeout(() => {
+            setupOnboardingEventListeners();
+        }, 100);
+    }
