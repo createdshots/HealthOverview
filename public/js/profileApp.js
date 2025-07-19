@@ -451,6 +451,29 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'gastrointestinal', name: 'Gastrointestinal', icon: '🫃', description: 'Digestive health tracking' }
     ];
 
+    // Function to update main profile picture
+    function updateMainProfilePicture(userData, displayName) {
+        const mainProfilePic = document.getElementById('main-profile-pic');
+        const mainAvatar = document.getElementById('main-avatar');
+        
+        if (!mainProfilePic || !mainAvatar) return; // Elements don't exist yet
+        
+        const profilePictureUrl = userData?.userProfile?.profilePicture?.url || userData?.profilePicture?.url;
+        
+        if (profilePictureUrl) {
+            // Show profile picture if available
+            mainProfilePic.src = profilePictureUrl;
+            mainProfilePic.classList.remove('hidden');
+            mainAvatar.classList.add('hidden');
+        } else if (displayName) {
+            // Fall back to avatar initial if no profile picture
+            const initial = displayName.charAt(0).toUpperCase();
+            mainAvatar.textContent = initial;
+            mainAvatar.classList.remove('hidden');
+            mainProfilePic.classList.add('hidden');
+        }
+    }
+
     // Initialize enhanced data manager for profile
     enhancedDataManager.onStatusMessage((message, type) => {
         showStatusMessage(message, type);
@@ -536,6 +559,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update profile picture after data is loaded
                 const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
                 updateUserProfilePicture(displayName);
+                updateMainProfilePicture(currentUserData, displayName);
+                
+                // Initialize profile picture uploader after content is rendered
+                setTimeout(() => {
+                    if (window.ProfilePictureUploader) {
+                        new window.ProfilePictureUploader();
+                    }
+                }, 100);
 
             } catch (error) {
                 console.error('Error loading user data:', error);
@@ -553,6 +584,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update profile picture even in error case
                 const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
                 updateUserProfilePicture(displayName);
+                updateMainProfilePicture(currentUserData, displayName);
             } finally {
                 if (loadingOverlay) loadingOverlay.style.display = 'none';
             }
@@ -656,6 +688,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Setup tab switching
         setupTabSwitching(userData);
+        
+        // Update main profile picture after header is rendered
+        setTimeout(() => {
+            const displayName = userData.displayName || user.displayName || 'Health Tracker User';
+            updateMainProfilePicture(userData, displayName);
+        }, 100);
     }
 
     function renderProfileHeader(userData, user, joinDate, daysSinceJoin, stats) {
@@ -682,10 +720,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="relative p-8 text-white">
                     <div class="flex flex-col md:flex-row items-start md:items-center justify-between">
                         <div class="flex items-center space-x-6 mb-4 md:mb-0">
-                            <!-- Avatar Circle with Gradient Border -->
+                            <!-- Profile Picture with Upload Capability -->
                             <div class="relative">
-                                <div class="w-24 h-24 bg-gradient-to-br from-white to-blue-100 rounded-full flex items-center justify-center text-4xl font-bold text-purple-600 shadow-xl border-4 border-white/30">
-                                    ${displayName.charAt(0).toUpperCase()}
+                                <div class="profile-pic-container w-24 h-24 bg-gradient-to-br from-white to-blue-100 rounded-full flex items-center justify-center text-4xl font-bold text-purple-600 shadow-xl border-4 border-white/30 cursor-pointer relative overflow-hidden" id="main-profile-pic-container">
+                                    <img id="main-profile-pic" class="w-full h-full object-cover rounded-full hidden" alt="Profile Picture">
+                                    <span id="main-avatar">${displayName.charAt(0).toUpperCase()}</span>
+                                    <div class="profile-pic-overlay absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
+                                        <span class="text-white text-xs text-center">📷<br>Edit</span>
+                                    </div>
                                 </div>
                                 <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-green-400 rounded-full border-4 border-white flex items-center justify-center">
                                     <span class="text-white text-sm">✓</span>

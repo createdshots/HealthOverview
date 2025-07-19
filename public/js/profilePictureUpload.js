@@ -18,7 +18,8 @@ class ProfilePictureUploader {
     }
 
     init() {
-        const profilePicContainer = document.getElementById('profile-pic-container');
+        // Target the main profile picture container instead of header
+        const profilePicContainer = document.getElementById('main-profile-pic-container');
         const fileInput = document.getElementById('profile-pic-input');
 
         if (profilePicContainer) {
@@ -232,20 +233,30 @@ class ProfilePictureUploader {
     }
 
     updateProfilePicture(imageUrl) {
-        // Update profile picture in header
-        const profilePic = document.getElementById('user-profile-pic');
-        const avatar = document.getElementById('user-avatar');
+        // Update main profile picture on profile page
+        const mainProfilePic = document.getElementById('main-profile-pic');
+        const mainAvatar = document.getElementById('main-avatar');
         
-        if (profilePic && avatar) {
-            profilePic.src = imageUrl;
-            profilePic.classList.remove('hidden');
-            avatar.classList.add('hidden');
+        if (mainProfilePic && mainAvatar) {
+            mainProfilePic.src = imageUrl;
+            mainProfilePic.classList.remove('hidden');
+            mainAvatar.classList.add('hidden');
         }
 
-        // Update profile picture in profile page (if exists)
-        const profileImg = document.querySelector('.profile-image');
-        if (profileImg) {
-            profileImg.src = imageUrl;
+        // Also update header profile picture for consistency (if it exists)
+        const headerProfilePic = document.getElementById('user-profile-pic');
+        const headerAvatar = document.getElementById('user-avatar');
+        
+        if (headerProfilePic && headerAvatar) {
+            headerProfilePic.src = imageUrl;
+            headerProfilePic.classList.remove('hidden');
+            headerAvatar.classList.add('hidden');
+        }
+
+        // Update dashboard profile picture (if exists - when user navigates there)
+        const dashboardProfilePic = document.querySelector('#user-profile-pic');
+        if (dashboardProfilePic) {
+            dashboardProfilePic.src = imageUrl;
         }
     }
 
@@ -296,9 +307,23 @@ class ProfilePictureUploader {
     }
 }
 
-// Initialize when DOM is loaded
+// Initialize when DOM is loaded, but check for main profile container periodically
 document.addEventListener('DOMContentLoaded', () => {
-    new ProfilePictureUploader();
+    // Check if main profile container exists, if not wait for it
+    function initializeUploader() {
+        const mainContainer = document.getElementById('main-profile-pic-container');
+        if (mainContainer) {
+            new ProfilePictureUploader();
+        } else {
+            // Wait and try again (profile content might still be loading)
+            setTimeout(initializeUploader, 500);
+        }
+    }
+    
+    initializeUploader();
 });
+
+// Make ProfilePictureUploader available globally
+window.ProfilePictureUploader = ProfilePictureUploader;
 
 export default ProfilePictureUploader;

@@ -379,18 +379,15 @@
                     </a>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <!-- User Profile Section - Now shows user info but not clickable since we're already on profile -->
+                    <!-- User Profile Section - Display only (not clickable since we're on profile) -->
                     <div class="flex items-center space-x-4 bg-white/30 rounded-xl p-2">
                         <div class="text-right">
                             <div id="user-display-name" class="text-sm font-semibold text-gray-700 hidden"></div>
                             <div id="user-email-display" class="text-xs text-gray-500 hidden"></div>
                         </div>
-                        <div class="profile-pic-container w-10 h-10 bg-gradient-to-br from-purple-400 to-blue-400 rounded-full flex items-center justify-center text-white font-bold shadow-lg" id="profile-pic-container">
-                            <img id="user-profile-pic" class="profile-pic hidden" alt="Profile Picture">
+                        <div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-blue-400 rounded-full flex items-center justify-center text-white font-bold shadow-lg relative overflow-hidden">
+                            <img id="user-profile-pic" class="w-full h-full object-cover rounded-full hidden" alt="Profile Picture">
                             <span id="user-avatar">👤</span>
-                            <div class="profile-pic-overlay">
-                                <span>📷<br>Edit</span>
-                            </div>
                         </div>
                     </div>
                     
