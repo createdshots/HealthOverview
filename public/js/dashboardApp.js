@@ -99,20 +99,22 @@ class DashboardApp {
     renderHospitals() {
         const searchTerm = document.getElementById('hospital-search')?.value || '';
         const data = this.dataManager.getData();
+        const allData = data.hospitals || [];
         const filteredData = this.dataManager.getFilteredData('hospitals', searchTerm);
         
-        this.uiComponents.renderList('hospitals', filteredData, searchTerm);
-        this.uiComponents.renderStats('hospitals', data.hospitals || []);
+        this.uiComponents.renderList('hospitals', filteredData, searchTerm, allData);
+        this.uiComponents.renderStats('hospitals', allData);
     }
 
     // Render ambulance services
     renderAmbulance() {
         const searchTerm = document.getElementById('ambulance-search')?.value || '';
         const data = this.dataManager.getData();
+        const allData = data.ambulance || [];
         const filteredData = this.dataManager.getFilteredData('ambulance', searchTerm);
         
-        this.uiComponents.renderList('ambulance', filteredData, searchTerm);
-        this.uiComponents.renderStats('ambulance', data.ambulance || []);
+        this.uiComponents.renderList('ambulance', filteredData, searchTerm, allData);
+        this.uiComponents.renderStats('ambulance', allData);
     }
 
     // Update quick stats
@@ -265,7 +267,7 @@ class UIComponents {
         console.log('Rendering greeting and actions');
     }
 
-    renderList(type, data, searchTerm = '') {
+    renderList(type, data, searchTerm = '', originalData = null) {
         const containerId = type === 'hospitals' ? 'hospitals-list' : 'ambulance-list';
         const container = document.getElementById(containerId);
         
@@ -285,8 +287,13 @@ class UIComponents {
             return;
         }
 
-        data.forEach((item, index) => {
-            const listItem = this.createListItem(type, item, index);
+        data.forEach((item, filteredIndex) => {
+            // Find the original index in the full dataset
+            const originalIndex = originalData ? originalData.findIndex(originalItem => 
+                originalItem.name === item.name && originalItem.location === item.location
+            ) : filteredIndex;
+            
+            const listItem = this.createListItem(type, item, originalIndex);
             container.appendChild(listItem);
         });
     }

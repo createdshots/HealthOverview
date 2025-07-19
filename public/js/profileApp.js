@@ -291,4 +291,165 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
     }
+
+    function renderFullProfile(userData, user) {
+        // Calculate join date
+        const joinDate = userData.onboardingDate ? new Date(userData.onboardingDate) : new Date();
+        const daysSinceJoin = Math.floor((new Date() - joinDate) / (1000 * 60 * 60 * 24));
+        
+        // Calculate stats
+        const totalRecords = userData.medicalRecords?.length || 0;
+        const totalConditions = userData.conditions?.length || 0;
+        const totalSymptoms = userData.symptoms?.length || 0;
+        
+        // Render profile header
+        renderProfileHeader(userData, user, joinDate, daysSinceJoin);
+        
+        // Render the overview tab by default
+        renderOverviewTab(userData);
+        
+        // Setup tab switching
+        setupTabSwitching(userData);
+    }
+
+    function renderProfileHeader(userData, user, joinDate, daysSinceJoin) {
+        const headerContainer = document.getElementById('profile-header-and-stats');
+        const displayName = userData.displayName || user.displayName || 'Health Tracker User';
+        const memberSince = joinDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        
+        headerContainer.innerHTML = `
+            <!-- Profile Header with Beautiful Gradient -->
+            <div class="relative overflow-hidden rounded-xl mb-6">
+                <!-- Gradient Background -->
+                <div class="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700"></div>
+                
+                <!-- Animated Background Elements -->
+                <div class="absolute inset-0 opacity-20">
+                    <div class="absolute top-0 left-0 w-72 h-72 bg-white rounded-full mix-blend-multiply filter blur-xl animate-pulse"></div>
+                    <div class="absolute top-0 right-0 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl animate-pulse animation-delay-2000"></div>
+                    <div class="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl animate-pulse animation-delay-4000"></div>
+                </div>
+                
+                <!-- Content -->
+                <div class="relative p-8 text-white">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between">
+                        <div class="flex items-center space-x-6 mb-4 md:mb-0">
+                            <!-- Avatar Circle with Gradient Border -->
+                            <div class="relative">
+                                <div class="w-24 h-24 bg-gradient-to-br from-white to-blue-100 rounded-full flex items-center justify-center text-4xl font-bold text-purple-600 shadow-xl border-4 border-white/30">
+                                    ${displayName.charAt(0).toUpperCase()}
+                                </div>
+                                <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-green-400 rounded-full border-4 border-white flex items-center justify-center">
+                                    <span class="text-white text-sm">✓</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h1 class="text-4xl font-bold mb-2 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+                                    ${displayName}
+                                </h1>
+                                <p class="text-blue-100 text-lg font-medium">Member since ${memberSince}</p>
+                                <p class="text-blue-200 text-sm flex items-center mt-1">
+                                    <span class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
+                                    ${daysSinceJoin} days on your health journey
+                                </p>
+                            </div>
+                        </div>
+                        <button id="edit-profile-btn" class="group bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-6 py-3 rounded-xl transition-all duration-200 border border-white/30 hover:border-white/50 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                            <span class="flex items-center space-x-2">
+                                <span class="text-xl">✏️</span>
+                                <span class="font-semibold">Edit Profile</span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Stats Grid with Gradients -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <!-- Tracked Conditions Card -->
+                <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <p class="text-purple-100 text-sm font-medium">Tracked Conditions</p>
+                                <p class="text-3xl font-bold">${userData.conditions?.length || 0}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-200">
+                                <span class="text-2xl">🏥</span>
+                            </div>
+                        </div>
+                        <div class="h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Medical Records Card -->
+                <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <p class="text-blue-100 text-sm font-medium">Medical Records</p>
+                                <p class="text-3xl font-bold">${userData.medicalRecords?.length || 0}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-200">
+                                <span class="text-2xl">📋</span>
+                            </div>
+                        </div>
+                        <div class="h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Logged Symptoms Card -->
+                <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-green-500 to-green-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <p class="text-green-100 text-sm font-medium">Logged Symptoms</p>
+                                <p class="text-3xl font-bold">${userData.symptoms?.length || 0}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-200">
+                                <span class="text-2xl">📝</span>
+                            </div>
+                        </div>
+                        <div class="h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Days Active Card -->
+                <div class="group relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <p class="text-orange-100 text-sm font-medium">Days Active</p>
+                                <p class="text-3xl font-bold">${daysSinceJoin}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform duration-200">
+                                <span class="text-2xl">⏰</span>
+                            </div>
+                        </div>
+                        <div class="h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add edit profile functionality
+        const editBtn = document.getElementById('edit-profile-btn');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                showOnboardingModal(auth.currentUser, userData);
+            });
+        }
+    }
 });
