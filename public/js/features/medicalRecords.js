@@ -14,11 +14,15 @@ export class MedicalRecordsManager {
 
     // Show add medical record modal
     showAddRecordModal() {
+        console.log('showAddRecordModal called');
+        
         if (!this.dataManager) {
+            console.error('Data manager not initialized');
             showStatusMessage('Data manager not initialized', 'error');
             return;
         }
 
+        console.log('Data manager found, generating modal...');
         const data = this.dataManager.getData();
         const hospitalOptions = (data.hospitals || []).map(h => 
             `<option value="${h.name}">${h.name}</option>`
@@ -29,7 +33,6 @@ export class MedicalRecordsManager {
         ).join('');
 
         const userConditions = data.userProfile?.conditions || [];
-        const conditionSymptomsHTML = this.generateConditionSymptomsHTML(userConditions);
         const generalSymptomsHTML = this.generateGeneralSymptomsHTML();
 
         const modalContent = `
@@ -82,15 +85,22 @@ export class MedicalRecordsManager {
             </script>
         `;
 
+        console.log('About to show modal with content length:', modalContent.length);
         showModal(modalContent, false);
-        this.setupRecordFormListeners();
-
-        // Adjust modal size for new layout
-        const modal = document.querySelector('#modal-backdrop .bg-white');
-        if (modal) {
-            modal.classList.remove('max-w-md', 'max-w-lg', 'max-w-xl', 'max-w-2xl');
-            modal.classList.add('max-w-7xl', 'w-full', 'mx-4');
-        }
+        console.log('Modal show command executed');
+        
+        // Adjust modal size for new layout - with a delay to ensure modal is created
+        setTimeout(() => {
+            const modalContent = document.getElementById('modal-content');
+            console.log('Modal content element found:', !!modalContent);
+            if (modalContent) {
+                modalContent.style.width = '95vw';
+                modalContent.style.maxWidth = '95vw';
+                modalContent.style.maxHeight = '90vh';
+                console.log('Modal size adjusted');
+            }
+            this.setupRecordFormListeners();
+        }, 50);
     }
 
     // Get general symptoms list
