@@ -75,6 +75,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Add record button
+    document.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'add-record-btn') {
+            // For now, redirect to dashboard where they can add records
+            // In the future, this could open a medical record modal
+            window.location.href = '/dashboard.html';
+        }
+    });
+
     function renderFullProfile(userData, user) {
         // Calculate join date
         const joinDate = userData.onboardingDate ? new Date(userData.onboardingDate) : new Date();
@@ -485,86 +494,150 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedConditions = userData.conditions || [];
 
         const modalContent = `
-            <div class="text-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-900 mb-2">
-                    ${isOnboarding ? 'Welcome to Health Overview!' : 'Update Your Profile'}
-                </h2>
-                <p class="text-gray-600">
-                    ${isOnboarding ? "Let's set up your health tracking profile. Select the conditions you'd like to track:" : 'Update your health conditions and profile information:'}
-                </p>
+            <div class="bg-white rounded-2xl shadow-2xl max-w-6xl w-full mx-4 overflow-hidden">
+                <!-- Header with gradient -->
+                <div class="onboarding-gradient text-white p-8 text-center">
+                    <h2 class="text-3xl font-bold mb-2">
+                        ${isOnboarding ? '🎉 Welcome to Health Overview!' : '⚙️ Update Your Profile'}
+                    </h2>
+                    <p class="text-purple-100 text-lg">
+                        ${isOnboarding ? "Let's set up your personalized health tracking experience" : 'Update your health conditions and profile information'}
+                    </p>
+                </div>
+                
+                <form id="onboarding-form" class="grid grid-cols-1 lg:grid-cols-2 gap-0 min-h-96">
+                    <!-- Left Column: User Information & Privacy -->
+                    <div class="onboarding-user-info p-8 space-y-6">
+                        <div class="text-center mb-6">
+                            <div class="w-20 h-20 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-2xl">
+                                👤
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800">Your Profile</h3>
+                            <p class="text-gray-600">Basic information and privacy settings</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                    ✨ Display Name
+                                </label>
+                                <input type="text" 
+                                       name="displayName" 
+                                       value="${userData.displayName || user.displayName || ''}"
+                                       placeholder="How you'd like to be addressed"
+                                       class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                    🆘 Emergency Contact
+                                </label>
+                                <input type="text" 
+                                       name="emergencyContact" 
+                                       value="${userData.emergencyContact || ''}"
+                                       placeholder="Name and phone number"
+                                       class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                    📋 Medical Notes/Allergies
+                                </label>
+                                <textarea name="medicalNotes" 
+                                          rows="3"
+                                          placeholder="Important medical information, allergies, etc."
+                                          class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all resize-none">${userData.medicalNotes || ''}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Privacy Section -->
+                        <div class="privacy-card p-4 rounded-xl">
+                            <h4 class="font-semibold text-green-800 mb-2 flex items-center">
+                                🔒 Privacy & Data Protection
+                            </h4>
+                            <p class="text-sm text-green-700 mb-3">Your health data is encrypted and stored securely. We never share your personal information.</p>
+                            <div class="space-y-2">
+                                <label class="flex items-center space-x-2 text-sm">
+                                    <input type="checkbox" name="dataConsent" checked disabled class="rounded border-green-400 text-green-600">
+                                    <span class="text-green-700">I consent to secure data storage for tracking purposes</span>
+                                </label>
+                                <label class="flex items-center space-x-2 text-sm">
+                                    <input type="checkbox" name="analyticsConsent" class="rounded border-green-400 text-green-600">
+                                    <span class="text-green-700">Allow anonymous analytics to improve the service</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Health Conditions -->
+                    <div class="p-8 bg-gradient-to-br from-purple-50 to-indigo-50">
+                        <div class="text-center mb-6">
+                            <div class="w-20 h-20 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-2xl">
+                                🏥
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800">Health Conditions</h3>
+                            <p class="text-gray-600">Select conditions you'd like to track</p>
+                        </div>
+
+                        <div class="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
+                            ${conditions.map(condition => `
+                                <label class="onboarding-condition-card block p-4 rounded-xl cursor-pointer ${selectedConditions.includes(condition.id) ? 'selected' : ''}">
+                                    <div class="flex items-start space-x-3">
+                                        <input type="checkbox" 
+                                               name="conditions" 
+                                               value="${condition.id}"
+                                               class="mt-1 h-5 w-5 text-purple-600 border-2 border-gray-300 rounded focus:ring-purple-500 condition-checkbox"
+                                               ${selectedConditions.includes(condition.id) ? 'checked' : ''}>
+                                        <div class="flex-1">
+                                            <div class="font-semibold text-gray-900">${condition.name}</div>
+                                            <div class="text-sm text-gray-600">${condition.description}</div>
+                                        </div>
+                                    </div>
+                                </label>
+                            `).join('')}
+                        </div>
+
+                        <div class="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                            <p class="text-sm text-blue-700">
+                                💡 <strong>Tip:</strong> You can always add or remove conditions later from your profile settings.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Footer with buttons spanning both columns -->
+                    <div class="col-span-1 lg:col-span-2 bg-gray-50 p-6 flex justify-between items-center">
+                        <div class="text-sm text-gray-500">
+                            ${isOnboarding ? '🚀 Almost done! Complete your setup to get started.' : '✏️ Update your information and save changes.'}
+                        </div>
+                        <div class="flex space-x-3">
+                            ${!isOnboarding ? `<button type="button" id="cancel-onboarding" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-300 transition-all font-medium">Cancel</button>` : ''}
+                            <button type="submit" 
+                                    class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all font-semibold shadow-lg hover:shadow-xl">
+                                ${isOnboarding ? '🎯 Complete Setup' : '💾 Save Changes'}
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
-            
-            <form id="onboarding-form" class="space-y-6">
-                <!-- Condition Selection -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-3">
-                        Health Conditions to Track
-                    </label>
-                    <div class="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
-                        ${conditions.map(condition => `
-                            <label class="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                                <input type="checkbox" 
-                                       name="conditions" 
-                                       value="${condition.id}"
-                                       class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                       ${selectedConditions.includes(condition.id) ? 'checked' : ''}>
-                                <div class="flex-1">
-                                    <div class="font-medium text-gray-900">${condition.name}</div>
-                                    <div class="text-sm text-gray-500">${condition.description}</div>
-                                </div>
-                            </label>
-                        `).join('')}
-                    </div>
-                </div>
-
-                <!-- Optional Basic Info -->
-                <div class="space-y-4 pt-4 border-t border-gray-200">
-                    <h3 class="font-medium text-gray-900">Profile Information</h3>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Display Name
-                        </label>
-                        <input type="text" 
-                               name="displayName" 
-                               value="${userData.displayName || user.displayName || ''}"
-                               placeholder="How you'd like to be addressed"
-                               class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Emergency Contact
-                        </label>
-                        <input type="text" 
-                               name="emergencyContact" 
-                               value="${userData.emergencyContact || ''}"
-                               placeholder="Name and phone number"
-                               class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Medical Notes/Allergies
-                        </label>
-                        <textarea name="medicalNotes" 
-                                  rows="3"
-                                  placeholder="Important medical information, allergies, etc."
-                                  class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">${userData.medicalNotes || ''}</textarea>
-                    </div>
-                </div>
-
-                <div class="flex justify-end space-x-3 pt-4">
-                    ${!isOnboarding ? `<button type="button" id="cancel-onboarding" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">Cancel</button>` : ''}
-                    <button type="submit" 
-                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                        ${isOnboarding ? 'Complete Setup' : 'Save Changes'}
-                    </button>
-                </div>
-            </form>
         `;
 
         showModal(modalContent, false); // Not dismissible
+
+        // Add interactive functionality for condition cards
+        document.querySelectorAll('.onboarding-condition-card').forEach(card => {
+            const checkbox = card.querySelector('.condition-checkbox');
+            
+            card.addEventListener('click', (e) => {
+                if (e.target !== checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    card.classList.toggle('selected', checkbox.checked);
+                }
+            });
+            
+            checkbox.addEventListener('change', () => {
+                card.classList.toggle('selected', checkbox.checked);
+            });
+        });
 
         // Handle form submission
         const form = document.getElementById('onboarding-form');
@@ -579,6 +652,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 displayName: formData.get('displayName') || user.displayName || '',
                 emergencyContact: formData.get('emergencyContact') || '',
                 medicalNotes: formData.get('medicalNotes') || '',
+                analyticsConsent: formData.get('analyticsConsent') === 'on',
                 onboardingCompleted: true,
                 onboardingDate: userData.onboardingDate || new Date().toISOString()
             };
@@ -587,7 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await saveUserData(user.uid, profileData);
                 currentUserData = { ...currentUserData, ...profileData };
                 hideModal();
-                showStatusMessage(isOnboarding ? 'Profile setup complete!' : 'Profile updated successfully!', 'success');
+                showStatusMessage(isOnboarding ? 'Profile setup complete! 🎉' : 'Profile updated successfully! ✅', 'success');
                 
                 // Re-render the profile with new data
                 renderFullProfile(currentUserData, user);
