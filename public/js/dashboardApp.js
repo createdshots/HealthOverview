@@ -309,12 +309,8 @@ class DashboardApp {
     }
 }
 
-// Initialize the dashboard when DOM is loaded
-document.addEventListener('DOMContentLoaded', async () => {
-    const app = new DashboardApp();
-    await app.init();
-    
-    // Add version badge (from original embedded code)
+// Helper function to create version badges
+function createVersionBadges() {
     const badgeContainer = document.createElement('div');
     badgeContainer.id = 'version-badges';
     badgeContainer.style.position = 'fixed';
@@ -370,6 +366,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     wipBadge.style.opacity = '0.92';
     wipBadge.style.pointerEvents = 'none';
     badgeContainer.appendChild(wipBadge);
-});
+}
+
+// Initialize the dashboard when the DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApp);
+} else {
+    startApp();
+}
+
+async function startApp() {
+    const app = new DashboardApp();
+    await app.init();
+    createVersionBadges();
+}
 
 export { DashboardApp };
