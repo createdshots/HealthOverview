@@ -70,46 +70,49 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 
-                <form id="add-record-form" class="p-6 space-y-6">
-                    <!-- Incident Type Selection -->
-                    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-5 rounded-2xl border border-indigo-200">
-                        <h3 class="text-xl font-bold text-indigo-800 mb-4 flex items-center">
-                            <span class="text-2xl mr-3">🏥</span>
-                            What type of incident?
-                        </h3>
-                        <input type="hidden" id="selected-type" name="incidentType" required>
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            ${this.getIncidentTypes().map(type => `
-                                <div class="incident-type-card p-4 border-2 border-indigo-200 rounded-xl cursor-pointer hover:border-indigo-400 transition-all duration-300 bg-white" data-type="${type.id}">
-                                    <div class="text-center">
-                                        <div class="text-3xl mb-2">${type.icon}</div>
-                                        <div class="font-semibold text-indigo-800 text-sm">${type.name}</div>
+                <!-- Scrollable Content Area -->
+                <div class="max-h-[70vh] overflow-y-auto custom-scrollbar">
+                    <form id="add-record-form" class="p-6 space-y-6">
+                        <!-- Incident Type Selection -->
+                        <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-5 rounded-2xl border border-indigo-200">
+                            <h3 class="text-xl font-bold text-indigo-800 mb-4 flex items-center">
+                                <span class="text-2xl mr-3">🏥</span>
+                                What type of incident?
+                            </h3>
+                            <input type="hidden" id="selected-type" name="incidentType" required>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                ${this.getIncidentTypes().map(type => `
+                                    <div class="incident-type-card p-4 border-2 border-indigo-200 rounded-xl cursor-pointer hover:border-indigo-400 transition-all duration-300 bg-white" data-type="${type.id}">
+                                        <div class="text-center">
+                                            <div class="text-3xl mb-2">${type.icon}</div>
+                                            <div class="font-semibold text-indigo-800 text-sm">${type.name}</div>
+                                        </div>
                                     </div>
-                                </div>
-                            `).join('')}
+                                `).join('')}
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Basic Info -->
-                    ${this.generateBasicInfoHTML()}
+                        <!-- Basic Info -->
+                        ${this.generateBasicInfoHTML()}
 
-                    <!-- Condition-specific Symptoms -->
-                    <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-5 rounded-2xl border border-purple-200">
-                        ${this.generateConditionSymptomsPanel(userConditions)}
-                    </div>
+                        <!-- Condition-specific Symptoms -->
+                        <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-5 rounded-2xl border border-purple-200">
+                            ${this.generateConditionSymptomsPanel(userConditions)}
+                        </div>
 
-                    <!-- General Symptoms -->
-                    ${this.generateGeneralSymptomsHTML()}
+                        <!-- General Symptoms -->
+                        ${this.generateGeneralSymptomsHTML()}
 
-                    <!-- Severity -->
-                    ${this.generateSeverityHTML()}
+                        <!-- Severity -->
+                        ${this.generateSeverityHTML()}
 
-                    <!-- Notes -->
-                    ${this.generateNotesHTML()}
+                        <!-- Notes -->
+                        ${this.generateNotesHTML()}
 
-                    <!-- Action Buttons -->
-                    ${this.generateActionButtonsHTML()}
-                </form>
+                        <!-- Action Buttons -->
+                        ${this.generateActionButtonsHTML()}
+                    </form>
+                </div>
             `;
         }
 
@@ -1360,7 +1363,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Add the CSS styles for onboarding
+    // Add the CSS styles for onboarding - UPDATE THIS SECTION
     const onboardingStyles = document.createElement('style');
     onboardingStyles.textContent = `
         .onboarding-condition-card.selected {
@@ -1398,6 +1401,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         .onboarding-conditions-scroll::-webkit-scrollbar-thumb:hover {
+            background: #8b5cf6;
+        }
+        
+        /* Custom scrollbar for medical records modal */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #a78bfa;
+            border-radius: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #8b5cf6;
         }
         
