@@ -14,12 +14,66 @@ class ProfilePictureUploader {
         this.cropper = null;
         this.currentFile = null;
         this.maxFileSize = 5 * 1024 * 1024; // 5MB
+        this.isInitialized = false;
         this.init();
     }
 
     init() {
+        // Prevent multiple initializations
+        if (this.isInitialized) {
+            console.log('⚠️ ProfilePictureUploader already initialized');
+            return;
+        }
+
         console.log('🔧 Initializing ProfilePictureUploader...');
-        // Target the main profile picture container instead of header
+        
+        // Check if Cropper.js is available
+        if (typeof Cropper === 'undefined') {
+            console.error('❌ Cropper.js is not loaded. Adding it dynamically...');
+            this.loadCropperJS().then(() => {
+                this.setupEventListeners();
+            });
+        } else {
+            this.setupEventListeners();
+        }
+        
+        this.isInitialized = true;
+    }
+
+    async loadCropperJS() {
+        return new Promise((resolve, reject) => {
+            // Load Cropper.js CSS
+            const cssLink = document.createElement('link');
+            cssLink.rel = 'stylesheet';
+            cssLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css';
+            document.head.appendChild(cssLink);
+
+            // Load Cropper.js JavaScript
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js';
+            script.onload = () => {
+                console.log('✅ Cropper.js loaded successfully');
+                resolve();
+            };
+            script.onerror = () => {
+                console.error('❌ Failed to load Cropper.js');
+                reject();
+            };
+            document.head.appendChild(script);
+        });
+    }
+
+    setupEventListeners() {
+        // Add the file input if it doesn't exist
+        if (!document.getElementById('profile-pic-input')) {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.id = 'profile-pic-input';
+            fileInput.accept = 'image/*';
+            fileInput.style.display = 'none';
+            document.body.appendChild(fileInput);
+        }
+
         const profilePicContainer = document.getElementById('main-profile-pic-container');
         const fileInput = document.getElementById('profile-pic-input');
 
@@ -28,26 +82,52 @@ class ProfilePictureUploader {
 
         if (profilePicContainer) {
             console.log('✅ Adding click listener to profile container');
-            profilePicContainer.addEventListener('click', () => {
-                console.log('🖱️ Profile picture clicked!');
-                this.openFileDialog();
-            });
+            
+            // Remove any existing listeners to prevent duplicates
+            profilePicContainer.removeEventListener('click', this.handleContainerClick);
+            profilePicContainer.addEventListener('click', this.handleContainerClick.bind(this));
+            
+            // Add visual feedback on hover
+            profilePicContainer.style.cursor = 'pointer';
+            
         } else {
             console.log('❌ Profile picture container not found');
         }
 
         if (fileInput) {
             console.log('✅ Adding change listener to file input');
-            fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+            
+            // Remove any existing listeners to prevent duplicates
+            fileInput.removeEventListener('change', this.handleFileSelect);
+            fileInput.addEventListener('change', this.handleFileSelect.bind(this));
         } else {
             console.log('❌ File input not found');
         }
     }
 
+    handleContainerClick(event) {
+        console.log('🖱️ Profile picture clicked!');
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Add visual feedback
+        const container = event.currentTarget;
+        container.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            container.style.transform = 'scale(1)';
+        }, 150);
+        
+        this.openFileDialog();
+    }
+
     openFileDialog() {
+        console.log('📂 Opening file dialog...');
         const fileInput = document.getElementById('profile-pic-input');
         if (fileInput) {
             fileInput.click();
+        } else {
+            console.error('❌ File input not found when trying to open dialog');
+            this.showError('File upload not available. Please refresh the page.');
         }
     }
 
@@ -64,24 +144,41 @@ class ProfilePictureUploader {
         // Validate file
         if (!this.validateFile(file)) {
             console.log('❌ File validation failed');
+            // Clear the file input
+            event.target.value = '';
             return;
         }
 
         console.log('✅ File validation passed');
         this.currentFile = file;
-        this.showCropModal(file);
+        
+        // Check if Cropper is available before showing modal
+        if (typeof Cropper === 'undefined') {
+            console.log('⏳ Cropper.js not ready, loading...');
+            this.showMessage('Loading image editor...', 'info');
+            
+            this.loadCropperJS().then(() => {
+                this.showCropModal(file);
+            }).catch(() => {
+                this.showError('Failed to load image editor. Please try again.');
+                event.target.value = '';
+            });
+        } else {
+            this.showCropModal(file);
+        }
     }
 
     validateFile(file) {
         // Check file type
         if (!file.type.startsWith('image/')) {
-            this.showError('Please select an image file');
+            this.showError('Please select an image file (JPG, PNG, GIF, etc.)');
             return false;
         }
 
         // Check file size (5MB limit)
         if (file.size > this.maxFileSize) {
-            this.showError('Image must be smaller than 5MB');
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            this.showError(`Image is too large (${sizeMB}MB). Please select an image smaller than 5MB.`);
             return false;
         }
 
@@ -89,16 +186,18 @@ class ProfilePictureUploader {
     }
 
     showCropModal(file) {
+        console.log('🖼️ Showing crop modal for:', file.name);
+        
         const modalHtml = `
             <div id="crop-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
                 <div class="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-hidden">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-bold text-gray-800">Crop Profile Picture</h3>
-                        <button id="close-crop-modal" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+                        <button id="close-crop-modal" class="text-gray-400 hover:text-gray-600 text-2xl font-bold transition-colors">&times;</button>
                     </div>
                     
                     <div class="mb-6">
-                        <img id="crop-image" class="max-w-full" style="max-height: 400px;">
+                        <img id="crop-image" class="max-w-full block" style="max-height: 400px;">
                     </div>
                     
                     <div class="flex justify-between">
@@ -126,22 +225,41 @@ class ProfilePictureUploader {
         reader.onload = (e) => {
             cropImage.src = e.target.result;
             
-            // Initialize Cropper.js
-            this.cropper = new Cropper(cropImage, {
-                aspectRatio: 1, // Square crop
-                viewMode: 1,
-                responsive: true,
-                background: false,
-                autoCropArea: 0.8,
-                cropBoxResizable: true,
-                cropBoxMovable: true,
-                guides: false,
-                center: true,
-                highlight: false,
-                ready: () => {
-                    console.log('Cropper ready');
+            // Wait for image to load before initializing cropper
+            cropImage.onload = () => {
+                console.log('🖼️ Image loaded, initializing Cropper...');
+                
+                try {
+                    // Initialize Cropper.js
+                    this.cropper = new Cropper(cropImage, {
+                        aspectRatio: 1, // Square crop
+                        viewMode: 1,
+                        responsive: true,
+                        background: false,
+                        autoCropArea: 0.8,
+                        cropBoxResizable: true,
+                        cropBoxMovable: true,
+                        guides: false,
+                        center: true,
+                        highlight: false,
+                        ready: () => {
+                            console.log('✅ Cropper ready');
+                        }
+                    });
+                    
+                    console.log('✅ Cropper initialized successfully');
+                } catch (error) {
+                    console.error('❌ Error initializing Cropper:', error);
+                    this.showError('Failed to initialize image editor');
+                    this.closeCropModal();
                 }
-            });
+            };
+        };
+        
+        reader.onerror = () => {
+            console.error('❌ Error reading file');
+            this.showError('Failed to read image file');
+            this.closeCropModal();
         };
         
         reader.readAsDataURL(file);
@@ -153,6 +271,8 @@ class ProfilePictureUploader {
     }
 
     closeCropModal() {
+        console.log('🗑️ Closing crop modal');
+        
         if (this.cropper) {
             this.cropper.destroy();
             this.cropper = null;
@@ -174,7 +294,7 @@ class ProfilePictureUploader {
         console.log('💾 Starting save process...');
         if (!this.cropper || !auth.currentUser) {
             console.log('❌ Missing cropper or user auth');
-            this.showError('Unable to save image');
+            this.showError('Unable to save image. Please try again.');
             return;
         }
 
@@ -243,26 +363,33 @@ class ProfilePictureUploader {
         const userData = userDoc.exists() ? userDoc.data() : {};
 
         // Delete old profile picture if it exists
-        if (userData.profilePicture && userData.profilePicture.publicId) {
+        if (userData.userProfile?.profilePicture?.publicId) {
             try {
-                await deleteFromCloudinary(userData.profilePicture.publicId);
+                await deleteFromCloudinary(userData.userProfile.profilePicture.publicId);
             } catch (error) {
                 console.warn('Failed to delete old profile picture:', error);
             }
         }
 
         // Update with new profile picture
-        await setDoc(userDocRef, {
-            ...userData,
+        const updatedUserProfile = {
+            ...userData.userProfile,
             profilePicture: {
                 url: imageUrl,
                 publicId: publicId,
                 updatedAt: new Date().toISOString()
             }
+        };
+
+        await setDoc(userDocRef, {
+            ...userData,
+            userProfile: updatedUserProfile
         }, { merge: true });
     }
 
     updateProfilePicture(imageUrl) {
+        console.log('🔄 Updating profile picture UI with:', imageUrl);
+        
         // Update main profile picture on profile page
         const mainProfilePic = document.getElementById('main-profile-pic');
         const mainAvatar = document.getElementById('main-avatar');
@@ -271,6 +398,7 @@ class ProfilePictureUploader {
             mainProfilePic.src = imageUrl;
             mainProfilePic.classList.remove('hidden');
             mainAvatar.classList.add('hidden');
+            console.log('✅ Updated main profile picture');
         }
 
         // Also update header profile picture for consistency (if it exists)
@@ -281,12 +409,14 @@ class ProfilePictureUploader {
             headerProfilePic.src = imageUrl;
             headerProfilePic.classList.remove('hidden');
             headerAvatar.classList.add('hidden');
+            console.log('✅ Updated header profile picture');
         }
 
         // Update dashboard profile picture (if exists - when user navigates there)
         const dashboardProfilePic = document.querySelector('#user-profile-pic');
         if (dashboardProfilePic) {
             dashboardProfilePic.src = imageUrl;
+            console.log('✅ Updated dashboard profile picture');
         }
     }
 
@@ -299,14 +429,19 @@ class ProfilePictureUploader {
     }
 
     showMessage(message, type) {
-        const messageArea = document.getElementById('status-message-area');
-        if (!messageArea) return;
+        // Try to use the existing status message system first
+        if (window.showStatusMessage) {
+            window.showStatusMessage(message, type);
+            return;
+        }
 
-        const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+        // Fallback to creating our own message display
+        const messageArea = document.getElementById('status-message-area') || document.body;
+        const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
         const messageId = `message-${Date.now()}`;
         
         const messageHtml = `
-            <div id="${messageId}" class="${bgColor} text-white px-6 py-3 rounded-lg shadow-lg mb-2 transform transition-all duration-300 translate-x-full">
+            <div id="${messageId}" class="fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 translate-x-full">
                 <div class="flex items-center justify-between">
                     <span>${message}</span>
                     <button onclick="document.getElementById('${messageId}').remove()" class="ml-4 text-white hover:text-gray-200">
@@ -316,7 +451,7 @@ class ProfilePictureUploader {
             </div>
         `;
         
-        messageArea.insertAdjacentHTML('beforeend', messageHtml);
+        document.body.insertAdjacentHTML('beforeend', messageHtml);
         
         // Animate in
         setTimeout(() => {
@@ -337,15 +472,25 @@ class ProfilePictureUploader {
     }
 }
 
+// Global instance to prevent multiple initializations
+let profilePictureUploaderInstance = null;
+
 // Initialize when DOM is loaded, but check for main profile container periodically
 document.addEventListener('DOMContentLoaded', () => {
     // Check if main profile container exists, if not wait for it
     function initializeUploader() {
+        if (profilePictureUploaderInstance) {
+            console.log('⚠️ ProfilePictureUploader already exists, skipping initialization');
+            return;
+        }
+
         const mainContainer = document.getElementById('main-profile-pic-container');
         if (mainContainer) {
-            new ProfilePictureUploader();
+            console.log('🎯 Found main profile container, initializing uploader');
+            profilePictureUploaderInstance = new ProfilePictureUploader();
         } else {
             // Wait and try again (profile content might still be loading)
+            console.log('⏳ Main profile container not found, waiting...');
             setTimeout(initializeUploader, 500);
         }
     }
