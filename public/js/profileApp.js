@@ -87,108 +87,108 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showOnboardingModal() {
         const modalContent = `
-            <div class="onboarding-gradient text-white p-6 rounded-t-xl">
+            <div class="onboarding-gradient text-white p-4 rounded-t-xl">
                 <div class="text-center">
-                    <div class="text-3xl mb-3">🏥</div>
-                    <h2 class="text-xl font-bold mb-2">Welcome to Health Overview!</h2>
+                    <div class="text-2xl mb-2">🏥</div>
+                    <h2 class="text-lg font-bold mb-1">Welcome to Health Overview!</h2>
                     <p class="text-purple-100 text-sm">Let's set up your health tracking profile</p>
                 </div>
             </div>
             
-            <div class="grid grid-cols-2 gap-8 p-6">
+            <div class="grid grid-cols-2 gap-4 p-4" style="max-height: 60vh;">
                 <!-- Left Column: User Info & Privacy -->
-                <div class="space-y-4">
-                    <div class="onboarding-user-info p-4 rounded-lg">
-                        <div class="flex items-center space-x-3 mb-4">
-                            <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-blue-500 rounded-full flex items-center justify-center">
-                                <span class="text-white text-xl">👤</span>
+                <div class="space-y-3">
+                    <div class="onboarding-user-info p-3 rounded-lg">
+                        <div class="flex items-center space-x-2 mb-3">
+                            <div class="w-8 h-8 bg-gradient-to-br from-purple-400 to-blue-500 rounded-full flex items-center justify-center">
+                                <span class="text-white text-sm">👤</span>
                             </div>
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-800">Your Profile</h3>
-                                <p class="text-sm text-gray-600">Basic information and privacy settings</p>
+                                <h3 class="text-sm font-semibold text-gray-800">Your Profile</h3>
+                                <p class="text-xs text-gray-600">Basic information</p>
                             </div>
                         </div>
                         
-                        <div class="space-y-3">
+                        <div class="space-y-2">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">🔤 Display Name</label>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">🔤 Display Name</label>
                                 <input type="text" 
                                        id="display-name" 
                                        name="displayName"
                                        value="${currentUserData?.displayName || currentUser?.displayName || ''}"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 text-sm"
+                                       class="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-purple-500 focus:border-purple-500"
                                        placeholder="How should we address you?">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">🚨 Emergency Contact (Optional)</label>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">🚨 Emergency Contact</label>
                                 <input type="text" 
                                        id="emergency-contact" 
                                        name="emergencyContact"
                                        value="${currentUserData?.emergencyContact || ''}"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 text-sm"
-                                       placeholder="Emergency contact info">
+                                       class="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-purple-500 focus:border-purple-500"
+                                       placeholder="Optional">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">📝 Medical Notes/Allergies (Optional)</label>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">📝 Medical Notes</label>
                                 <textarea id="medical-notes" 
                                           name="medicalNotes"
                                           rows="2"
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 text-sm"
-                                          placeholder="Important medical information, allergies, etc.">${currentUserData?.medicalNotes || ''}</textarea>
+                                          class="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-purple-500 focus:border-purple-500"
+                                          placeholder="Allergies, important info...">${currentUserData?.medicalNotes || ''}</textarea>
                             </div>
                         </div>
                     </div>
 
                     <!-- Privacy Section -->
-                    <div class="privacy-card p-4 rounded-lg">
-                        <div class="flex items-center space-x-3 mb-3">
-                            <div class="w-10 h-10 bg-gradient-to-br from-green-400 to-green-500 rounded-full flex items-center justify-center">
-                                <span class="text-white text-lg">🔒</span>
+                    <div class="privacy-card p-3 rounded-lg">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="w-6 h-6 bg-gradient-to-br from-green-400 to-green-500 rounded-full flex items-center justify-center">
+                                <span class="text-white text-xs">🔒</span>
                             </div>
                             <div>
-                                <h4 class="font-medium text-green-800">Privacy & Data Protection</h4>
-                                <p class="text-xs text-green-700">Your health data is encrypted and stored securely. Only you can access your information, and we never share it with third parties.</p>
+                                <h4 class="text-xs font-medium text-green-800">Privacy & Data Protection</h4>
+                                <p class="text-xs text-green-700">Your data is encrypted and secure. We never share it.</p>
                             </div>
                         </div>
                         
-                        <div class="space-y-2">
-                            <label class="flex items-start space-x-2">
-                                <input type="checkbox" class="mt-1 h-3 w-3 text-green-600 border-gray-300 rounded focus:ring-green-500">
-                                <span class="text-xs text-green-800">I consent to secure data storage for tracking</span>
+                        <div class="space-y-1">
+                            <label class="flex items-start space-x-1">
+                                <input type="checkbox" class="mt-0.5 h-3 w-3 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                                <span class="text-xs text-green-800">I consent to secure data storage</span>
                             </label>
-                            <label class="flex items-start space-x-2">
-                                <input type="checkbox" class="mt-1 h-3 w-3 text-green-600 border-gray-300 rounded focus:ring-green-500">
-                                <span class="text-xs text-green-800">I agree to anonymous usage analytics to improve the service</span>
+                            <label class="flex items-start space-x-1">
+                                <input type="checkbox" class="mt-0.5 h-3 w-3 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                                <span class="text-xs text-green-800">Anonymous analytics (optional)</span>
                             </label>
                         </div>
                     </div>
                 </div>
 
                 <!-- Right Column: Health Conditions -->
-                <div class="space-y-4">
-                    <div class="bg-gradient-to-br from-purple-50 to-indigo-50 p-4 rounded-lg border border-purple-200">
-                        <div class="flex items-center space-x-3 mb-4">
-                            <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center">
-                                <span class="text-white text-xl">🏥</span>
+                <div class="space-y-3">
+                    <div class="bg-gradient-to-br from-purple-50 to-indigo-50 p-3 rounded-lg border border-purple-200">
+                        <div class="flex items-center space-x-2 mb-3">
+                            <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center">
+                                <span class="text-white text-sm">🏥</span>
                             </div>
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-800">Health Conditions</h3>
-                                <p class="text-sm text-gray-600">Select conditions you'd like to track</p>
+                                <h3 class="text-sm font-semibold text-gray-800">Health Conditions</h3>
+                                <p class="text-xs text-gray-600">Select what you'd like to track</p>
                             </div>
                         </div>
                         
-                        <div class="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto custom-scrollbar pr-2" id="conditions-grid">
+                        <div class="grid grid-cols-1 gap-1.5 overflow-hidden" id="conditions-grid" style="max-height: 240px;">
                             ${availableConditions.map(condition => `
-                                <div class="onboarding-condition-card p-3 rounded-lg cursor-pointer" 
+                                <div class="onboarding-condition-card p-2 rounded cursor-pointer" 
                                      data-condition="${condition.id}">
-                                    <div class="flex items-start space-x-2">
-                                        <div class="text-lg">${condition.icon}</div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="text-sm">${condition.icon}</div>
                                         <div class="flex-1 min-w-0">
-                                            <h4 class="font-medium text-gray-800 text-sm leading-tight">${condition.name}</h4>
-                                            <p class="text-xs text-gray-600 mt-1 leading-tight">${condition.description}</p>
+                                            <h4 class="font-medium text-gray-800 text-xs leading-tight">${condition.name}</h4>
+                                            <p class="text-xs text-gray-600 leading-tight">${condition.description}</p>
                                         </div>
                                         <div class="condition-checkbox hidden">
-                                            <svg class="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                                            <svg class="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                             </svg>
                                         </div>
@@ -197,40 +197,60 @@ document.addEventListener('DOMContentLoaded', () => {
                             `).join('')}
                         </div>
                         
-                        <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <div class="flex items-center space-x-2">
-                                <span class="text-blue-600 text-sm">💡</span>
-                                <p class="text-xs text-blue-700">
-                                    <strong>Tip:</strong> You can always add or remove conditions later from your profile settings.
-                                </p>
-                            </div>
+                        <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                            <p class="text-xs text-blue-700">
+                                💡 <strong>Tip:</strong> You can always change these later in your profile settings.
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Footer spanning both columns -->
-            <div class="col-span-2 flex justify-between items-center pt-4 px-6 pb-4 border-t border-gray-200">
-                <button type="button" 
-                        id="skip-onboarding"
-                        class="text-gray-500 hover:text-gray-700 font-medium text-sm">
-                    Skip for now
-                </button>
-                <button type="submit" 
-                        class="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-medium">
-                    Complete Setup
-                </button>
-            </div>
+            <form id="onboarding-form" class="col-span-2">
+                <div class="flex justify-between items-center pt-3 px-4 pb-3 border-t border-gray-200">
+                    <button type="button" 
+                            id="skip-onboarding"
+                            class="text-gray-500 hover:text-gray-700 font-medium text-sm underline">
+                        Skip for now
+                    </button>
+                    <button type="submit" 
+                            class="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-medium text-sm">
+                        Complete Setup
+                    </button>
+                </div>
+            </form>
         `;
 
         showModal(modalContent, false);
-        setupOnboardingEventListeners();
+        
+        // Use a small delay to ensure DOM elements are rendered
+        setTimeout(() => {
+            setupOnboardingEventListeners();
+        }, 100);
     }
 
     function setupOnboardingEventListeners() {
         const form = document.getElementById('onboarding-form');
         const conditionCards = document.querySelectorAll('.onboarding-condition-card');
         const skipBtn = document.getElementById('skip-onboarding');
+        
+        // Check if elements exist before setting up listeners
+        if (!form) {
+            console.error('Onboarding form not found');
+            return;
+        }
+        
+        if (!skipBtn) {
+            console.error('Skip button not found');
+            return;
+        }
+        
+        if (conditionCards.length === 0) {
+            console.error('No condition cards found');
+            return;
+        }
+        
         let selectedConditions = new Set(currentUserData?.conditions || []);
 
         // Handle condition selection
@@ -240,18 +260,26 @@ document.addEventListener('DOMContentLoaded', () => {
             // Set initial state
             if (selectedConditions.has(conditionId)) {
                 card.classList.add('selected');
-                card.querySelector('.condition-checkbox').classList.remove('hidden');
+                const checkbox = card.querySelector('.condition-checkbox');
+                if (checkbox) {
+                    checkbox.classList.remove('hidden');
+                }
             }
 
             card.addEventListener('click', () => {
+                const checkbox = card.querySelector('.condition-checkbox');
                 if (selectedConditions.has(conditionId)) {
                     selectedConditions.delete(conditionId);
                     card.classList.remove('selected');
-                    card.querySelector('.condition-checkbox').classList.add('hidden');
+                    if (checkbox) {
+                        checkbox.classList.add('hidden');
+                    }
                 } else {
                     selectedConditions.add(conditionId);
                     card.classList.add('selected');
-                    card.querySelector('.condition-checkbox').classList.remove('hidden');
+                    if (checkbox) {
+                        checkbox.classList.remove('hidden');
+                    }
                 }
             });
         });
@@ -270,7 +298,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function completeOnboarding(selectedConditions) {
         try {
-            const formData = new FormData(document.getElementById('onboarding-form'));
+            const form = document.getElementById('onboarding-form');
+            if (!form) {
+                throw new Error('Form not found');
+            }
+            
+            const formData = new FormData(form);
             
             const userData = {
                 ...currentUserData,

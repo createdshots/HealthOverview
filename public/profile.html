@@ -80,17 +80,22 @@
         }
         .onboarding-condition-card {
             background: linear-gradient(135deg, #fafbff 0%, #f1f5f9 100%);
-            border: 2px solid transparent;
-            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
         }
         .onboarding-condition-card:hover {
             border-color: #8b5cf6;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.15);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.1);
         }
         .onboarding-condition-card.selected {
-            border-color: #8b5cf6;
-            background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%);
+            border-color: #8b5cf6 !important;
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+        }
+        .onboarding-condition-card.selected h4 {
+            color: #7c3aed;
         }
         .privacy-card {
             background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
@@ -103,10 +108,23 @@
         }
         
         #modal-content {
-            max-width: 95vw !important;
-            width: 95vw !important;
-            max-height: 90vh;
-            overflow-y: auto;
+            max-width: 85vw !important;
+            width: 85vw !important;
+            max-height: 85vh;
+            overflow: hidden; /* Hide main scrollbar */
+        }
+        
+        /* Hide scrollbars in conditions area */
+        .onboarding-conditions-area {
+            overflow: hidden;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* Internet Explorer 10+ */
+        }
+        
+        .onboarding-conditions-area::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none; /* WebKit */
         }
     </style>
 </head>
