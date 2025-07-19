@@ -105,7 +105,7 @@ export class EnhancedDataManager {
     async loadUserData() {
         if (!this.docRef || !this.userId) {
             console.log("No document reference or user ID available");
-            return false;
+            return false; // Onboarding not completed, as we can't verify.
         }
 
         try {
@@ -126,7 +126,7 @@ export class EnhancedDataManager {
                     ...firestoreData
                 };
                 console.log("User data loaded successfully");
-                return true;
+                return this.localData.userProfile?.onboardingCompleted || false;
             } else {
                 // Document doesn't exist, initialize with default data
                 this.showStatusMessage('No user data found. Importing default hospitals and ambulances...', 'info');
@@ -134,12 +134,12 @@ export class EnhancedDataManager {
                 if (success) {
                     this.showStatusMessage('Default data imported successfully!', 'success');
                 }
-                return success;
+                return false; // New user, onboarding not completed.
             }
         } catch (error) {
             console.error("Error loading user data:", error);
             this.showStatusMessage('Error loading user data. Please refresh or contact support.', 'error');
-            return false;
+            return false; // Assume onboarding not complete on error.
         }
     }
 

@@ -107,10 +107,15 @@ class DashboardApp {
         this.showLoading('Loading your data...');
         
         try {
-            const success = await this.dataManager.loadUserData();
-            if (success) {
-                this.renderAll();
+            const onboardingCompleted = await this.dataManager.loadUserData();
+            
+            if (!onboardingCompleted) {
+                console.log('Onboarding not complete, redirecting to profile page.');
+                window.location.href = '/profile.html?onboarding=true';
+                return;
             }
+
+            this.renderAll();
         } catch (error) {
             console.error('Error loading user data:', error);
             this.uiComponents.showStatusMessage('Error loading data. Please refresh the page.', 'error');
