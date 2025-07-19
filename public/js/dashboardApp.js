@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fetch latest commit hash from GitHub API
         fetch('https://api.github.com/repos/createdshots/ambulance-hospitaltracker/commits/main')
             .then(res => res.ok ? res.json() : null)
-            .then data => {
+            .then((data) => {
                 if (data && data.sha) {
                     const shortSha = data.sha.substring(0, 7);
                     buildDiv.innerHTML = `<a href="https://github.com/createdshots/ambulance-hospitaltracker/commit/${data.sha}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;pointer-events:auto;">Build: <span style='font-family:monospace;'>${shortSha}</span></a>`;
