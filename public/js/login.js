@@ -7,9 +7,28 @@ const auth = firebaseAuth.getAuth();
 
 firebaseAuth.onAuthChange(({ user }) => {
   if (user) {
-    window.location.href = '/dashboard.html';
+    // Check for admin access before redirecting
+    checkAdminAccessAndRedirect(user);
   }
 });
+
+// Check admin access and handle redirection
+async function checkAdminAccessAndRedirect(user) {
+  // Check if user has admin access
+  const isAdmin = user.email && user.email.endsWith('@healthoverview.info') && user.emailVerified;
+  
+  if (isAdmin) {
+    console.log('🛡️ Admin user detected:', user.email);
+    // Store admin status for the session
+    sessionStorage.setItem('isHealthOverviewAdmin', 'true');
+  } else {
+    // Clear any existing admin status
+    sessionStorage.removeItem('isHealthOverviewAdmin');
+  }
+  
+  // Redirect to dashboard
+  window.location.href = '/dashboard.html';
+}
 
 function showLoginStatusMessage(message, type = 'error') {
   const msgDiv = document.getElementById('login-status-message');
@@ -25,9 +44,13 @@ const googleBtn = document.getElementById('google-signin-btn');
 if (googleBtn) {
   googleBtn.addEventListener('click', async () => {
     try {
+      showLoginStatusMessage('Signing in with Google...', 'success');
       const provider = new GoogleAuthProvider();
+      provider.addScope('email');
+      provider.addScope('profile');
       await signInWithPopup(auth, provider);
     } catch (error) {
+      console.error('Google sign-in error:', error);
       showLoginStatusMessage(error.message);
     }
   });
@@ -38,9 +61,16 @@ const msBtn = document.getElementById('microsoft-signin-btn');
 if (msBtn) {
   msBtn.addEventListener('click', async () => {
     try {
+      showLoginStatusMessage('Signing in with Microsoft...', 'success');
       const provider = new OAuthProvider('microsoft.com');
+      provider.addScope('mail.read');
+      provider.addScope('user.read');
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
       await signInWithPopup(auth, provider);
     } catch (error) {
+      console.error('Microsoft sign-in error:', error);
       showLoginStatusMessage(error.message);
     }
   });
@@ -61,10 +91,12 @@ if (guestBtn) {
 if (guestContinueBtn) {
   guestContinueBtn.addEventListener('click', async () => {
     try {
+      showLoginStatusMessage('Signing in as guest...', 'success');
       await signInAnonymously(auth);
       showLoginStatusMessage('Signed in as guest successfully!', 'success');
       guestModal?.classList.add('hidden');
     } catch (error) {
+      console.error('Anonymous sign-in error:', error);
       showLoginStatusMessage(error.message);
     }
   });
@@ -73,5 +105,14 @@ if (guestContinueBtn) {
 if (guestCancelBtn) {
   guestCancelBtn.addEventListener('click', () => {
     guestModal?.classList.add('hidden');
+  });
+}
+
+// Admin Access Button
+const adminBtn = document.getElementById('admin-login-btn');
+if (adminBtn) {
+  adminBtn.addEventListener('click', () => {
+    // Direct navigation to admin panel
+    window.location.href = '/admin.html';
   });
 }

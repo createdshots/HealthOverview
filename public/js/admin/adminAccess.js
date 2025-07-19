@@ -16,8 +16,11 @@ class AdminAccessManager {
         // Check for @healthoverview.info domain and email verification
         const isHealthOverviewDomain = user.email.endsWith('@healthoverview.info');
         const isVerified = user.emailVerified;
+        
+        // Also check session storage for admin status
+        const sessionAdminStatus = sessionStorage.getItem('isHealthOverviewAdmin') === 'true';
 
-        this.isAdminUser = isHealthOverviewDomain && isVerified;
+        this.isAdminUser = isHealthOverviewDomain && isVerified && sessionAdminStatus;
         
         if (this.isAdminUser) {
             this.showAdminButton();
@@ -53,22 +56,21 @@ class AdminAccessManager {
         // Add to body
         document.body.appendChild(this.adminButton);
 
-        // Add entrance animation
-        setTimeout(() => {
-            if (this.adminButton) {
-                this.adminButton.style.transform = 'translateY(0)';
-                this.adminButton.style.opacity = '1';
-            }
-        }, 100);
-
         console.log('🛡️ Admin button shown for', this.getCurrentUserEmail());
     }
 
     // Helper method to get current user email safely
     getCurrentUserEmail() {
-        // Try to get from Firebase auth
-        if (typeof window !== 'undefined' && window.auth && window.auth.currentUser) {
-            return window.auth.currentUser.email;
+        // Try to get from global auth if available
+        if (typeof window !== 'undefined') {
+            // Try dashboard app first
+            if (window.dashboardApp && window.dashboardApp.auth && window.dashboardApp.auth.currentUser) {
+                return window.dashboardApp.auth.currentUser.email;
+            }
+            // Try global auth
+            if (window.auth && window.auth.currentUser) {
+                return window.auth.currentUser.email;
+            }
         }
         return 'unknown user';
     }
@@ -102,12 +104,12 @@ class AdminAccessManager {
                     <div class="text-4xl mb-4">🛡️</div>
                     <h3 class="text-xl font-bold text-gray-800 mb-2">Admin Panel Access</h3>
                     <p class="text-gray-600 mb-2">You are about to access the admin panel.</p>
-                    <p class="text-sm text-red-600 mb-6">⚠️ You will need to re-authenticate with Microsoft for security.</p>
+                    <p class="text-sm text-orange-600 mb-6">⚠️ You will be redirected to the secure admin interface.</p>
                     
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
-                        <p class="text-sm text-yellow-800">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+                        <p class="text-sm text-blue-800">
                             <strong>Security Notice:</strong><br>
-                            Admin access requires Microsoft 2FA verification.
+                            Access is logged and monitored for security purposes.
                         </p>
                     </div>
                     
@@ -132,6 +134,8 @@ class AdminAccessManager {
 
         modal.querySelector('#admin-proceed').addEventListener('click', () => {
             modal.remove();
+            // Store admin access timestamp for additional security
+            sessionStorage.setItem('adminAccessTime', new Date().toISOString());
             window.location.href = '/admin.html';
         });
 
