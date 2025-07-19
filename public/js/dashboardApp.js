@@ -124,10 +124,9 @@ class DashboardApp {
             console.log('Hospitals:', data.hospitals?.length || 0);
             console.log('Ambulance services:', data.ambulance?.length || 0);
             
-            this.uiComponents.renderGreetingAndActions();
             this.renderHospitals();
             this.renderAmbulance();
-            this.uiComponents.addRecentActivitySection();
+            this.updateSummaryCards();
             this.updateQuickStats();
         } catch (error) {
             console.error("Error rendering data:", error);
@@ -177,7 +176,7 @@ class DashboardApp {
             console.log('Container current children count:', container.children.length);
         }
         
-        this.uiComponents.renderList('ambulance', filteredData, searchTerm);
+        this.uiComponents.renderList('ambulance', filteredData, searchTerm, data.ambulance);
         this.uiComponents.renderStats('ambulance', data.ambulance || []);
         
         // Verify rendering worked
@@ -207,13 +206,17 @@ class DashboardApp {
         const result = this.dataManager.handleInteraction(event);
         if (result) {
             this.renderAll();
+            // Also refresh the summary after any data changes
+            this.updateSummaryCards();
         }
     }
 
     // Update authentication UI
     updateAuthUI(user) {
         const signedInView = document.getElementById('auth-signed-in-view');
-        const userIdDisplay = document.getElementById('user-id-display');
+        const userNameDisplay = document.getElementById('user-name-display');
+        const userEmailDisplay = document.getElementById('user-email-display');
+        const userAvatar = document.getElementById('user-avatar');
         const addRecordBtn = document.getElementById('add-record-btn');
         const showProfileBtn = document.getElementById('show-profile-btn');
 
@@ -225,32 +228,101 @@ class DashboardApp {
             }
             
             const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
-            if (userIdDisplay) userIdDisplay.textContent = displayName;
+            const email = user.email || (user.isAnonymous ? 'guest@healthoverview.com' : 'anonymous@healthoverview.com');
+            
+            if (userNameDisplay) userNameDisplay.textContent = displayName;
+            if (userEmailDisplay) userEmailDisplay.textContent = email;
+            
+            // Set avatar initial
+            if (userAvatar && displayName) {
+                const initial = displayName.charAt(0).toUpperCase();
+                userAvatar.textContent = initial;
+            }
             
             // Show authenticated user buttons
             if (addRecordBtn) addRecordBtn.classList.remove('hidden');
             if (showProfileBtn) showProfileBtn.classList.remove('hidden');
             
-            // Update greeting
-            this.updateGreeting(displayName);
+            // Update greeting and summary
+            this.updateGreetingAndSummary(displayName);
         } else {
             // User is signed out, redirect to login page
             window.location.href = '/index.html';
         }
     }
 
-    // Update greeting
-    updateGreeting(displayName) {
+    // Update greeting and summary information
+    updateGreetingAndSummary(displayName) {
         const greetingElement = document.getElementById('personal-greeting');
+        const summaryElement = document.getElementById('user-stats-summary');
+        
         if (greetingElement) {
+            const timeOfDay = this.getTimeOfDay();
+            greetingElement.innerHTML = `Good ${timeOfDay}, ${displayName}! 👋`;
+        }
+        
+        if (summaryElement) {
             const data = this.dataManager.getData();
             const hospitalCount = data.hospitals?.length || 0;
             const ambulanceCount = data.ambulance?.length || 0;
             const visitedHospitals = data.hospitals?.filter(h => h.visited)?.length || 0;
             const visitedAmbulance = data.ambulance?.filter(a => a.visited)?.length || 0;
+            const medicalRecords = data.medicalRecords?.length || 0;
             
-            greetingElement.textContent = `Welcome ${displayName}! You've visited ${visitedHospitals}/${hospitalCount} hospitals and ${visitedAmbulance}/${ambulanceCount} ambulance services.`;
+            summaryElement.textContent = `You've explored ${visitedHospitals} hospitals and ${visitedAmbulance} ambulance services, with ${medicalRecords} medical records logged.`;
         }
+        
+        // Update summary cards
+        this.updateSummaryCards();
+    }
+
+    // Get time of day for greeting
+    getTimeOfDay() {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'morning';
+        if (hour < 17) return 'afternoon';
+        return 'evening';
+    }
+
+    // Update summary cards with current data
+    updateSummaryCards() {
+        const data = this.dataManager.getData();
+        
+        // Hospitals data
+        const hospitalsVisited = data.hospitals?.filter(h => h.visited)?.length || 0;
+        const hospitalsTotal = data.hospitals?.length || 0;
+        document.getElementById('hospitals-visited-count').textContent = hospitalsVisited;
+        document.getElementById('hospitals-total-count').textContent = `of ${hospitalsTotal} total`;
+        
+        // Ambulance data
+        const ambulanceVisited = data.ambulance?.filter(a => a.visited)?.length || 0;
+        const ambulanceTotal = data.ambulance?.length || 0;
+        document.getElementById('ambulance-visited-count').textContent = ambulanceVisited;
+        document.getElementById('ambulance-total-count').textContent = `of ${ambulanceTotal} total`;
+        
+        // Medical records
+        const medicalRecords = data.medicalRecords?.length || 0;
+        document.getElementById('medical-records-count').textContent = medicalRecords;
+        
+        // Health score (calculate based on activity)
+        const totalVisits = hospitalsVisited + ambulanceVisited;
+        const totalVisitCounts = (data.hospitals?.reduce((sum, h) => sum + (h.count || 0), 0) || 0) + 
+                                (data.ambulance?.reduce((sum, a) => sum + (a.count || 0), 0) || 0);
+        
+        // Base score starts at 85 (good health assumption)
+        let healthScore = 85;
+        
+        // Reduce score for medical records (health incidents)
+        healthScore -= Math.min(medicalRecords * 3, 30);
+        
+        // Add score for being proactive (visiting for checkups/having data)
+        healthScore += Math.min(totalVisits * 2, 15);
+        healthScore += Math.min(totalVisitCounts * 1, 10);
+        
+        // Ensure score stays between 0-100
+        healthScore = Math.max(0, Math.min(100, healthScore));
+        
+        document.getElementById('health-score').textContent = healthScore;
     }
 
     // Setup event listeners
@@ -310,11 +382,19 @@ class DashboardApp {
         const ambulanceSearch = document.getElementById('ambulance-search');
 
         if (hospitalSearch) {
-            hospitalSearch.addEventListener('input', () => this.renderHospitals());
+            hospitalSearch.addEventListener('input', () => {
+                // Reset pagination when searching
+                this.uiComponents.hospitalsShowing = 10;
+                this.renderHospitals();
+            });
         }
 
         if (ambulanceSearch) {
-            ambulanceSearch.addEventListener('input', () => this.renderAmbulance());
+            ambulanceSearch.addEventListener('input', () => {
+                // Reset pagination when searching
+                this.uiComponents.ambulanceShowing = 10;
+                this.renderAmbulance();
+            });
         }
 
         // List interaction handlers
@@ -584,82 +664,121 @@ class DashboardApp {
 
     // Add entrance animations method
     animateElementsEntrance() {
-        // Animate main content cards with more specific selectors to avoid ambulance list interference
-        const cards = document.querySelectorAll('.bg-white.rounded-lg.shadow-sm:not(#ambulance-list .bg-white):not(#hospitals-list .bg-white)');
-        cards.forEach((card, index) => {
-            // Only animate if this card doesn't have list items
-            if (!card.closest('#ambulance-list') && !card.closest('#hospitals-list')) {
+        // Animate summary cards
+        const summaryCards = document.querySelectorAll('.summary-card-1, .summary-card-2, .summary-card-3, .summary-card-4');
+        summaryCards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px) scale(0.9)';
+            card.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0) scale(1)';
+            }, index * 150);
+        });
+
+        // Animate main content cards
+        const mainCards = document.querySelectorAll('.glass-card');
+        mainCards.forEach((card, index) => {
+            // Skip summary cards as they're animated separately
+            if (!card.closest('.summary-card-1, .summary-card-2, .summary-card-3, .summary-card-4')) {
                 card.style.opacity = '0';
-                card.style.transform = 'translateY(20px)';
-                card.style.transition = 'all 0.6s ease';
+                card.style.transform = 'translateY(40px)';
+                card.style.transition = 'all 0.8s ease';
                 
                 setTimeout(() => {
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0)';
-                }, index * 150);
+                }, 400 + (index * 200));
             }
         });
-        
-        // Animate list containers themselves (not individual items)
-        const listContainers = document.querySelectorAll('#hospitals-list, #ambulance-list');
-        listContainers.forEach((container, index) => {
-            if (container && container.children.length > 0) {
-                container.style.opacity = '0';
-                container.style.transform = 'translateY(20px)';
-                container.style.transition = 'all 0.8s ease';
-                
-                setTimeout(() => {
-                    container.style.opacity = '1';
-                    container.style.transform = 'translateY(0)';
-                }, 200 + (index * 200));
-            }
-        });
-        
+
         // Animate action buttons
-        const buttons = document.querySelectorAll('#show-stats-btn, #show-map-btn, #show-awards-btn, #add-record-btn');
-        buttons.forEach((button, index) => {
+        const actionButtons = document.querySelectorAll('#add-record-btn, #show-profile-btn, #show-stats-btn, #show-map-btn, #show-awards-btn');
+        actionButtons.forEach((button, index) => {
             if (button) {
                 button.style.opacity = '0';
-                button.style.transform = 'scale(0.8)';
-                button.style.transition = 'all 0.4s ease';
+                button.style.transform = 'scale(0.8) translateY(20px)';
+                button.style.transition = 'all 0.5s ease';
                 
                 setTimeout(() => {
                     button.style.opacity = '1';
-                    button.style.transform = 'scale(1)';
+                    button.style.transform = 'scale(1) translateY(0)';
                 }, 800 + (index * 100));
             }
         });
+
+        // Animate welcome section
+        const welcomeSection = document.querySelector('.slide-up');
+        if (welcomeSection) {
+            welcomeSection.style.animationDelay = '0.2s';
+        }
     }
 }
 
 // UI Components class to handle rendering
 class UIComponents {
-    renderGreetingAndActions() {
-        // This method can be expanded as needed
-        console.log('Rendering greeting and actions');
+    constructor() {
+        this.hospitalsShowing = 10;
+        this.ambulanceShowing = 10;
     }
 
     renderList(type, data, searchTerm = '', originalData = null) {
         const containerId = type === 'hospitals' ? 'hospitals-list' : 'ambulance-list';
         const container = document.getElementById(containerId);
+        const showingCountId = type === 'hospitals' ? 'hospitals-showing-count' : 'ambulance-showing-count';
+        const loadMoreId = type === 'hospitals' ? 'hospitals-load-more' : 'ambulance-load-more';
         
         if (!container) {
             console.warn(`Container ${containerId} not found`);
             return;
         }
 
+        const showingLimit = type === 'hospitals' ? this.hospitalsShowing : this.ambulanceShowing;
+        const dataToShow = data.slice(0, showingLimit);
+        const hasMore = data.length > showingLimit;
+
         container.innerHTML = '';
 
-        if (!data || data.length === 0) {
+        // Update showing count
+        const showingCountEl = document.getElementById(showingCountId);
+        if (showingCountEl) {
+            showingCountEl.textContent = dataToShow.length;
+        }
+
+        // Show/hide load more button
+        const loadMoreEl = document.getElementById(loadMoreId);
+        if (loadMoreEl) {
+            if (hasMore) {
+                loadMoreEl.classList.remove('hidden');
+                const button = loadMoreEl.querySelector('button');
+                if (button) {
+                    button.textContent = `Load more ${type} (${data.length - showingLimit} remaining)...`;
+                    button.onclick = () => {
+                        if (type === 'hospitals') {
+                            this.hospitalsShowing += 10;
+                        } else {
+                            this.ambulanceShowing += 10;
+                        }
+                        this.renderList(type, data, searchTerm, originalData);
+                    };
+                }
+            } else {
+                loadMoreEl.classList.add('hidden');
+            }
+        }
+
+        if (!dataToShow || dataToShow.length === 0) {
             container.innerHTML = `
-                <div class="text-gray-500 text-center py-8">
-                    <p>No ${type} found${searchTerm ? ` for "${searchTerm}"` : ''}.</p>
+                <div class="text-gray-500 text-center py-12">
+                    <div class="text-4xl mb-4">${type === 'hospitals' ? '🏥' : '🚑'}</div>
+                    <p class="text-lg">No ${type} found${searchTerm ? ` for "${searchTerm}"` : ''}.</p>
                 </div>
             `;
             return;
         }
 
-        data.forEach((item, filteredIndex) => {
+        dataToShow.forEach((item, filteredIndex) => {
             // Find the original index in the full dataset
             const originalIndex = originalData ? originalData.findIndex(originalItem => 
                 originalItem.name === item.name && originalItem.location === item.location
@@ -672,29 +791,42 @@ class UIComponents {
 
     createListItem(type, item, index) {
         const listItem = document.createElement('div');
-        listItem.className = 'bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 hover:shadow-md transition-shadow';
+        listItem.className = 'list-item glass-card rounded-2xl p-5 mb-4 transition-all duration-300 hover:shadow-xl border border-white/30';
         
         const isVisited = item.visited || false;
         const count = item.count || 0;
         
+        // Generate gradient based on type
+        const gradientClass = type === 'hospitals' 
+            ? 'from-purple-50 to-blue-50 border-purple-200' 
+            : 'from-blue-50 to-cyan-50 border-blue-200';
+        
+        listItem.className += ` bg-gradient-to-br ${gradientClass}`;
+        
         listItem.innerHTML = `
             <div class="flex items-start justify-between">
-                <div class="flex items-start space-x-3 flex-1">
-                    <div class="flex-shrink-0 mt-1">
+                <div class="flex items-start space-x-4 flex-1">
+                    <div class="flex-shrink-0 mt-2">
                         <input 
                             type="checkbox" 
                             ${isVisited ? 'checked' : ''} 
                             data-type="${type}" 
                             data-index="${index}" 
-                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            class="w-5 h-5 text-purple-600 border-2 border-gray-300 rounded-lg focus:ring-purple-500 transition-all duration-200"
                         >
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h4 class="text-lg font-medium text-gray-900 ${isVisited ? 'text-green-600' : ''}">
+                        <h4 class="text-lg font-semibold ${isVisited ? 'text-green-700' : 'text-gray-800'} mb-1">
                             ${item.name || 'Unnamed Location'}
                         </h4>
-                        ${item.city ? `<p class="text-sm text-gray-600 mt-1">${item.city}</p>` : ''}
-                        ${count > 0 ? `<p class="text-xs text-blue-600 mt-1">Visits: ${count}</p>` : ''}
+                        ${item.city ? `<p class="text-sm text-gray-600 mb-2 flex items-center">
+                            <span class="mr-2">📍</span>${item.city}
+                        </p>` : ''}
+                        ${count > 0 ? `<div class="flex items-center space-x-2">
+                            <span class="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-3 py-1 rounded-full font-medium">
+                                ${count} visit${count > 1 ? 's' : ''}
+                            </span>
+                        </div>` : ''}
                     </div>
                 </div>
                 <div class="flex-shrink-0 ml-4">
@@ -703,7 +835,7 @@ class UIComponents {
                             data-type="${type}" 
                             data-index="${index}" 
                             data-action="increase"
-                            class="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-green-600 transition-colors text-sm"
+                            class="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl w-10 h-10 flex items-center justify-center hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg transform hover:scale-110 font-bold"
                             title="Add visit"
                         >
                             +
@@ -713,10 +845,10 @@ class UIComponents {
                             data-type="${type}" 
                             data-index="${index}" 
                             data-action="decrease"
-                            class="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 transition-colors text-sm"
+                            class="bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl w-10 h-10 flex items-center justify-center hover:from-red-600 hover:to-pink-700 transition-all duration-300 shadow-lg transform hover:scale-110 font-bold"
                             title="Remove visit"
                         >
-                            -
+                            −
                         </button>` : ''}
                     </div>
                 </div>
@@ -734,25 +866,28 @@ class UIComponents {
         const visited = data.filter(item => item.visited).length;
         const percentage = total > 0 ? Math.round((visited / total) * 100) : 0;
         
+        const gradientClass = type === 'hospitals' 
+            ? 'from-purple-500 to-blue-600' 
+            : 'from-blue-500 to-cyan-600';
+        
         statsElement.innerHTML = `
-            <div class="text-sm text-gray-600">
-                Progress: ${visited}/${total} (${percentage}%)
-                <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                    <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+            <div class="bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl border-2 border-gray-200">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm font-semibold text-gray-700">Progress</span>
+                    <span class="text-lg font-bold text-gray-800">${visited}/${total}</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                    <div class="bg-gradient-to-r ${gradientClass} h-3 rounded-full transition-all duration-500 shadow-sm" 
                          style="width: ${percentage}%"></div>
+                </div>
+                <div class="text-center">
+                    <span class="text-2xl font-bold bg-gradient-to-r ${gradientClass} bg-clip-text text-transparent">
+                        ${percentage}%
+                    </span>
+                    <span class="text-sm text-gray-600 ml-2">complete</span>
                 </div>
             </div>
         `;
-    }
-
-    addRecentActivitySection() {
-        // Implementation for recent activity
-        console.log('Adding recent activity section');
-    }
-
-    updateQuickStats(hospitalStats, ambulanceStats) {
-        // Implementation for quick stats update
-        console.log('Updating quick stats:', hospitalStats, ambulanceStats);
     }
 }
 
