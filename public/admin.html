@@ -66,10 +66,10 @@
             <div class="text-center mb-8">
                 <div class="text-6xl mb-4">🔐</div>
                 <h2 class="text-2xl font-bold text-gray-800 mb-2">Admin Access Required</h2>
-                <p class="text-gray-600">Sign in with your @healthoverview.info account</p>
+                <p class="text-gray-600">Sign in with your @healthoverview.info Microsoft account</p>
             </div>
             
-            <button id="microsoft-admin-signin" class="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 rounded-xl py-3 px-4 font-semibold text-gray-700 hover:bg-gray-50 hover:border-blue-500 shadow-lg transition-all duration-300 transform hover:scale-105">
+            <button id="microsoft-admin-signin" class="w-full flex items-center justify-center gap-3 bg-blue-600 border-2 border-blue-700 rounded-xl py-3 px-4 font-semibold text-white hover:bg-blue-700 hover:border-blue-800 shadow-lg transition-all duration-300 transform hover:scale-105">
                 <svg class="w-6 h-6" viewBox="0 0 24 24">
                     <rect fill="#F25022" x="1" y="1" width="10" height="10"/>
                     <rect fill="#7FBA00" x="13" y="1" width="10" height="10"/>
@@ -80,6 +80,13 @@
             </button>
             
             <div id="admin-login-status" class="mt-4 text-center text-sm"></div>
+            
+            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p class="text-sm text-blue-800">
+                    <strong>🛡️ Security Notice:</strong><br>
+                    Admin access requires Microsoft Entra ID authentication with 2FA verification.
+                </p>
+            </div>
         </div>
     </div>
 
