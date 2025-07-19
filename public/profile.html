@@ -9,6 +9,43 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/styles/main.css">
     <script src="/firebase-config-values.js"></script>
+    
+    <style>
+        .profile-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .profile-tab-btn {
+            transition: all 0.2s ease;
+        }
+        .profile-tab-btn:hover {
+            transform: translateY(-1px);
+        }
+        .profile-tab-btn.active {
+            border-color: #8b5cf6;
+            color: #8b5cf6;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .condition-badge {
+            background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%);
+            border: 1px solid #a78bfa;
+        }
+        .loading-dots {
+            animation: loading 1.4s infinite ease-in-out;
+        }
+        .loading-dots:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes loading {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+    </style>
 </head>
 
 <body class="bg-gray-100 min-h-screen">
@@ -33,8 +70,9 @@
                     <p id="personal-greeting" class="text-sm text-gray-600">Manage your health journey</p>
                 </div>
             </div>
-            <div class="flex items-center space-x-3">
-                <a href="/dashboard.html" class="text-gray-600 hover:text-gray-900">Dashboard</a>
+            <div class="flex items-center space-x-4">
+                <span id="user-display-name" class="text-gray-700 font-medium hidden"></span>
+                <a href="/dashboard.html" class="text-gray-600 hover:text-gray-900 transition-colors">Dashboard</a>
                 <button id="signout-btn"
                     class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-red-600 transition-colors">
                     Sign Out
@@ -45,7 +83,24 @@
 
     <!-- Main Content -->
     <main id="profile-content" class="container mx-auto p-4 md:p-8 max-w-7xl hidden">
-        <!-- Profile content will be dynamically inserted here -->
+        <!-- Profile Header and Stats Grid -->
+        <div id="profile-header-and-stats"></div>
+        
+        <!-- Profile Tabs -->
+        <div class="bg-white rounded-xl shadow-md mt-6">
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8 px-6" id="profile-tabs">
+                    <button class="profile-tab-btn border-purple-500 text-purple-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="overview">Overview</button>
+                    <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="conditions">My Conditions</button>
+                    <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="records">Medical Records</button>
+                    <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="analytics">Analytics</button>
+                    <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="symptoms">Symptoms</button>
+                </nav>
+            </div>
+            <div id="profile-tab-content" class="p-6">
+                <!-- Tab content will be dynamically inserted here -->
+            </div>
+        </div>
     </main>
 
     <!-- Not signed in message -->
