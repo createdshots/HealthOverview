@@ -7,6 +7,7 @@
     <title>My Profile - Health Overview</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="/styles/main.css">
     <script src="/firebase-config-values.js"></script>
     
@@ -74,13 +75,16 @@
         /* Onboarding modal styles */
         .onboarding-gradient {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 1rem 1rem 0 0; /* More rounded top corners */
         }
         .onboarding-user-info {
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 0.75rem; /* More rounded */
         }
         .onboarding-condition-card {
             background: linear-gradient(135deg, #fafbff 0%, #f1f5f9 100%);
             border: 1px solid transparent;
+            border-radius: 0.75rem; /* More rounded */
             transition: all 0.2s ease;
         }
         .onboarding-condition-card:hover {
@@ -100,6 +104,7 @@
         .privacy-card {
             background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
             border: 1px solid #bbf7d0;
+            border-radius: 0.75rem; /* More rounded */
         }
         
         /* Enhanced modal sizing for onboarding */
@@ -108,6 +113,7 @@
         }
         
         #modal-content {
+            border-radius: 1rem !important; /* More rounded */
             max-width: 85vw !important;
             width: 85vw !important;
             max-height: 85vh;
@@ -125,6 +131,33 @@
             width: 0;
             height: 0;
             display: none; /* WebKit */
+        }
+        
+        /* Scrollable conditions area */
+        .onboarding-conditions-scroll {
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 4px; /* Space for scrollbar */
+            margin-right: -4px; /* Compensate for padding */
+        }
+        
+        /* Custom scrollbar for conditions area */
+        .onboarding-conditions-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .onboarding-conditions-scroll::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 3px;
+        }
+        
+        .onboarding-conditions-scroll::-webkit-scrollbar-thumb {
+            background: #a78bfa;
+            border-radius: 3px;
+        }
+        
+        .onboarding-conditions-scroll::-webkit-scrollbar-thumb:hover {
+            background: #8b5cf6;
         }
     </style>
 </head>

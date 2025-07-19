@@ -1,7 +1,8 @@
 import { auth, onAuthStateChanged, signOut } from '/firebaseConfig.js';
-import { loadUserData, saveUserData } from './data/enhancedDataManager.js';
+import { loadUserData, saveUserData, enhancedDataManager } from './data/enhancedDataManager.js';
 import { showModal, hideModal } from './components/modal.js';
 import { showStatusMessage } from './utils/ui.js';
+import { symptomTracker, showSymptomTracker, showSymptomOverview } from './features/symptomTracker.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loading-overlay');
@@ -116,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                        id="display-name" 
                                        name="displayName"
                                        value="${currentUserData?.displayName || currentUser?.displayName || ''}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-purple-500 focus:border-purple-500"
+                                       class="w-full px-2 py-1 border border-gray-300 rounded-lg text-xs focus:ring-purple-500 focus:border-purple-500"
                                        placeholder="How should we address you?">
                             </div>
                             <div>
@@ -125,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                        id="emergency-contact" 
                                        name="emergencyContact"
                                        value="${currentUserData?.emergencyContact || ''}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-purple-500 focus:border-purple-500"
+                                       class="w-full px-2 py-1 border border-gray-300 rounded-lg text-xs focus:ring-purple-500 focus:border-purple-500"
                                        placeholder="Optional">
                             </div>
                             <div>
@@ -133,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <textarea id="medical-notes" 
                                           name="medicalNotes"
                                           rows="2"
-                                          class="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-purple-500 focus:border-purple-500"
+                                          class="w-full px-2 py-1 border border-gray-300 rounded-lg text-xs focus:ring-purple-500 focus:border-purple-500"
                                           placeholder="Allergies, important info...">${currentUserData?.medicalNotes || ''}</textarea>
                             </div>
                         </div>
@@ -177,9 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         </div>
                         
-                        <div class="grid grid-cols-1 gap-1.5 overflow-hidden" id="conditions-grid" style="max-height: 240px;">
+                        <!-- SCROLLABLE CONDITIONS AREA -->
+                        <div class="onboarding-conditions-scroll" id="conditions-grid">
                             ${availableConditions.map(condition => `
-                                <div class="onboarding-condition-card p-2 rounded cursor-pointer" 
+                                <div class="onboarding-condition-card p-2 rounded-lg cursor-pointer mb-1.5" 
                                      data-condition="${condition.id}">
                                     <div class="flex items-center space-x-2">
                                         <div class="text-sm">${condition.icon}</div>
@@ -197,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             `).join('')}
                         </div>
                         
-                        <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                        <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
                             <p class="text-xs text-blue-700">
                                 💡 <strong>Tip:</strong> You can always change these later in your profile settings.
                             </p>
@@ -315,20 +317,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 profileSetupDate: new Date().toISOString()
             };
 
+            // Save to Firestore
             await saveUserData(currentUser.uid, userData);
             currentUserData = userData;
             
             hideModal();
-            showStatusMessage('Profile setup completed successfully!', 'success');
+            showStatusMessage('Profile setup completed successfully! Redirecting to dashboard...', 'success');
             
-            // Update URL to remove onboarding parameter
+            // Clear the onboarding parameter from URL
             const url = new URL(window.location);
             url.searchParams.delete('onboarding');
             window.history.replaceState({}, '', url);
             
-            // Show profile content
-            profileContent.classList.remove('hidden');
-            renderProfile();
+            // Redirect to dashboard after a short delay to show the success message
+            setTimeout(() => {
+                window.location.href = '/dashboard.html';
+            }, 1500);
             
         } catch (error) {
             console.error('Error completing onboarding:', error);
@@ -520,4 +524,768 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
+
+    function setupTabSwitching(userData) {
+        // Initialize data manager and symptom tracker
+        enhancedDataManager.setUserId(currentUser.uid);
+        enhancedDataManager.setData(userData);
+        
+        symptomTracker.setDataManager(enhancedDataManager);
+        symptomTracker.setCurrentUser(currentUser);
+        symptomTracker.onStatus((message, type) => {
+            showStatusMessage(message, type);
+        });
+
+        // Set up tab navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('profile-tab-btn')) {
+                const tabName = e.target.dataset.tab;
+                
+                // Update active tab
+                document.querySelectorAll('.profile-tab-btn').forEach(btn => {
+                    btn.classList.remove('active', 'bg-blue-600', 'text-white');
+                    btn.classList.add('bg-white', 'text-gray-600', 'hover:bg-gray-50');
+                });
+                
+                e.target.classList.add('active', 'bg-blue-600', 'text-white');
+                e.target.classList.remove('bg-white', 'text-gray-600', 'hover:bg-gray-50');
+                
+                // Render the appropriate tab content
+                switch(tabName) {
+                    case 'overview':
+                        renderOverviewTab(userData);
+                        break;
+                    case 'conditions':
+                        renderConditionsTab(userData);
+                        break;
+                    case 'records':
+                        renderRecordsTab(userData);
+                        break;
+                    case 'symptoms':
+                        renderSymptomsTab(userData);
+                        break;
+                    case 'analytics':
+                        renderAnalyticsTab(userData);
+                        break;
+                    case 'settings':
+                        renderSettingsTab(userData);
+                        break;
+                }
+            }
+        });
+
+        // Set up symptom tracker buttons
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'add-symptom-record-btn') {
+                e.preventDefault();
+                showSymptomTracker();
+            }
+            if (e.target.id === 'view-symptom-overview-btn') {
+                e.preventDefault();
+                showSymptomOverview();
+            }
+        });
+    }
+
+    function renderOverviewTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        const medicalRecords = userData.medicalRecords || [];
+        const recentRecords = medicalRecords.slice(-5).reverse();
+        
+        content.innerHTML = `
+            <!-- Tab Navigation -->
+            <div class="flex flex-wrap border-b border-gray-200 mb-6">
+                <button class="profile-tab-btn active bg-blue-600 text-white px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
+                    Overview
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
+                    Conditions
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
+                    Records
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
+                    Symptom Tracker
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium" data-tab="analytics">
+                    Analytics
+                </button>
+            </div>
+
+            <!-- Overview Content -->
+            <div class="space-y-6">
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <button id="add-symptom-record-btn" class="group bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-4 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">📝</span>
+                                <div class="text-left">
+                                    <div class="font-semibold">Add Medical Record</div>
+                                    <div class="text-sm text-blue-100">Track symptoms or incidents</div>
+                                </div>
+                            </div>
+                        </button>
+                        
+                        <button id="view-symptom-overview-btn" class="group bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white p-4 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">📊</span>
+                                <div class="text-left">
+                                    <div class="font-semibold">View Overview</div>
+                                    <div class="text-sm text-green-100">Charts and analysis</div>
+                                </div>
+                            </div>
+                        </button>
+                        
+                        <button class="group bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white p-4 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">⚙️</span>
+                                <div class="text-left">
+                                    <div class="font-semibold">Settings</div>
+                                    <div class="text-sm text-purple-100">Manage preferences</div>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recent Medical Records -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold text-gray-900">Recent Medical Records</h3>
+                        <span class="text-sm text-gray-500">${medicalRecords.length} total records</span>
+                    </div>
+                    
+                    ${recentRecords.length > 0 ? `
+                        <div class="space-y-3">
+                            ${recentRecords.map(record => {
+                                const date = new Date(record.timestamp).toLocaleDateString();
+                                const time = new Date(record.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                                const typeLabel = record.incidentType?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Medical Record';
+                                const severityColor = getSeverityColor(record.severity);
+                                
+                                return `
+                                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex-1">
+                                                <div class="flex items-center space-x-2 mb-2">
+                                                    <span class="font-medium text-gray-900">${typeLabel}</span>
+                                                    ${record.severity ? `<span class="px-2 py-1 text-xs rounded-full ${severityColor}">Severity ${record.severity}</span>` : ''}
+                                                </div>
+                                                <div class="text-sm text-gray-600">
+                                                    ${date} at ${time}
+                                                    ${record.hospital ? `• ${record.hospital}` : ''}
+                                                    ${record.ambulance ? `• ${record.ambulance}` : ''}
+                                                </div>
+                                                ${record.symptoms ? `<div class="text-sm text-gray-700 mt-2">${record.symptoms.length > 100 ? record.symptoms.substring(0, 100) + '...' : record.symptoms}</div>` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    ` : `
+                        <div class="text-center py-8 text-gray-500">
+                            <span class="text-4xl mb-4 block">📝</span>
+                            <p>No medical records yet.</p>
+                            <p class="text-sm">Start tracking your health journey by adding your first record.</p>
+                        </div>
+                    `}
+                </div>
+
+                <!-- Health Summary -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Health Summary</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-2">Tracked Conditions</h4>
+                            <div class="flex flex-wrap gap-2">
+                                ${userData.conditions && userData.conditions.length > 0 ? 
+                                    userData.conditions.map(condition => 
+                                        `<span class="condition-badge bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">${condition.charAt(0).toUpperCase() + condition.slice(1)}</span>`
+                                    ).join('') : 
+                                    '<span class="text-gray-500 text-sm">No conditions tracked yet</span>'
+                                }
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-2">Recent Activity</h4>
+                            <div class="text-sm text-gray-600">
+                                <p>Last record: ${medicalRecords.length > 0 ? new Date(medicalRecords[medicalRecords.length - 1].timestamp).toLocaleDateString() : 'None'}</p>
+                                <p>This month: ${medicalRecords.filter(r => {
+                                    const recordDate = new Date(r.timestamp);
+                                    const now = new Date();
+                                    return recordDate.getMonth() === now.getMonth() && recordDate.getFullYear() === now.getFullYear();
+                                }).length} records</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderConditionsTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        const trackedConditions = userData.conditions || [];
+        
+        content.innerHTML = `
+            <!-- Tab Navigation -->
+            <div class="flex flex-wrap border-b border-gray-200 mb-6">
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
+                    Overview
+                </button>
+                <button class="profile-tab-btn active bg-blue-600 text-white px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
+                    Conditions
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
+                    Records
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
+                    Symptom Tracker
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium" data-tab="analytics">
+                    Analytics
+                </button>
+            </div>
+
+            <!-- Conditions Content -->
+            <div class="space-y-6">
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Your Tracked Conditions</h3>
+                    ${trackedConditions.length > 0 ? `
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            ${trackedConditions.map(condition => {
+                                const conditionInfo = availableConditions.find(c => c.id === condition) || { name: condition, icon: '🏥', description: 'Health condition' };
+                                return `
+                                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="text-2xl">${conditionInfo.icon}</span>
+                                            <div>
+                                                <h4 class="font-medium text-gray-900">${conditionInfo.name}</h4>
+                                                <p class="text-sm text-gray-600">${conditionInfo.description}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    ` : `
+                        <div class="text-center py-8 text-gray-500">
+                            <span class="text-4xl mb-4 block">🏥</span>
+                            <p>No conditions tracked yet.</p>
+                            <p class="text-sm">Add conditions through your profile settings.</p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderRecordsTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        const medicalRecords = userData.medicalRecords || [];
+        
+        content.innerHTML = `
+            <!-- Tab Navigation -->
+            <div class="flex flex-wrap border-b border-gray-200 mb-6">
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
+                    Overview
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
+                    Conditions
+                </button>
+                <button class="profile-tab-btn active bg-blue-600 text-white px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
+                    Records
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
+                    Symptom Tracker
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium" data-tab="analytics">
+                    Analytics
+                </button>
+            </div>
+
+            <!-- Records Content -->
+            <div class="space-y-6">
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold text-gray-900">All Medical Records</h3>
+                        <button id="add-symptom-record-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                            Add Record
+                        </button>
+                    </div>
+                    
+                    ${medicalRecords.length > 0 ? `
+                        <div class="space-y-3">
+                            ${medicalRecords.reverse().map(record => {
+                                const date = new Date(record.timestamp).toLocaleDateString();
+                                const time = new Date(record.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                                const typeLabel = record.incidentType?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Medical Record';
+                                const severityColor = getSeverityColor(record.severity);
+                                
+                                return `
+                                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex-1">
+                                                <div class="flex items-center space-x-2 mb-2">
+                                                    <span class="font-medium text-gray-900">${typeLabel}</span>
+                                                    ${record.severity ? `<span class="px-2 py-1 text-xs rounded-full ${severityColor}">Severity ${record.severity}</span>` : ''}
+                                                </div>
+                                                <div class="text-sm text-gray-600 mb-2">
+                                                    ${date} at ${time}
+                                                    ${record.hospital ? `• ${record.hospital}` : ''}
+                                                    ${record.ambulance ? `• ${record.ambulance}` : ''}
+                                                </div>
+                                                ${record.symptoms ? `<div class="text-sm text-gray-700 mb-2"><strong>Symptoms:</strong> ${record.symptoms}</div>` : ''}
+                                                ${record.treatment ? `<div class="text-sm text-gray-700 mb-2"><strong>Treatment:</strong> ${record.treatment}</div>` : ''}
+                                                ${record.notes ? `<div class="text-sm text-gray-700"><strong>Notes:</strong> ${record.notes}</div>` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    ` : `
+                        <div class="text-center py-8 text-gray-500">
+                            <span class="text-4xl mb-4 block">📝</span>
+                            <p>No medical records yet.</p>
+                            <p class="text-sm">Start tracking your health journey by adding your first record.</p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderSymptomsTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        const medicalRecords = userData.medicalRecords || [];
+        const symptomRecords = medicalRecords.filter(r => r.incidentType === 'symptom_log');
+        
+        content.innerHTML = `
+            <!-- Tab Navigation -->
+            <div class="flex flex-wrap border-b border-gray-200 mb-6">
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
+                    Overview
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
+                    Conditions
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
+                    Records
+                </button>
+                <button class="profile-tab-btn active bg-blue-600 text-white px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
+                    Symptom Tracker
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium" data-tab="analytics">
+                    Analytics
+                </button>
+            </div>
+
+            <!-- Symptom Tracker Content -->
+            <div class="space-y-6">
+                <!-- Quick Actions -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button id="add-symptom-record-btn" class="group bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-6 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                        <div class="flex items-center space-x-4">
+                            <span class="text-3xl">📝</span>
+                            <div class="text-left">
+                                <div class="text-xl font-semibold">Track Symptoms</div>
+                                <div class="text-sm text-blue-100">Record new symptoms or incidents</div>
+                            </div>
+                        </div>
+                    </button>
+                    
+                    <button id="view-symptom-overview-btn" class="group bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white p-6 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                        <div class="flex items-center space-x-4">
+                            <span class="text-3xl">📊</span>
+                            <div class="text-left">
+                                <div class="text-xl font-semibold">View Analytics</div>
+                                <div class="text-sm text-green-100">Charts and trends</div>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Recent Symptom Logs -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Recent Symptom Logs</h3>
+                    
+                    ${symptomRecords.length > 0 ? `
+                        <div class="space-y-3">
+                            ${symptomRecords.slice(-10).reverse().map(record => {
+                                const date = new Date(record.timestamp).toLocaleDateString();
+                                const time = new Date(record.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                                const severityColor = getSeverityColor(record.severity);
+                                
+                                return `
+                                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex-1">
+                                                <div class="flex items-center space-x-2 mb-2">
+                                                    <span class="font-medium text-gray-900">Symptom Log</span>
+                                                    ${record.severity ? `<span class="px-2 py-1 text-xs rounded-full ${severityColor}">Severity ${record.severity}</span>` : ''}
+                                                </div>
+                                                <div class="text-sm text-gray-600 mb-2">
+                                                    ${date} at ${time}
+                                                </div>
+                                                ${record.symptoms ? `<div class="text-sm text-gray-700">${record.symptoms}</div>` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    ` : `
+                        <div class="text-center py-8 text-gray-500">
+                            <span class="text-4xl mb-4 block">📊</span>
+                            <p>No symptom logs yet.</p>
+                            <p class="text-sm">Start tracking your symptoms to see patterns and trends.</p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderAnalyticsTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        const medicalRecords = userData.medicalRecords || [];
+        
+        content.innerHTML = `
+            <!-- Tab Navigation -->
+            <div class="flex flex-wrap border-b border-gray-200 mb-6">
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
+                    Overview
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
+                    Conditions
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
+                    Records
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
+                    Symptom Tracker
+                </button>
+                <button class="profile-tab-btn active bg-blue-600 text-white px-6 py-3 rounded-t-lg font-medium" data-tab="analytics">
+                    Analytics
+                </button>
+            </div>
+
+            <!-- Analytics Content -->
+            <div class="space-y-6">
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Health Analytics</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-blue-600">${medicalRecords.length}</div>
+                            <div class="text-sm text-gray-600">Total Records</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-green-600">${medicalRecords.filter(r => {
+                                const recordDate = new Date(r.timestamp);
+                                const thirtyDaysAgo = new Date();
+                                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                                return recordDate >= thirtyDaysAgo;
+                            }).length}</div>
+                            <div class="text-sm text-gray-600">Last 30 Days</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-purple-600">${medicalRecords.length > 0 ? 
+                                (medicalRecords.reduce((sum, r) => sum + (parseInt(r.severity) || 0), 0) / medicalRecords.length).toFixed(1) : '0'}</div>
+                            <div class="text-sm text-gray-600">Avg Severity</div>
+                        </div>
+                    </div>
+
+                    <button id="view-symptom-overview-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg transition-colors">
+                        View Detailed Analytics & Charts
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderSettingsTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        
+        content.innerHTML = `
+            <!-- Tab Navigation -->
+            <div class="flex flex-wrap border-b border-gray-200 mb-6">
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="overview">
+                    Overview
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="conditions">
+                    Conditions
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="records">
+                    Records
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="symptoms">
+                    Symptom Tracker
+                </button>
+                <button class="profile-tab-btn bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-t-lg font-medium mr-2" data-tab="analytics">
+                    Analytics
+                </button>
+                <button class="profile-tab-btn active bg-blue-600 text-white px-6 py-3 rounded-t-lg font-medium" data-tab="settings">
+                    Settings
+                </button>
+            </div>
+
+            <!-- Settings Content -->
+            <div class="space-y-6">
+                <!-- Profile Settings -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Profile Settings</h3>
+                    
+                    <div class="space-y-4">
+                        <button id="edit-profile-settings-btn" class="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-2xl">✏️</span>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900">Edit Profile Information</h4>
+                                        <p class="text-sm text-gray-600">Update your personal details and tracked conditions</p>
+                                    </div>
+                                </div>
+                                <span class="text-gray-400">→</span>
+                            </div>
+                        </button>
+                        
+                        <button id="export-data-btn" class="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-2xl">📥</span>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900">Export Your Data</h4>
+                                        <p class="text-sm text-gray-600">Download a copy of all your health data</p>
+                                    </div>
+                                </div>
+                                <span class="text-gray-400">→</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Privacy Settings -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Privacy & Data</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">📊</span>
+                                <div>
+                                    <h4 class="font-medium text-gray-900">Anonymous Analytics</h4>
+                                    <p class="text-sm text-gray-600">Help improve the app with anonymous usage data</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="analytics-toggle" class="sr-only peer" ${userData.allowAnalytics ? 'checked' : ''}>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account Actions -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Account Actions</h3>
+                    
+                    <div class="space-y-4">
+                        ${!currentUser?.isAnonymous ? `
+                        <button id="delete-account-btn" class="w-full text-left p-4 border-2 border-red-200 rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors group">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-2xl">🗑️</span>
+                                    <div>
+                                        <h4 class="font-medium text-red-700 group-hover:text-red-800">Delete Account</h4>
+                                        <p class="text-sm text-red-600">Permanently delete your account and all data</p>
+                                    </div>
+                                </div>
+                                <span class="text-red-400 group-hover:text-red-500">⚠️</span>
+                            </div>
+                        </button>
+                        ` : `
+                        <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">👤</span>
+                                <div>
+                                    <h4 class="font-medium text-yellow-800">Guest Account</h4>
+                                    <p class="text-sm text-yellow-700">Your data is stored locally and will be lost when you clear browser data.</p>
+                                </div>
+                            </div>
+                        </div>
+                        `}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add event listeners for settings actions
+        setupSettingsEventListeners();
+    }
+
+    function setupSettingsEventListeners() {
+        // Edit Profile Settings
+        const editProfileBtn = document.getElementById('edit-profile-settings-btn');
+        if (editProfileBtn) {
+            editProfileBtn.addEventListener('click', () => {
+                showOnboardingModal(); // Reuse the onboarding modal for editing
+            });
+        }
+
+        // Export Data
+        const exportDataBtn = document.getElementById('export-data-btn');
+        if (exportDataBtn) {
+            exportDataBtn.addEventListener('click', async () => {
+                try {
+                    const dataToExport = {
+                        exportDate: new Date().toISOString(),
+                        user: {
+                            displayName: currentUserData.displayName,
+                            conditions: currentUserData.conditions,
+                            emergencyContact: currentUserData.emergencyContact,
+                            medicalNotes: currentUserData.medicalNotes
+                        },
+                        medicalRecords: currentUserData.medicalRecords || [],
+                        symptomTracking: currentUserData.symptomTracking || []
+                    };
+
+                    const dataStr = JSON.stringify(dataToExport, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `health-data-export-${new Date().toISOString().split('T')[0]}.json`;
+                    link.click();
+                    
+                    URL.revokeObjectURL(url);
+                    showStatusMessage('Data exported successfully!', 'success');
+                } catch (error) {
+                    console.error('Error exporting data:', error);
+                    showStatusMessage('Error exporting data. Please try again.', 'error');
+                }
+            });
+        }
+
+        // Analytics Toggle
+        const analyticsToggle = document.getElementById('analytics-toggle');
+        if (analyticsToggle) {
+            analyticsToggle.addEventListener('change', async (e) => {
+                try {
+                    const updatedData = {
+                        ...currentUserData,
+                        allowAnalytics: e.target.checked
+                    };
+                    await saveUserData(currentUser.uid, updatedData);
+                    currentUserData = updatedData;
+                    showStatusMessage('Analytics preference updated', 'success');
+                } catch (error) {
+                    console.error('Error updating analytics preference:', error);
+                    showStatusMessage('Error updating preference', 'error');
+                }
+            });
+        }
+
+        // Delete Account
+        const deleteAccountBtn = document.getElementById('delete-account-btn');
+        if (deleteAccountBtn) {
+            deleteAccountBtn.addEventListener('click', () => {
+                showDeleteAccountModal();
+            });
+        }
+    }
+
+    function showDeleteAccountModal() {
+        const modalContent = `
+            <div class="text-center p-6">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                    <span class="text-2xl">⚠️</span>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Delete Account</h3>
+                <p class="text-sm text-gray-600 mb-6">
+                    This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+                </p>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Type "DELETE" to confirm:
+                    </label>
+                    <input type="text" id="delete-confirmation" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500" placeholder="DELETE">
+                </div>
+                
+                <div class="flex space-x-3 justify-center">
+                    <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Delete Account
+                    </button>
+                </div>
+            </div>
+        `;
+
+        showModal(modalContent, false);
+
+        // Handle confirmation input
+        const confirmationInput = document.getElementById('delete-confirmation');
+        const confirmBtn = document.getElementById('confirm-delete-btn');
+        const cancelBtn = document.getElementById('cancel-delete-btn');
+
+        confirmationInput.addEventListener('input', (e) => {
+            confirmBtn.disabled = e.target.value !== 'DELETE';
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            hideModal();
+        });
+
+        confirmBtn.addEventListener('click', async () => {
+            try {
+                // Delete user data from Firestore
+                if (enhancedDataManager.docRef) {
+                    await enhancedDataManager.deleteUserData();
+                }
+                
+                // Delete Firebase Auth account
+                await currentUser.delete();
+                
+                hideModal();
+                showStatusMessage('Account deleted successfully. Redirecting...', 'success');
+                
+                setTimeout(() => {
+                    window.location.href = '/index.html';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error deleting account:', error);
+                showStatusMessage('Error deleting account. Please try again.', 'error');
+            }
+        });
+    }
+
+    function getSeverityColor(severity) {
+        const level = parseInt(severity);
+        if (level <= 3) return 'bg-green-100 text-green-800';
+        if (level <= 6) return 'bg-yellow-100 text-yellow-800';
+        if (level <= 8) return 'bg-orange-100 text-orange-800';
+        return 'bg-red-100 text-red-800';
+    }
+
+    // Global function to refresh profile data (used by symptom tracker)
+    window.refreshProfileData = async function() {
+        if (currentUser && currentUserData) {
+            try {
+                const { userData } = await loadUserData(currentUser.uid);
+                currentUserData = userData || {};
+                renderFullProfile(currentUserData, currentUser);
+            } catch (error) {
+                console.error('Error refreshing profile data:', error);
+            }
+        }
+    };
 });

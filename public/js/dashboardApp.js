@@ -3,6 +3,7 @@ console.log('dashboardApp.js loaded');
 import { auth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, signInAnonymously } from '/firebaseConfig.js';
 import { enhancedDataManager } from './data/enhancedDataManager.js';
 import { showStatusMessage } from './utils/ui.js';
+import { symptomTracker, showSymptomTracker } from './features/symptomTracker.js';
 
 class DashboardApp {
     constructor() {
@@ -31,24 +32,46 @@ class DashboardApp {
                 // Set user ID in data manager
                 this.dataManager.setUserId(user.uid);
                 
-                // Load user data or initialize defaults
-                const onboardingCompleted = await this.dataManager.loadUserData();
+                // Initialize symptom tracker
+                symptomTracker.setDataManager(this.dataManager);
+                symptomTracker.setCurrentUser(user);
+                symptomTracker.onStatus((message, type) => {
+                    showStatusMessage(message, type);
+                });
                 
-                if (!onboardingCompleted && !user.isAnonymous) {
-                    // Redirect to onboarding for non-anonymous users
-                    window.location.href = '/profile.html?onboarding=true';
-                    return;
+                // Load user data and check onboarding status
+                try {
+                    const onboardingCompleted = await this.dataManager.loadUserData();
+                    
+                    // For non-anonymous users, check if onboarding is completed
+                    if (!user.isAnonymous && !onboardingCompleted) {
+                        console.log('User has not completed onboarding, redirecting...');
+                        this.hideLoading();
+                        showStatusMessage('Please complete your profile setup first.', 'info');
+                        setTimeout(() => {
+                            window.location.href = '/profile.html?onboarding=true';
+                        }, 1000);
+                        return;
+                    }
+                    
+                    // If anonymous user and no data, initialize defaults
+                    if (user.isAnonymous && this.dataManager.getData().hospitals.length === 0) {
+                        await this.dataManager.initializeDefaultData();
+                    }
+                    
+                    // Update UI and render dashboard
+                    this.updateAuthUI(user);
+                    this.renderAll();
+                    this.hideLoading();
+                    
+                    // Add entrance animations
+                    this.animateElementsEntrance();
+                    
+                } catch (error) {
+                    console.error('Error loading user data:', error);
+                    this.hideLoading();
+                    showStatusMessage('Error loading your data. Please refresh the page.', 'error');
                 }
-                
-                // If anonymous user or onboarding completed, proceed to dashboard
-                if (user.isAnonymous && this.dataManager.getData().hospitals.length === 0) {
-                    // Initialize with default data for anonymous users
-                    await this.dataManager.initializeDefaultData();
-                }
-                
-                this.updateAuthUI(user);
-                this.renderAll();
-                this.hideLoading();
                 
             } else {
                 // Not signed in, redirect to login
@@ -195,7 +218,7 @@ class DashboardApp {
 
         if (addRecordBtn) {
             addRecordBtn.addEventListener('click', () => {
-                showStatusMessage('Add record feature coming soon!', 'info');
+                showSymptomTracker();
             });
         }
 
@@ -257,6 +280,35 @@ class DashboardApp {
             console.error('Sign-out error:', error);
             showStatusMessage('Error signing out. Please try again.', 'error');
         }
+    }
+
+    // Add entrance animations method
+    animateElementsEntrance() {
+        // Animate main content cards
+        const cards = document.querySelectorAll('.bg-white');
+        cards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, index * 150);
+        });
+        
+        // Animate action buttons
+        const buttons = document.querySelectorAll('#show-stats-btn, #show-map-btn, #show-awards-btn');
+        buttons.forEach((button, index) => {
+            button.style.opacity = '0';
+            button.style.transform = 'scale(0.8)';
+            button.style.transition = 'all 0.4s ease';
+            
+            setTimeout(() => {
+                button.style.opacity = '1';
+                button.style.transform = 'scale(1)';
+            }, 800 + (index * 100));
+        });
     }
 }
 

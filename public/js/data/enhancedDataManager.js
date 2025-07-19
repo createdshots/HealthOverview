@@ -144,15 +144,23 @@ export class EnhancedDataManager {
     async loadUserData() {
         if (!this.docRef || !this.userId) {
             console.log("No document reference or user ID available");
-            return false; // Onboarding not completed, as we can't verify.
+            return false;
         }
 
         try {
             console.log("Loading user data from Firestore...", { userId: this.userId });
-            const snapshot = await getDoc(this.docRef);
+            
+            // Add a timeout to prevent hanging requests
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Request timeout')), 10000)
+            );
+            
+            const snapshot = await Promise.race([
+                getDoc(this.docRef),
+                timeoutPromise
+            ]);
             
             if (snapshot.exists()) {
-                // Merge existing data with loaded data
                 const firestoreData = snapshot.data();
                 this.localData = {
                     hospitals: [],
@@ -165,20 +173,34 @@ export class EnhancedDataManager {
                     ...firestoreData
                 };
                 console.log("User data loaded successfully");
-                return this.localData.userProfile?.onboardingCompleted || false;
+                
+                // Check if onboarding is completed
+                const onboardingCompleted = this.localData.onboardingCompleted || 
+                                       this.localData.userProfile?.onboardingCompleted || 
+                                       false;
+                
+                return onboardingCompleted;
             } else {
-                // Document doesn't exist, initialize with default data
-                this.showStatusMessage('No user data found. Importing default hospitals and ambulances...', 'info');
+                console.log("No user document found, initializing default data");
                 const success = await this.initializeDefaultData();
                 if (success) {
                     this.showStatusMessage('Default data imported successfully!', 'success');
                 }
-                return false; // New user, onboarding not completed.
+                return false; // New user, onboarding not completed
             }
         } catch (error) {
             console.error("Error loading user data:", error);
-            this.showStatusMessage('Error loading user data. Please refresh or contact support.', 'error');
-            return false; // Assume onboarding not complete on error.
+            
+            // If it's a permission error, the user might not be properly authenticated
+            if (error.code === 'permission-denied' || error.message.includes('access control')) {
+                console.log("Permission denied, treating as anonymous user");
+                await this.initializeDefaultData();
+                return true; // Skip onboarding for permission-denied users
+            }
+            
+            this.showStatusMessage('Error loading user data. Using offline mode.', 'warning');
+            await this.initializeDefaultData();
+            return false;
         }
     }
 
