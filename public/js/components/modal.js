@@ -174,8 +174,8 @@ export function showModal(htmlContent, isDismissible = true) {
     modalContainer.className = 'fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4';
     
     modalContainer.innerHTML = `
-        <div id="modal-content" class="bg-white rounded-xl shadow-2xl transform transition-all scale-95 opacity-0" 
-             style="width: 95vw; max-width: 95vw; max-height: 90vh; overflow-y: auto;">
+        <div id="modal-content" class="bg-white rounded-2xl shadow-2xl transform transition-all scale-95 opacity-0" 
+             style="width: 85vw; max-width: 85vw; max-height: 85vh; overflow: hidden;">
             ${htmlContent}
         </div>
     `;
