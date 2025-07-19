@@ -427,6 +427,36 @@ class DashboardApp {
         const userData = this.dataManager.getData();
         const userConditions = userData.userProfile?.conditions || userData.conditions || [];
         
+        // Generate condition-specific symptoms sections
+        const conditionSymptomsHTML = userConditions.length > 0 ? `
+            <!-- Condition-Specific Symptoms -->
+            <div class="bg-gradient-to-r from-amber-500 to-orange-600 p-5 rounded-2xl shadow-lg">
+                <h3 class="text-xl font-bold text-white mb-4 flex items-center">
+                    <span class="text-2xl mr-3">🩺</span>
+                    Your Tracked Conditions
+                </h3>
+                <div class="space-y-4">
+                    ${userConditions.map(condition => `
+                        <div class="bg-white bg-opacity-90 p-4 rounded-xl">
+                            <h4 class="font-bold text-amber-800 mb-3 flex items-center">
+                                <span class="mr-2">${this.getConditionIcon(condition)}</span>
+                                ${condition}
+                            </h4>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                ${this.getConditionSymptoms(condition).map(symptom => `
+                                    <label class="flex items-center space-x-2 text-sm">
+                                        <input type="checkbox" name="condition_symptoms" value="${condition}_${symptom}" 
+                                               class="rounded border-amber-300 text-amber-600 focus:ring-amber-500">
+                                        <span class="text-amber-800">${symptom}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : '';
+
         const modalContent = `
             <div class="bg-gradient-to-r from-indigo-600 to-purple-700 text-white p-6 rounded-t-xl">
                 <div class="text-center">
@@ -509,6 +539,8 @@ class DashboardApp {
                             </div>
                         </div>
                     </div>
+
+                    ${conditionSymptomsHTML}
 
                     <!-- Severity -->
                     <div class="bg-gradient-to-r from-rose-500 to-red-600 p-5 rounded-2xl shadow-lg">
@@ -627,6 +659,13 @@ class DashboardApp {
     handleEnhancedRecordSubmit(e) {
         const formData = new FormData(e.target);
         
+        // Collect condition symptoms
+        const conditionSymptoms = [];
+        const conditionSymptomsInputs = document.querySelectorAll('input[name="condition_symptoms"]:checked');
+        conditionSymptomsInputs.forEach(input => {
+            conditionSymptoms.push(input.value);
+        });
+        
         const recordData = {
             id: Date.now().toString(),
             incidentType: formData.get('incidentType'),
@@ -634,6 +673,7 @@ class DashboardApp {
             location: formData.get('location'),
             severity: parseInt(formData.get('severity')),
             notes: formData.get('notes'),
+            conditionSymptoms: conditionSymptoms,
             createdAt: new Date().toISOString()
         };
         
@@ -660,6 +700,48 @@ class DashboardApp {
         
         // Refresh display
         this.renderAll();
+    }
+
+    // Helper method to get condition icon
+    getConditionIcon(condition) {
+        const icons = {
+            'asthma': '🫁',
+            'diabetes': '🩸',
+            'hypertension': '❤️',
+            'migraine': '🧠',
+            'arthritis': '🦴',
+            'anxiety': '😰',
+            'depression': '😔',
+            'heart_disease': '💓',
+            'chronic_pain': '⚡',
+            'allergies': '🤧',
+            'ibs': '🍽️',
+            'epilepsy': '⚡',
+            'fibromyalgia': '🔥',
+            'copd': '🫁'
+        };
+        return icons[condition.toLowerCase().replace(' ', '_')] || '🩺';
+    }
+
+    // Helper method to get condition-specific symptoms
+    getConditionSymptoms(condition) {
+        const symptoms = {
+            'asthma': ['Wheezing', 'Shortness of breath', 'Chest tightness', 'Coughing', 'Difficulty breathing'],
+            'diabetes': ['High blood sugar', 'Excessive thirst', 'Frequent urination', 'Fatigue', 'Blurred vision'],
+            'hypertension': ['Headaches', 'Dizziness', 'Chest pain', 'Shortness of breath', 'Nosebleeds'],
+            'migraine': ['Severe headache', 'Nausea', 'Light sensitivity', 'Sound sensitivity', 'Aura'],
+            'arthritis': ['Joint pain', 'Stiffness', 'Swelling', 'Reduced range of motion', 'Warmth'],
+            'anxiety': ['Rapid heartbeat', 'Sweating', 'Trembling', 'Restlessness', 'Worry'],
+            'depression': ['Sadness', 'Loss of interest', 'Fatigue', 'Sleep changes', 'Appetite changes'],
+            'heart_disease': ['Chest pain', 'Shortness of breath', 'Fatigue', 'Irregular heartbeat', 'Swelling'],
+            'chronic_pain': ['Persistent pain', 'Fatigue', 'Sleep disturbance', 'Mood changes', 'Limited mobility'],
+            'allergies': ['Sneezing', 'Runny nose', 'Itchy eyes', 'Skin rash', 'Congestion'],
+            'ibs': ['Abdominal pain', 'Bloating', 'Diarrhea', 'Constipation', 'Gas'],
+            'epilepsy': ['Seizures', 'Confusion', 'Memory loss', 'Fatigue', 'Mood changes'],
+            'fibromyalgia': ['Widespread pain', 'Fatigue', 'Sleep problems', 'Cognitive issues', 'Tender points'],
+            'copd': ['Shortness of breath', 'Chronic cough', 'Mucus production', 'Wheezing', 'Chest tightness']
+        };
+        return symptoms[condition.toLowerCase().replace(' ', '_')] || ['Pain', 'Discomfort', 'Fatigue', 'Other symptoms'];
     }
 
     // Add entrance animations method
@@ -888,6 +970,12 @@ class UIComponents {
                 </div>
             </div>
         `;
+    }
+
+    updateQuickStats(hospitalStats, ambulanceStats) {
+        // This method is called from the main app but we handle stats display in renderStats
+        // So this is just a placeholder to prevent the error
+        console.log('Quick stats updated:', { hospitalStats, ambulanceStats });
     }
 }
 
