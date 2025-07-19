@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Additional validation for write operations
+      allow write: if request.auth != null 
+        && request.auth.uid == userId
+        && validateUserData(request.resource.data);
+    }
+    
+    // Hospitals collection - read access for authenticated users, write restricted
+    match /hospitals/{hospitalId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && validateHospitalData(request.resource.data);
+    }
+    
+    // Ambulance services - read access for authenticated users
+    match /ambulance/{ambulanceId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Medical records - only user's own records
+    match /medicalRecords/{recordId} {
+      allow read, write: if request.auth != null 
+        && request.auth.uid == resource.data.userId;
+    }
+    
+    // Symptom tracking data - only user's own data
+    match /symptomTracking/{trackingId} {
+      allow read, write: if request.auth != null 
+        && request.auth.uid == resource.data.userId;
+    }
+
+    // Validation functions
+    function validateUserData(data) {
+      return data.keys().hasAll(['userProfile']) ||
+             data.keys().hasAny(['hospitals', 'ambulance', 'medicalRecords', 'symptomTracking', 'awards', 'visitHistory', 'onboardingCompleted', 'displayName', 'profileSetupDate']);
+    }
+    
+    function validateHospitalData(data) {
+      return data.keys().hasAll(['name']) && 
+             data.name is string &&
+             data.name.size() > 0;
+    }
+    
+    // Rate limiting - prevent spam
+    match /{document=**} {
+      allow write: if request.auth != null && 
+        request.time > resource.data.lastModified + duration.value(1, 's');
+    }
+  }
+}
