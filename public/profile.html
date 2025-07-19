@@ -258,7 +258,85 @@
         .onboarding-conditions-scroll::-webkit-scrollbar-thumb:hover {
             background: #8b5cf6;
         }
+
+        /* Profile Picture Upload Styles */
+        .profile-pic-container {
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .profile-pic-container:hover {
+            transform: scale(1.05);
+        }
+
+        .profile-pic-container:hover .profile-pic-overlay {
+            opacity: 1;
+        }
+
+        .profile-pic-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            padding: 2px;
+        }
+
+        .profile-pic {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        /* Image Cropper Styles */
+        .cropper-container {
+            max-width: 100%;
+            max-height: 400px;
+            margin: 0 auto;
+        }
+
+        .cropper-view-box,
+        .cropper-face {
+            border-radius: 50%;
+        }
+
+        .cropper-crop-box {
+            border-radius: 50%;
+        }
+
+        .upload-zone {
+            border: 2px dashed #a78bfa;
+            border-radius: 1rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            transition: all 0.3s ease;
+        }
+
+        .upload-zone:hover {
+            border-color: #8b5cf6;
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        }
+
+        .upload-zone.dragover {
+            border-color: #7c3aed;
+            background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%);
+            transform: scale(1.02);
+        }
     </style>
+    
+    <!-- Add Cropper.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
 </head>
 
 <body class="min-h-screen relative">
@@ -307,8 +385,12 @@
                             <div id="user-display-name" class="text-sm font-semibold text-gray-700 hidden"></div>
                             <div id="user-email-display" class="text-xs text-gray-500 hidden"></div>
                         </div>
-                        <div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-blue-400 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                        <div class="profile-pic-container w-10 h-10 bg-gradient-to-br from-purple-400 to-blue-400 rounded-full flex items-center justify-center text-white font-bold shadow-lg" id="profile-pic-container">
+                            <img id="user-profile-pic" class="profile-pic hidden" alt="Profile Picture">
                             <span id="user-avatar">👤</span>
+                            <div class="profile-pic-overlay">
+                                <span>📷<br>Edit</span>
+                            </div>
                         </div>
                     </div>
                     
@@ -369,6 +451,15 @@
     <!-- Status Message Area -->
     <div id="status-message-area" class="fixed top-20 right-4 z-50"></div>
 
+    <!-- Hidden file input for profile picture upload -->
+    <input type="file" id="profile-pic-input" accept="image/*" style="display: none;">
+
+    <!-- Add Cropper.js Script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    
+    <!-- Load Profile Picture Upload Module -->
+    <script type="module" src="/js/profilePictureUpload.js"></script>
+    
     <!-- Load Modular JavaScript -->
     <script type="module" src="/js/profileApp.js"></script>
 </body>
