@@ -7,10 +7,111 @@
     <title>My Profile - Health Overview</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="/styles/main.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
     <script src="/firebase-config-values.js"></script>
     
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        /* Animated background */
+        .profile-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+
+        .profile-bg::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+
+        /* Glass morphism effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Floating header effect */
+        header.glass {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Adjust main content for floating header */
+        main {
+            margin-top: 1rem;
+        }
+
+        /* Floating particles */
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: particleFloat 6s ease-in-out infinite;
+        }
+
+        .particle:nth-child(1) {
+            width: 20px;
+            height: 20px;
+            top: 20%;
+            left: 20%;
+            animation-delay: 0s;
+        }
+
+        .particle:nth-child(2) {
+            width: 30px;
+            height: 30px;
+            top: 60%;
+            left: 80%;
+            animation-delay: 2s;
+        }
+
+        .particle:nth-child(3) {
+            width: 15px;
+            height: 15px;
+            top: 80%;
+            left: 30%;
+            animation-delay: 4s;
+        }
+
+        @keyframes particleFloat {
+            0%, 100% { transform: translateY(0px) scale(1); opacity: 0.7; }
+            50% { transform: translateY(-30px) scale(1.1); opacity: 1; }
+        }
+
         .profile-gradient {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
@@ -74,27 +175,36 @@
         /* Onboarding modal styles */
         .onboarding-gradient {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 1rem 1rem 0 0; /* More rounded top corners */
         }
         .onboarding-user-info {
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 0.75rem; /* More rounded */
         }
         .onboarding-condition-card {
             background: linear-gradient(135deg, #fafbff 0%, #f1f5f9 100%);
-            border: 2px solid transparent;
-            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            border-radius: 0.75rem; /* More rounded */
+            transition: all 0.2s ease;
         }
         .onboarding-condition-card:hover {
             border-color: #8b5cf6;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.15);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.1);
         }
         .onboarding-condition-card.selected {
-            border-color: #8b5cf6;
-            background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%);
+            border-color: #8b5cf6 !important;
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+        }
+        .onboarding-condition-card.selected h4 {
+            color: #7c3aed;
         }
         .privacy-card {
             background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
             border: 1px solid #bbf7d0;
+            border-radius: 0.75rem; /* More rounded */
         }
         
         /* Enhanced modal sizing for onboarding */
@@ -103,62 +213,211 @@
         }
         
         #modal-content {
-            max-width: 95vw !important;
-            width: 95vw !important;
-            max-height: 90vh;
+            border-radius: 1rem !important; /* More rounded */
+            max-width: 85vw !important;
+            width: 85vw !important;
+            max-height: 85vh;
+            overflow: hidden; /* Hide main scrollbar */
+        }
+        
+        /* Hide scrollbars in conditions area */
+        .onboarding-conditions-area {
+            overflow: hidden;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* Internet Explorer 10+ */
+        }
+        
+        .onboarding-conditions-area::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none; /* WebKit */
+        }
+        
+        /* Scrollable conditions area */
+        .onboarding-conditions-scroll {
+            max-height: 200px;
             overflow-y: auto;
+            padding-right: 4px; /* Space for scrollbar */
+            margin-right: -4px; /* Compensate for padding */
+        }
+        
+        /* Custom scrollbar for conditions area */
+        .onboarding-conditions-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .onboarding-conditions-scroll::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 3px;
+        }
+        
+        .onboarding-conditions-scroll::-webkit-scrollbar-thumb {
+            background: #a78bfa;
+            border-radius: 3px;
+        }
+        
+        .onboarding-conditions-scroll::-webkit-scrollbar-thumb:hover {
+            background: #8b5cf6;
+        }
+
+        /* Profile Picture Upload Styles */
+        .profile-pic-container {
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .profile-pic-container:hover {
+            transform: scale(1.05);
+        }
+
+        .profile-pic-container:hover .profile-pic-overlay {
+            opacity: 1;
+        }
+
+        .profile-pic-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            padding: 2px;
+        }
+
+        .profile-pic {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        /* Image Cropper Styles */
+        .cropper-container {
+            max-width: 100%;
+            max-height: 400px;
+            margin: 0 auto;
+        }
+
+        .cropper-view-box,
+        .cropper-face {
+            border-radius: 50%;
+        }
+
+        .cropper-crop-box {
+            border-radius: 50%;
+        }
+
+        .upload-zone {
+            border: 2px dashed #a78bfa;
+            border-radius: 1rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            transition: all 0.3s ease;
+        }
+
+        .upload-zone:hover {
+            border-color: #8b5cf6;
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        }
+
+        .upload-zone.dragover {
+            border-color: #7c3aed;
+            background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%);
+            transform: scale(1.02);
         }
     </style>
+    
+    <!-- Add Cropper.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
 </head>
 
-<body class="bg-gray-100 min-h-screen">
+<body class="min-h-screen relative">
+    <!-- Animated Background -->
+    <div class="profile-bg">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
     <!-- Loading Indicator -->
-    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 flex items-center space-x-3 shadow-xl">
-            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span id="loader-text" class="text-gray-700">Loading your profile...</span>
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div class="glass rounded-2xl p-8 flex items-center space-x-4 shadow-2xl">
+            <div class="animate-spin rounded-full h-8 w-8 border-4 border-purple-300 border-t-purple-600"></div>
+            <span id="loader-text" class="text-gray-700 font-medium text-lg">Loading your profile...</span>
         </div>
     </div>
 
     <!-- Modal Container -->
     <div id="modal-container"></div>
 
-    <!-- Header -->
-    <header class="bg-white shadow-sm p-4 sticky top-0 z-40">
-        <div class="container mx-auto flex justify-between items-center max-w-7xl">
-            <div class="flex items-center space-x-3">
-                <img src="/logo.svg" alt="Health Tracker" class="h-10 w-10">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900">My Profile</h1>
-                    <p id="personal-greeting" class="text-sm text-gray-600">Manage your health journey</p>
+    <!-- Enhanced Header -->
+    <header class="glass sticky top-0 z-40 border-b border-white/20 mx-4 mt-4 rounded-2xl shadow-2xl">
+        <div class="container mx-auto px-6 py-4 max-w-7xl">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <a href="/dashboard.html" class="flex items-center space-x-4 hover:opacity-80 transition-opacity duration-300 cursor-pointer">
+                        <div class="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <img src="/logo.svg" alt="Health Overview" class="w-8 h-8" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <span class="text-2xl hidden">🏥</span>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                                Health Overview
+                            </h1>
+                            <p id="header-subtitle" class="text-sm text-gray-600 font-medium">
+                                My Profile - Manage your health journey
+                            </p>
+                        </div>
+                    </a>
                 </div>
-            </div>
-            <div class="flex items-center space-x-3">
-                <span id="user-display-name" class="text-gray-700 font-medium hidden"></span>
-                <a href="/dashboard.html" 
-                   class="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2 rounded-full hover:from-purple-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium text-sm">
-                    📊 Dashboard
-                </a>
-                <button id="add-record-btn"
-                        class="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-full hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium text-sm">
-                    ➕ Add Record
-                </button>
-                <button id="signout-btn"
-                        class="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-full hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium text-sm">
-                    🚪 Sign Out
-                </button>
+                <div class="flex items-center space-x-4">
+                    <!-- User Profile Section - Display only (not clickable since we're on profile) -->
+                    <div class="flex items-center space-x-4 bg-white/30 rounded-xl p-2">
+                        <div class="text-right">
+                            <div id="user-display-name" class="text-sm font-semibold text-gray-700 hidden"></div>
+                            <div id="user-email-display" class="text-xs text-gray-500 hidden"></div>
+                        </div>
+                        <div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-blue-400 rounded-full flex items-center justify-center text-white font-bold shadow-lg relative overflow-hidden">
+                            <img id="user-profile-pic" class="w-full h-full object-cover rounded-full hidden" alt="Profile Picture">
+                            <span id="user-avatar">👤</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <a href="/dashboard.html" 
+                       class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold py-2 px-4 rounded-xl shadow-lg hover:from-purple-600 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105">
+                        📊 Dashboard
+                    </a>
+                    <button id="add-record-btn"
+                            class="bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold py-2 px-4 rounded-xl shadow-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105">
+                        ➕ Add Record
+                    </button>
+                    <button id="signout-btn"
+                            class="bg-gradient-to-r from-red-500 to-pink-500 text-white font-semibold py-2 px-4 rounded-xl shadow-lg hover:from-red-600 hover:to-pink-600 transition-all duration-300 transform hover:scale-105">
+                        🚪 Sign Out
+                    </button>
+                </div>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main id="profile-content" class="container mx-auto p-4 md:p-8 max-w-7xl hidden">
+    <main id="profile-content" class="container mx-auto px-6 py-8 max-w-7xl hidden relative z-10">
         <!-- Profile Header and Stats Grid -->
         <div id="profile-header-and-stats"></div>
         
         <!-- Profile Tabs -->
-        <div class="bg-white rounded-xl shadow-md mt-6">
-            <div class="border-b border-gray-200">
+        <div class="glass-card rounded-3xl shadow-2xl mt-6">
+            <div class="border-b border-gray-200/50">
                 <nav class="-mb-px flex space-x-8 px-6" id="profile-tabs">
                     <button class="profile-tab-btn border-purple-500 text-purple-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="overview">Overview</button>
                     <button class="profile-tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="conditions">My Conditions</button>
@@ -174,18 +433,31 @@
     </main>
 
     <!-- Not signed in message -->
-    <div id="not-signed-in" class="text-center py-16">
-        <div class="text-gray-400 text-6xl mb-4">👤</div>
-        <h2 class="text-2xl font-bold text-gray-900 mb-2">Sign in to view your profile</h2>
-        <p class="text-gray-600 mb-6">Track your visit history, view achievements, and analyze your progress.</p>
-        <a href="/" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
-            Go to Sign In
-        </a>
+        <!-- Not signed in message -->
+    <div id="not-signed-in" class="text-center py-16 relative z-10">
+        <div class="glass-card rounded-3xl p-12 max-w-md mx-auto shadow-2xl">
+            <div class="text-6xl mb-6">�</div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Access Required</h2>
+            <p class="text-gray-600 mb-8">Please sign in to view your profile and health data.</p>
+            <a href="/index.html" 
+               class="bg-gradient-to-r from-purple-500 to-blue-600 text-white font-semibold py-3 px-8 rounded-xl shadow-lg hover:from-purple-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 inline-block">
+                🚀 Sign In
+            </a>
+        </div>
     </div>
 
     <!-- Status Message Area -->
     <div id="status-message-area" class="fixed top-20 right-4 z-50"></div>
 
+    <!-- Hidden file input for profile picture upload -->
+    <input type="file" id="profile-pic-input" accept="image/*" style="display: none;">
+
+    <!-- Add Cropper.js Script (updated version without integrity) -->
+    <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+    
+    <!-- Load Profile Picture Upload Module -->
+    <script type="module" src="/js/profilePictureUpload.js"></script>
+    
     <!-- Load Modular JavaScript -->
     <script type="module" src="/js/profileApp.js"></script>
 </body>
