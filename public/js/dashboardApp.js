@@ -427,6 +427,20 @@ class DashboardApp {
         const userData = this.dataManager.getData();
         const userConditions = userData.userProfile?.conditions || userData.conditions || [];
         
+        // Get hospitals and ambulance data for dropdowns
+        const hospitals = userData.hospitals || [];
+        const ambulanceServices = userData.ambulance || [];
+        
+        // Generate hospital options
+        const hospitalOptions = hospitals.map(hospital => 
+            `<option value="${hospital.name}">${hospital.name}${hospital.city ? ` (${hospital.city})` : ''}</option>`
+        ).join('');
+        
+        // Generate ambulance options
+        const ambulanceOptions = ambulanceServices.map(ambulance => 
+            `<option value="${ambulance.name}">${ambulance.name}</option>`
+        ).join('');
+        
         // Generate condition-specific symptoms sections
         const conditionSymptomsHTML = userConditions.length > 0 ? `
             <!-- Condition-Specific Symptoms -->
@@ -511,6 +525,46 @@ class DashboardApp {
                                     <div class="text-3xl mb-2">📊</div>
                                     <div class="font-semibold text-indigo-800 text-sm">Test Results</div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hospital and Ambulance Section - Initially Hidden -->
+                    <div id="hospital-ambulance-section" class="bg-gradient-to-r from-cyan-500 to-blue-600 p-5 rounded-2xl shadow-lg hidden">
+                        <h3 class="text-xl font-bold text-white mb-4 flex items-center">
+                            <span class="text-2xl mr-3">🏥</span>
+                            Hospital & Transport Details
+                        </h3>
+                        <div class="space-y-4">
+                            <!-- Hospital Selection -->
+                            <div class="bg-white bg-opacity-90 p-4 rounded-xl">
+                                <label class="block text-sm font-bold text-cyan-800 mb-2">Which hospital did you visit?</label>
+                                <select name="hospital" 
+                                        class="w-full px-3 py-2 border-2 border-cyan-200 rounded-lg focus:ring-4 focus:ring-cyan-300 focus:border-cyan-500 transition-all duration-300">
+                                    <option value="">Select a hospital...</option>
+                                    ${hospitalOptions}
+                                </select>
+                            </div>
+                            
+                            <!-- Ambulance Checkbox -->
+                            <div class="bg-white bg-opacity-90 p-4 rounded-xl">
+                                <label class="flex items-center space-x-3">
+                                    <input type="checkbox" 
+                                           id="ambulance-involved" 
+                                           name="ambulanceInvolved"
+                                           class="w-5 h-5 text-cyan-600 border-2 border-cyan-300 rounded focus:ring-cyan-500">
+                                    <span class="text-sm font-bold text-cyan-800">Was an ambulance service involved?</span>
+                                </label>
+                            </div>
+                            
+                            <!-- Ambulance Selection - Initially Hidden -->
+                            <div id="ambulance-selection" class="bg-white bg-opacity-90 p-4 rounded-xl hidden">
+                                <label class="block text-sm font-bold text-cyan-800 mb-2">Which ambulance service was involved?</label>
+                                <select name="ambulance" 
+                                        class="w-full px-3 py-2 border-2 border-cyan-200 rounded-lg focus:ring-4 focus:ring-cyan-300 focus:border-cyan-500 transition-all duration-300">
+                                    <option value="">Select an ambulance service...</option>
+                                    ${ambulanceOptions}
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -626,14 +680,42 @@ class DashboardApp {
         // Incident type selection
         const incidentCards = document.querySelectorAll('.incident-type-card');
         const selectedTypeInput = document.getElementById('selected-type');
+        const hospitalAmbulanceSection = document.getElementById('hospital-ambulance-section');
+
+        // Define which incident types require hospital/ambulance selection
+        const hospitalVisitTypes = ['emergency_visit', 'scheduled_appointment', 'follow_up'];
 
         incidentCards.forEach(card => {
             card.addEventListener('click', () => {
                 incidentCards.forEach(c => c.classList.remove('border-indigo-500', 'bg-indigo-50'));
                 card.classList.add('border-indigo-500', 'bg-indigo-50');
                 selectedTypeInput.value = card.dataset.type;
+                
+                // Show/hide hospital and ambulance section based on incident type
+                if (hospitalVisitTypes.includes(card.dataset.type)) {
+                    hospitalAmbulanceSection.classList.remove('hidden');
+                } else {
+                    hospitalAmbulanceSection.classList.add('hidden');
+                }
             });
         });
+
+        // Ambulance involvement checkbox
+        const ambulanceInvolved = document.getElementById('ambulance-involved');
+        const ambulanceSelection = document.getElementById('ambulance-selection');
+
+        if (ambulanceInvolved && ambulanceSelection) {
+            ambulanceInvolved.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    ambulanceSelection.classList.remove('hidden');
+                } else {
+                    ambulanceSelection.classList.add('hidden');
+                    // Clear the ambulance selection when hiding
+                    const ambulanceSelect = ambulanceSelection.querySelector('select[name="ambulance"]');
+                    if (ambulanceSelect) ambulanceSelect.value = '';
+                }
+            });
+        }
 
         // Cancel button
         const cancelBtn = document.getElementById('cancel-enhanced-record-btn');
@@ -677,10 +759,40 @@ class DashboardApp {
             createdAt: new Date().toISOString()
         };
         
+        // Add hospital data if provided
+        const hospitalName = formData.get('hospital');
+        if (hospitalName && hospitalName.trim()) {
+            recordData.hospital = hospitalName.trim();
+        }
+        
+        // Add ambulance data if provided
+        const ambulanceInvolved = formData.get('ambulanceInvolved');
+        const ambulanceName = formData.get('ambulance');
+        if (ambulanceInvolved && ambulanceName && ambulanceName.trim()) {
+            recordData.ambulance = ambulanceName.trim();
+        }
+        
         // Validate required fields
         if (!recordData.incidentType) {
             import('./utils/ui.js').then(({ showStatusMessage }) => {
                 showStatusMessage('Please select an incident type.', 'error');
+            });
+            return;
+        }
+        
+        // For hospital visit types, require hospital selection
+        const hospitalVisitTypes = ['emergency_visit', 'scheduled_appointment', 'follow_up'];
+        if (hospitalVisitTypes.includes(recordData.incidentType) && !recordData.hospital) {
+            import('./utils/ui.js').then(({ showStatusMessage }) => {
+                showStatusMessage('Please select a hospital for this type of visit.', 'error');
+            });
+            return;
+        }
+        
+        // If ambulance is checked but no service selected, show error
+        if (ambulanceInvolved && (!ambulanceName || !ambulanceName.trim())) {
+            import('./utils/ui.js').then(({ showStatusMessage }) => {
+                showStatusMessage('Please select an ambulance service if one was involved.', 'error');
             });
             return;
         }
@@ -693,9 +805,17 @@ class DashboardApp {
             hideModal();
         });
         
-        // Show success message
+        // Show success message with details
+        let successMessage = 'Medical record saved successfully!';
+        if (recordData.hospital) {
+            successMessage += ` Hospital visit to ${recordData.hospital} has been added to your records.`;
+        }
+        if (recordData.ambulance) {
+            successMessage += ` Ambulance service ${recordData.ambulance} has been added to your records.`;
+        }
+        
         import('./utils/ui.js').then(({ showStatusMessage }) => {
-            showStatusMessage('Medical record saved successfully!', 'success');
+            showStatusMessage(successMessage, 'success');
         });
         
         // Refresh display
