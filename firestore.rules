@@ -1,57 +1,67 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
     // Users can read and write their own data
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      // Additional validation for write operations
+      // Additional validation for user data writes
       allow write: if request.auth != null 
-        && request.auth.uid == userId
-        && validateUserData(request.resource.data);
+                   && request.auth.uid == userId
+                   && validateUserData(request.resource.data);
     }
     
-    // Hospitals collection - read access for authenticated users, write restricted
+    // Public read access to hospitals collection (if you have one)
     match /hospitals/{hospitalId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && validateHospitalData(request.resource.data);
     }
     
-    // Ambulance services - read access for authenticated users
+    // Public read access to ambulance services (if you have one)
     match /ambulance/{ambulanceId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow write: if request.auth != null && validateAmbulanceData(request.resource.data);
     }
     
-    // Medical records - only user's own records
+    // Medical records - strictly private to each user
     match /medicalRecords/{recordId} {
       allow read, write: if request.auth != null 
-        && request.auth.uid == resource.data.userId;
+                         && request.auth.uid == resource.data.userId;
     }
     
-    // Symptom tracking data - only user's own data
+    // Symptom tracking data - private to each user
     match /symptomTracking/{trackingId} {
       allow read, write: if request.auth != null 
-        && request.auth.uid == resource.data.userId;
+                         && request.auth.uid == resource.data.userId;
     }
-
-    // Validation functions
+    
+    // Helper functions for data validation
     function validateUserData(data) {
-      return data.keys().hasAll(['userProfile']) ||
-             data.keys().hasAny(['hospitals', 'ambulance', 'medicalRecords', 'symptomTracking', 'awards', 'visitHistory', 'onboardingCompleted', 'displayName', 'profileSetupDate']);
+      return data.keys().hasAll(['userProfile']) &&
+             data.userProfile is map &&
+             (!('medicalRecords' in data) || data.medicalRecords is list) &&
+             (!('symptomTracking' in data) || data.symptomTracking is list) &&
+             (!('hospitals' in data) || data.hospitals is list) &&
+             (!('ambulance' in data) || data.ambulance is list) &&
+             (!('awards' in data) || data.awards is list) &&
+             (!('visitHistory' in data) || data.visitHistory is list);
     }
     
     function validateHospitalData(data) {
-      return data.keys().hasAll(['name']) && 
+      return data.keys().hasAll(['name']) &&
              data.name is string &&
              data.name.size() > 0;
     }
     
-    // Rate limiting - prevent spam
+    function validateAmbulanceData(data) {
+      return data.keys().hasAll(['name']) &&
+             data.name is string &&
+             data.name.size() > 0;
+    }
+    
+    // Deny all other access
     match /{document=**} {
-      allow write: if request.auth != null && 
-        request.time > resource.data.lastModified + duration.value(1, 's');
+      allow read, write: if false;
     }
   }
 }
