@@ -11,10 +11,11 @@
   },
   "devDependencies": {
     "eslint": "^8.0.0",
-    "prettier": "^2.0.0",
-    "http-server": "^14.0.0"
+    "http-server": "^14.0.0",
+    "prettier": "^2.0.0"
   },
   "dependencies": {
-    "firebase": "^9.0.0"
+    "firebase": "^9.0.0",
+    "vercel": "^44.6.4"
   }
 }
