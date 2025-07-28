@@ -70,11 +70,5 @@
     "api/**/*.js": {
       "runtime": "nodejs18.x"
     }
-  },
-  "env": {
-    "AZURE_CLIENT_ID": "@AZURE_CLIENT_ID",
-    "AZURE_TENANT_ID": "@AZURE_TENANT_ID",
-    "AZURE_CLIENT_SECRET": "@AZURE_CLIENT_SECRET",
-    "ADMIN_GROUPS": "@ADMIN_GROUPS"
   }
 }
