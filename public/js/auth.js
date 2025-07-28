@@ -21,64 +21,65 @@ export class FirebaseAuth {
         this.setupAuthListener();
     }
 
-    setupAuthListener() {
-        onAuthStateChanged(this.auth, async (user) => {
-            this.currentUser = user;
+setupAuthListener() {
+    onAuthStateChanged(this.auth, async (user) => {
+        this.currentUser = user;
+        
+        if (user) {
+            this.userId = user.uid;
             
-            if (user) {
-                this.userId = user.uid;
-                
-                try {
-                    // Get Firebase ID token for API calls
-                    this.userToken = await user.getIdToken();
-                    
-                    // Check if user needs onboarding (only for non-anonymous Google users)
-                    if (!user.isAnonymous && user.providerData[0]?.providerId === 'google.com') {
-                        const userData = await this.fetchUserData();
-                        if (!userData || Object.keys(userData).length === 0) {
-                            console.log('New user detected, redirecting to profile setup');
-                            window.location.href = '/profile.html?onboarding=1';
-                            return;
-                        }
-                    }
+            try {
+                this.userToken = await user.getIdToken();
 
-                    if (this.onAuthChangeCallback) {
-                        this.onAuthChangeCallback({ user });
-                    }
+                if (!user.isAnonymous && user.providerData[0]?.providerId === 'google.com') {
+                    const userData = await this.fetchUserData();
+
+                    const hasNoData = !userData || Object.keys(userData).length === 0;
+                    const hasOnboardingCompleted = userData?.onboardingCompleted || userData?.userProfile?.onboardingCompleted;
+                    const hasConditions = userData?.conditions?.length > 0 || userData?.userProfile?.conditions?.length > 0;
                     
-                    // Load user data for non-anonymous users
-                    if (!user.isAnonymous) {
-                        await this.loadUserData();
-                    } else {
-                        // For anonymous users, provide empty data
-                        if (this.onDataChangeCallback) {
-                            this.onDataChangeCallback({ data: null, exists: false });
-                        }
+                    if (hasNoData || (!hasOnboardingCompleted && !hasConditions)) {
+                        console.log('New user detected, redirecting to profile setup');
+                        window.location.href = '/profile.html?onboarding=1';
+                        return;
                     }
-                } catch (error) {
-                    console.error('Error in auth setup:', error);
                 }
-            } else {
-                this.userId = null;
-                this.userToken = null;
-                this.currentUser = null;
-                
-                const currentPath = window.location.pathname;
-                const isOnLoginPage = currentPath === '/' || currentPath.includes('index.html');
-                
-                if (!isOnLoginPage && !currentPath.includes('profile.html')) {
-                    console.log('User not authenticated, redirecting to login');
-                    window.location.href = '/';
+
+                if (this.onAuthChangeCallback) {
+                    this.onAuthChangeCallback({ user });
+                }
+
+                if (!user.isAnonymous) {
+                    await this.loadUserData();
                 } else {
-                    if (this.onAuthChangeCallback) {
-                        this.onAuthChangeCallback({ user: null });
+                    if (this.onDataChangeCallback) {
+                        this.onDataChangeCallback({ data: null, exists: false });
                     }
+                }
+            } catch (error) {
+                console.error('Error in auth setup:', error);
+            }
+        } else {
+            this.userId = null;
+            this.userToken = null;
+            this.currentUser = null;
+            
+            const currentPath = window.location.pathname;
+            const isOnLoginPage = currentPath === '/' || currentPath.includes('index.html');
+            
+            if (!isOnLoginPage && !currentPath.includes('profile.html')) {
+                console.log('User not authenticated, redirecting to login');
+                window.location.href = '/';
+            } else {
+                if (this.onAuthChangeCallback) {
+                    this.onAuthChangeCallback({ user: null });
                 }
             }
-        }, (error) => {
-            console.error('Auth state change error:', error);
-        });
-    }
+        }
+    }, (error) => {
+        console.error('Auth state change error:', error);
+    });
+}
 
     async fetchUserData() {
         if (!this.userId || !this.userToken) {

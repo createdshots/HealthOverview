@@ -534,28 +534,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 showStatusMessage(message, type);
             });
 
-            try {
-                // Load user data first
-                const onboardingCompleted = await enhancedDataManager.loadUserData();
+try {
+            const onboardingCompleted = await enhancedDataManager.loadUserData();
+            currentUserData = enhancedDataManager.getData();
+
+            if (!currentUserData.hospitals || currentUserData.hospitals.length === 0) {
+                console.log('No hospital data found, initializing default data...');
+                await enhancedDataManager.initializeDefaultData();
                 currentUserData = enhancedDataManager.getData();
+            }
 
-                // Check if data is empty and needs initialization
-                if (!currentUserData.hospitals || currentUserData.hospitals.length === 0) {
-                    console.log('No hospital data found, initializing default data...');
-                    await enhancedDataManager.initializeDefaultData();
-                    currentUserData = enhancedDataManager.getData();
-                }
+            const hasExistingData = currentUserData.hospitals && currentUserData.hospitals.length > 0;
+            const hasConditions = currentUserData.conditions && currentUserData.conditions.length > 0;
+            const hasMedicalRecords = currentUserData.medicalRecords && currentUserData.medicalRecords.length > 0;
 
-                // Only show onboarding if specifically requested AND not completed
-                if (isOnboarding && !onboardingCompleted) {
-                    showOnboardingModal();
-                } else {
-                    if (profileContent) {
-                        profileContent.classList.remove('hidden');
-                        renderProfileTabs();
-                        renderFullProfile(currentUserData, user);
-                    }
+            if (isOnboarding && (!onboardingCompleted || (!hasExistingData && !hasConditions && !hasMedicalRecords))) {
+                showOnboardingModal();
+            } else {
+                if (profileContent) {
+                    profileContent.classList.remove('hidden');
+                    renderProfileTabs();
+                    renderFullProfile(currentUserData, user);
                 }
+            }
 
                 // Update profile picture after data is loaded
                 const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
