@@ -158,16 +158,6 @@
           Continue with Google
         </button>
         
-        <button id="microsoft-signin-btn" class="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg py-2 font-semibold text-gray-700 hover:bg-gray-50 shadow transition">
-          <svg class="w-5 h-5" viewBox="0 0 24 24">
-            <rect fill="#F25022" x="1" y="1" width="10" height="10"/>
-            <rect fill="#7FBA00" x="13" y="1" width="10" height="10"/>
-            <rect fill="#00A4EF" x="1" y="13" width="10" height="10"/>
-            <rect fill="#FFB900" x="13" y="13" width="10" height="10"/>
-          </svg>
-          Continue with Microsoft
-        </button>
-
         <!-- Guest sign-in option -->
         <div class="relative">
           <div class="absolute inset-0 flex items-center">
@@ -231,7 +221,7 @@
     try {
       // Import Firebase modules
       const { FirebaseAuth } = await import('./js/auth.js');
-      const { GoogleAuthProvider, OAuthProvider, signInWithPopup, signInAnonymously } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+      const { GoogleAuthProvider, signInWithPopup, signInAnonymously } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
 
       const firebaseAuth = new FirebaseAuth();
       await firebaseAuth.initialize();
@@ -266,23 +256,6 @@
           } catch (error) {
             console.error('Google sign-in error:', error);
             showLoginStatusMessage(`Google sign-in failed: ${error.message}`);
-          }
-        });
-      }
-
-      // Microsoft Sign-In  
-      const msBtn = document.getElementById('microsoft-signin-btn');
-      if (msBtn) {
-        msBtn.addEventListener('click', async () => {
-          try {
-            showLoginStatusMessage('Signing in with Microsoft...', 'success');
-            const provider = new OAuthProvider('microsoft.com');
-            provider.addScope('mail.read');
-            provider.addScope('user.read');
-            await signInWithPopup(auth, provider);
-          } catch (error) {
-            console.error('Microsoft sign-in error:', error);
-            showLoginStatusMessage(`Microsoft sign-in failed: ${error.message}`);
           }
         });
       }

@@ -1,6 +1,3 @@
-// This file defines the Firebase configuration and makes it globally available.
-// It is NOT a module.
-
 window.userFirebaseConfig = {
     apiKey: "AIzaSyDXJQOLf7tkzeu0z2TFvzaiXtdDVfwgTWU",
     authDomain: "healthoverview-info.firebaseapp.com",

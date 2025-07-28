@@ -487,24 +487,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const userDisplayName = document.getElementById('user-display-name');
         const userEmailDisplay = document.getElementById('user-email-display');
 
-        // Get user data to check for profile picture
         const userData = enhancedDataManager.getData();
         const profilePictureUrl = userData?.userProfile?.profilePicture?.url || userData?.profilePicture?.url;
 
         if (profilePictureUrl && userProfilePic && userAvatar) {
-            // Show profile picture if available
             userProfilePic.src = profilePictureUrl;
             userProfilePic.classList.remove('hidden');
             userAvatar.classList.add('hidden');
         } else if (userAvatar && displayName) {
-            // Fall back to avatar initial if no profile picture
             const initial = displayName.charAt(0).toUpperCase();
             userAvatar.textContent = initial;
             userAvatar.classList.remove('hidden');
             if (userProfilePic) userProfilePic.classList.add('hidden');
         }
 
-        // Update user display info in header
         if (userDisplayName && currentUser) {
             userDisplayName.textContent = displayName;
             userDisplayName.classList.remove('hidden');
@@ -515,7 +511,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Auth state change handler
     onAuthStateChanged(auth, async (user) => {
         currentUser = user;
         if (user) {
@@ -524,10 +519,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (notSignedInDiv) notSignedInDiv.classList.add('hidden');
 
-            // Set up data manager
             enhancedDataManager.setUserId(user.uid);
 
-            // Set up symptom tracker
             symptomTracker.setDataManager(enhancedDataManager);
             symptomTracker.setCurrentUser(user);
             symptomTracker.onStatus((message, type) => {
@@ -558,12 +551,10 @@ try {
                 }
             }
 
-                // Update profile picture after data is loaded
                 const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
                 updateUserProfilePicture(displayName);
                 updateMainProfilePicture(currentUserData, displayName);
 
-                // Initialize profile picture uploader after content is rendered
                 setTimeout(() => {
                     if (window.ProfilePictureUploader) {
                         new window.ProfilePictureUploader();

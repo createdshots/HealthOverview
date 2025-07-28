@@ -1,4 +1,3 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { 
     getAuth, 
@@ -78,12 +77,10 @@ function updateUserProfilePicture(userData, displayName) {
     const profilePictureUrl = userData?.userProfile?.profilePicture?.url || userData?.profilePicture?.url;
     
     if (profilePictureUrl) {
-        // Show profile picture if available
         userProfilePic.src = profilePictureUrl;
         userProfilePic.classList.remove('hidden');
         userAvatar.classList.add('hidden');
     } else if (displayName) {
-        // Fall back to avatar initial if no profile picture
         const initial = displayName.charAt(0).toUpperCase();
         userAvatar.textContent = initial;
         userAvatar.classList.remove('hidden');

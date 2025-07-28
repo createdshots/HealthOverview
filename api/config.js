@@ -1,4 +1,3 @@
-// API endpoint to serve Firebase config with environment variables
 export default function handler(req, res) {
     res.setHeader('Content-Type', 'application/javascript');
     res.setHeader('Cache-Control', 'public, max-age=300');

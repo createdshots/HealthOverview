@@ -30,21 +30,6 @@ setupAuthListener() {
             
             try {
                 this.userToken = await user.getIdToken();
-
-                if (!user.isAnonymous && user.providerData[0]?.providerId === 'google.com') {
-                    const userData = await this.fetchUserData();
-
-                    const hasNoData = !userData || Object.keys(userData).length === 0;
-                    const hasOnboardingCompleted = userData?.onboardingCompleted || userData?.userProfile?.onboardingCompleted;
-                    const hasConditions = userData?.conditions?.length > 0 || userData?.userProfile?.conditions?.length > 0;
-                    
-                    if (hasNoData || (!hasOnboardingCompleted && !hasConditions)) {
-                        console.log('New user detected, redirecting to profile setup');
-                        window.location.href = '/profile.html?onboarding=1';
-                        return;
-                    }
-                }
-
                 if (this.onAuthChangeCallback) {
                     this.onAuthChangeCallback({ user });
                 }
