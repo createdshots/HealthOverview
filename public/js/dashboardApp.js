@@ -5,7 +5,6 @@ import { enhancedDataManager } from './data/enhancedDataManager.js';
 import { showStatusMessage } from './utils/ui.js';
 import { symptomTracker, showSymptomTracker } from './features/symptomTracker.js';
 import { mapViewer, showMapModal } from './features/mapViewer.js';
-import { adminAccessManager } from './admin/adminAccess.js';
 
 class DashboardApp {
     constructor() {
@@ -247,9 +246,6 @@ class DashboardApp {
             
             // Update greeting and summary
             this.updateGreetingAndSummary(displayName);
-            
-            // Check for admin access using the admin access manager
-            adminAccessManager.checkAdminAccess(user);
             
         } else {
             // User is signed out, redirect to login page

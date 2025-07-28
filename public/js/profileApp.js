@@ -3,7 +3,6 @@ import { loadUserData, saveUserData, enhancedDataManager } from './data/enhanced
 import { showModal, hideModal } from './components/modal.js';
 import { showStatusMessage } from './utils/ui.js';
 import { symptomTracker, showSymptomTracker, showSymptomOverview } from './features/symptomTracker.js';
-import { adminAccessManager } from './admin/adminAccess.js';
 
 // Global variables
 let currentUser = null;
@@ -511,45 +510,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Authentication state change handler
     onAuthStateChanged(auth, async (user) => {
         currentUser = user;
+
         if (user) {
-            if (personalGreeting) {
-                personalGreeting.textContent = `Welcome back, ${user.displayName || user.email || 'User'}`;
-            }
+            if (loadingOverlay) loadingOverlay.style.display = 'flex';
             if (notSignedInDiv) notSignedInDiv.classList.add('hidden');
 
-            enhancedDataManager.setUserId(user.uid);
+            const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
 
-            symptomTracker.setDataManager(enhancedDataManager);
-            symptomTracker.setCurrentUser(user);
-            symptomTracker.onStatus((message, type) => {
-                showStatusMessage(message, type);
-            });
-
-try {
-            const onboardingCompleted = await enhancedDataManager.loadUserData();
-            currentUserData = enhancedDataManager.getData();
-
-            if (!currentUserData.hospitals || currentUserData.hospitals.length === 0) {
-                console.log('No hospital data found, initializing default data...');
-                await enhancedDataManager.initializeDefaultData();
-                currentUserData = enhancedDataManager.getData();
+            if (personalGreeting) {
+                personalGreeting.textContent = `Hello, ${displayName}!`;
             }
 
-            const hasExistingData = currentUserData.hospitals && currentUserData.hospitals.length > 0;
-            const hasConditions = currentUserData.conditions && currentUserData.conditions.length > 0;
-            const hasMedicalRecords = currentUserData.medicalRecords && currentUserData.medicalRecords.length > 0;
+            try {
+                // Load user data
+                await enhancedDataManager.setUserId(user.uid);
+                currentUserData = await loadUserData();
 
-            if (isOnboarding && (!onboardingCompleted || (!hasExistingData && !hasConditions && !hasMedicalRecords))) {
-                showOnboardingModal();
-            } else {
-                if (profileContent) {
-                    profileContent.classList.remove('hidden');
-                    renderProfileTabs();
-                    renderFullProfile(currentUserData, user);
+                if (!currentUserData) {
+                    console.log('No user data found, initializing...');
+                    await enhancedDataManager.initializeDefaultData();
+                    currentUserData = enhancedDataManager.getData();
                 }
-            }
+
+                enhancedDataManager.setData(currentUserData);
+
+                // Check if user data has expected structure
+                if (!currentUserData.hospitals || currentUserData.hospitals.length === 0) {
+                    console.log('No hospital data found, initializing default data...');
+                    await enhancedDataManager.initializeDefaultData();
+                    currentUserData = enhancedDataManager.getData();
+                }
+
+                const hasExistingData = currentUserData.hospitals && currentUserData.hospitals.length > 0;
+                const hasConditions = currentUserData.conditions && currentUserData.conditions.length > 0;
+                const hasMedicalRecords = currentUserData.medicalRecords && currentUserData.medicalRecords.length > 0;
+
+                if (isOnboarding && (!onboardingCompleted || (!hasExistingData && !hasConditions && !hasMedicalRecords))) {
+                    showOnboardingModal();
+                } else {
+                    if (profileContent) {
+                        profileContent.classList.remove('hidden');
+                        renderProfileTabs();
+                        renderFullProfile(currentUserData, user);
+                    }
+                }
 
                 const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
                 updateUserProfilePicture(displayName);
@@ -560,9 +567,6 @@ try {
                         new window.ProfilePictureUploader();
                     }
                 }, 100);
-
-                // Check for admin access after successful login
-                adminAccessManager.checkAdminAccess(user);
 
             } catch (error) {
                 console.error('Error loading user data:', error);
