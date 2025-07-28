@@ -132,6 +132,7 @@ class DashboardApp {
             this.renderAmbulance();
             this.updateSummaryCards();
             this.updateQuickStats();
+            this.renderRecentActivity();
         } catch (error) {
             console.error("Error rendering data:", error);
             showStatusMessage("Error displaying data.", "error");
@@ -194,6 +195,108 @@ class DashboardApp {
         }, 100);
         
         console.log('=== AMBULANCE RENDER END ===');
+    }
+
+    // Render recent activity
+    renderRecentActivity() {
+        const activityContainer = document.getElementById('recent-activity-list');
+        if (!activityContainer) return;
+
+        const data = this.dataManager.getData();
+        const recentRecords = (data.medicalRecords || [])
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .slice(0, 5); // Show only the 5 most recent
+
+        const recentSymptoms = (data.symptomTracking || [])
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .slice(0, 3); // Show only the 3 most recent
+
+        // Combine and sort all recent activity
+        const allActivity = [
+            ...recentRecords.map(record => ({
+                type: 'medical_record',
+                title: record.incidentType?.replace('_', ' ') || 'Medical Record',
+                timestamp: record.timestamp,
+                severity: record.severity,
+                icon: '📋',
+                data: record
+            })),
+            ...recentSymptoms.map(symptom => ({
+                type: 'symptom',
+                title: symptom.symptom || 'Symptom Log',
+                timestamp: symptom.timestamp,
+                severity: symptom.severity,
+                icon: '🌡️',
+                data: symptom
+            }))
+        ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+         .slice(0, 5); // Show only 5 most recent items total
+
+        if (allActivity.length === 0) {
+            activityContainer.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <div class="text-4xl mb-3">📝</div>
+                    <p>No recent activity yet.</p>
+                    <p class="text-sm mt-1">Start by adding your first medical record!</p>
+                    <button id="add-first-record-btn" class="mt-4 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                        Add Record
+                    </button>
+                </div>
+            `;
+
+            // Add event listener for the add record button
+            document.getElementById('add-first-record-btn')?.addEventListener('click', () => {
+                if (window.medicalRecordsManager && window.medicalRecordsManager.showAddRecordModal) {
+                    window.medicalRecordsManager.showAddRecordModal();
+                } else {
+                    this.createEnhancedMedicalRecordsModal();
+                }
+            });
+        } else {
+            activityContainer.innerHTML = allActivity.map(activity => `
+                <div class="flex items-center space-x-4 p-4 bg-white rounded-xl border border-gray-100 hover:shadow-md transition-shadow duration-300">
+                    <div class="w-12 h-12 ${this.getActivityColor(activity.type)} rounded-full flex items-center justify-center">
+                        <span class="text-xl">${activity.icon}</span>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-900">${activity.title}</div>
+                        <div class="text-sm text-gray-600">
+                            ${activity.timestamp ? new Date(activity.timestamp).toLocaleDateString() : 'No date'}
+                            ${activity.timestamp ? ' at ' + new Date(activity.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                        </div>
+                        ${activity.data.notes ? `<div class="text-xs text-gray-500 mt-1">${activity.data.notes.substring(0, 50)}${activity.data.notes.length > 50 ? '...' : ''}</div>` : ''}
+                    </div>
+                    ${activity.severity ? `
+                        <span class="px-2 py-1 text-xs rounded-full ${this.getSeverityColor(activity.severity)}">
+                            ${activity.severity}/10
+                        </span>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        // Add event listener for "View All" button
+        document.getElementById('view-all-activity-btn')?.addEventListener('click', () => {
+            window.location.href = '/profile.html?tab=records';
+        });
+    }
+
+    // Get activity type color
+    getActivityColor(type) {
+        switch (type) {
+            case 'medical_record': return 'bg-blue-100';
+            case 'symptom': return 'bg-purple-100';
+            default: return 'bg-gray-100';
+        }
+    }
+
+    // Get severity color for badges
+    getSeverityColor(severity) {
+        const severityNum = parseInt(severity);
+        if (severityNum <= 3) return 'bg-green-100 text-green-800';
+        if (severityNum <= 6) return 'bg-yellow-100 text-yellow-800';
+        if (severityNum <= 8) return 'bg-orange-100 text-orange-800';
+        return 'bg-red-100 text-red-800';
     }
 
     // Update quick stats
@@ -1135,6 +1238,10 @@ if (document.readyState === 'loading') {
 async function startApp() {
     const app = new DashboardApp();
     await app.init();
+    
+    // Make dashboard app globally accessible for cross-page refreshes
+    window.dashboardApp = app;
+    
     createVersionBadges();
 }
 

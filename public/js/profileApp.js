@@ -412,8 +412,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const recordData = {
                 id: Date.now().toString(),
-                type: formData.get('incidentType'),
-                datetime: formData.get('datetime'),
+                incidentType: formData.get('incidentType'),
+                timestamp: formData.get('datetime'),
                 location: formData.get('location'),
                 symptoms: symptoms,
                 severity: parseInt(formData.get('severity')),
@@ -436,6 +436,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize medical records manager
     const medicalRecordsManager = new ProfileMedicalRecordsManager();
+    
+    // Make medical records manager globally accessible
+    window.medicalRecordsManager = medicalRecordsManager;
 
     // Available conditions for tracking
     const availableConditions = [
@@ -1055,6 +1058,239 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
+    function getSeverityColor(severity) {
+        const severityNum = parseInt(severity);
+        if (severityNum <= 3) return 'bg-green-100 text-green-800';
+        if (severityNum <= 6) return 'bg-yellow-100 text-yellow-800';
+        if (severityNum <= 8) return 'bg-orange-100 text-orange-800';
+        return 'bg-red-100 text-red-800';
+    }
+
+    function renderRecordsTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        if (!content) return;
+
+        const records = userData.medicalRecords || [];
+
+        content.innerHTML = `
+            <div class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-semibold text-gray-900">Medical Records</h3>
+                    <button id="add-record-from-tab-btn" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                        Add New Record
+                    </button>
+                </div>
+                
+                ${records.length > 0 ? `
+                    <div class="space-y-4">
+                        ${records.map(record => `
+                            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex items-center space-x-4">
+                                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <span class="text-blue-600">📋</span>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-lg font-semibold text-gray-900">${record.incidentType?.replace('_', ' ') || 'Medical Record'}</h4>
+                                            <p class="text-sm text-gray-600">${record.timestamp ? new Date(record.timestamp).toLocaleDateString() : 'No date'}</p>
+                                            ${record.location ? `<p class="text-sm text-gray-500">📍 ${record.location}</p>` : ''}
+                                        </div>
+                                    </div>
+                                    ${record.severity ? `<span class="px-3 py-1 text-sm rounded-full ${getSeverityColor(record.severity)}">${record.severity}/10</span>` : ''}
+                                </div>
+                                ${record.symptoms && record.symptoms.length > 0 ? `
+                                    <div class="mt-4">
+                                        <p class="text-sm font-medium text-gray-700 mb-2">Symptoms:</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            ${record.symptoms.map(symptom => `<span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">${symptom}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                ${record.notes ? `
+                                    <div class="mt-4">
+                                        <p class="text-sm font-medium text-gray-700 mb-1">Notes:</p>
+                                        <p class="text-sm text-gray-600">${record.notes}</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : `
+                    <div class="text-center py-12">
+                        <div class="text-6xl mb-4">📋</div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">No Medical Records Yet</h3>
+                        <p class="text-gray-600 mb-6">Start tracking your health journey by adding your first medical record.</p>
+                        <button id="add-record-from-tab-btn" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
+                            Add Your First Record
+                        </button>
+                    </div>
+                `}
+            </div>
+        `;
+
+        // Add event listener for the add record button
+        document.getElementById('add-record-from-tab-btn')?.addEventListener('click', () => {
+            if (window.medicalRecordsManager) {
+                window.medicalRecordsManager.showAddRecordModal();
+            }
+        });
+    }
+
+    // Missing function: Render Symptoms Tab
+    function renderSymptomsTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        if (!content) return;
+
+        const symptoms = userData.symptomTracking || [];
+
+        content.innerHTML = `
+            <div class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-semibold text-gray-900">Symptom Tracking</h3>
+                    <div class="space-x-2">
+                        <button id="add-symptom-record-btn" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                            Log Symptoms
+                        </button>
+                        <button id="view-symptom-overview-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            View Overview
+                        </button>
+                    </div>
+                </div>
+                
+                ${symptoms.length > 0 ? `
+                    <div class="space-y-4">
+                        ${symptoms.slice(0, 10).map(symptom => `
+                            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex items-center space-x-4">
+                                        <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                            <span class="text-purple-600">🌡️</span>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-lg font-semibold text-gray-900">${symptom.symptom || 'Symptom'}</h4>
+                                            <p class="text-sm text-gray-600">${symptom.timestamp ? new Date(symptom.timestamp).toLocaleDateString() : 'No date'}</p>
+                                        </div>
+                                    </div>
+                                    ${symptom.severity ? `<span class="px-3 py-1 text-sm rounded-full ${getSeverityColor(symptom.severity)}">${symptom.severity}/10</span>` : ''}
+                                </div>
+                                ${symptom.notes ? `
+                                    <div class="mt-4">
+                                        <p class="text-sm text-gray-600">${symptom.notes}</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : `
+                    <div class="text-center py-12">
+                        <div class="text-6xl mb-4">🌡️</div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">No Symptom Records Yet</h3>
+                        <p class="text-gray-600 mb-6">Start tracking your symptoms to better understand your health patterns.</p>
+                        <button id="add-symptom-record-btn" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
+                            Log Your First Symptom
+                        </button>
+                    </div>
+                `}
+            </div>
+        `;
+    }
+
+    // Missing function: Render Analytics Tab
+    function renderAnalyticsTab(userData) {
+        const content = document.getElementById('profile-tab-content');
+        if (!content) return;
+
+        const records = userData.medicalRecords || [];
+        const symptoms = userData.symptomTracking || [];
+        const conditions = userData.conditions || userData.userProfile?.conditions || [];
+
+        // Calculate basic analytics
+        const totalRecords = records.length;
+        const totalSymptoms = symptoms.length;
+        const avgSeverity = records.length > 0 ? 
+            records.filter(r => r.severity).reduce((sum, r) => sum + parseInt(r.severity), 0) / records.filter(r => r.severity).length : 0;
+
+        content.innerHTML = `
+            <div class="space-y-6">
+                <h3 class="text-xl font-semibold text-gray-900">Health Analytics</h3>
+                
+                <!-- Summary Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span class="text-blue-600 text-xl">📋</span>
+                            </div>
+                            <div>
+                                <h4 class="text-2xl font-bold text-gray-900">${totalRecords}</h4>
+                                <p class="text-sm text-gray-600">Medical Records</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                <span class="text-purple-600 text-xl">🌡️</span>
+                            </div>
+                            <div>
+                                <h4 class="text-2xl font-bold text-gray-900">${totalSymptoms}</h4>
+                                <p class="text-sm text-gray-600">Symptom Logs</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                <span class="text-green-600 text-xl">📊</span>
+                            </div>
+                            <div>
+                                <h4 class="text-2xl font-bold text-gray-900">${avgSeverity > 0 ? avgSeverity.toFixed(1) : '--'}</h4>
+                                <p class="text-sm text-gray-600">Avg Severity</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Chart Placeholder -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Activity Overview</h4>
+                    <div class="text-center py-8 text-gray-500">
+                        <div class="text-4xl mb-3">📈</div>
+                        <p>Detailed analytics coming soon!</p>
+                        <p class="text-sm mt-1">We're working on advanced charts and insights.</p>
+                    </div>
+                </div>
+
+                ${conditions.length > 0 ? `
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Tracked Conditions</h4>
+                        <div class="space-y-3">
+                            ${conditions.map(conditionId => {
+                                const condition = availableConditions.find(c => c.id === conditionId);
+                                const conditionRecords = records.filter(r => r.condition === conditionId).length;
+                                const conditionSymptoms = symptoms.filter(s => s.condition === conditionId).length;
+                                
+                                return condition ? `
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="text-xl">${condition.icon}</span>
+                                            <div>
+                                                <div class="font-medium text-gray-900">${condition.name}</div>
+                                                <div class="text-sm text-gray-600">${conditionRecords} records, ${conditionSymptoms} symptoms</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ` : '';
+                            }).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
     function showOnboardingModal() {
         // Get existing conditions to pre-select them
         const existingConditions = currentUserData?.conditions || currentUserData?.userProfile?.conditions || [];
@@ -1296,11 +1532,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 profileSetupDate: new Date().toISOString()
             };
 
-            // Update the data structure correctly
             const updatedData = {
                 ...currentData,
                 userProfile: userData,
-                conditions: Array.from(selectedConditions), // Also save at root level for compatibility
+                conditions: Array.from(selectedConditions),
                 onboardingCompleted: true
             };
 
@@ -1310,7 +1545,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Save to Firestore
             await enhancedDataManager.saveData();
 
-            // Update current user data reference
             currentUserData = enhancedDataManager.getData();
 
             console.log('Onboarding completed with conditions:', Array.from(selectedConditions));
@@ -1324,7 +1558,6 @@ document.addEventListener('DOMContentLoaded', () => {
             url.searchParams.delete('onboarding');
             window.history.replaceState({}, '', url);
 
-            // Refresh the profile display
             if (profileContent) {
                 profileContent.classList.remove('hidden');
                 renderProfileTabs();
@@ -1439,17 +1672,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     `;
 
-    // Add styles to head if not already present
     if (!document.getElementById('onboarding-styles')) {
         onboardingStyles.id = 'onboarding-styles';
         document.head.appendChild(onboardingStyles);
     }
 
-    // Add global refresh function
     window.refreshProfileData = function () {
         if (currentUserData && currentUser) {
             renderFullProfile(currentUserData, currentUser);
         }
+
+        if (window.dashboardApp && window.dashboardApp.renderRecentActivity) {
+            window.dashboardApp.renderRecentActivity();
+            window.dashboardApp.updateSummaryCards();
+        }
     };
 
-}); // Close DOMContentLoaded event handler
+});
