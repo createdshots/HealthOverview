@@ -68,7 +68,7 @@
   ],
   "functions": {
     "api/**/*.js": {
-      "runtime": "nodejs18.x"
+      "Runtimes": "nodejs18.x"
     }
   }
 }
