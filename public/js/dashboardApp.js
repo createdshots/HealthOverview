@@ -40,6 +40,19 @@ class DashboardApp {
                 
                 // Load user data and check onboarding status
                 try {
+                    // Wait a small amount to ensure Firebase is fully initialized
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    // Ensure user ID is set first
+                    console.log('Setting user ID for dashboard data manager:', user.uid);
+                    this.dataManager.setUserId(user.uid);
+                    
+                    // Verify the user ID was set correctly
+                    if (!this.dataManager.userId) {
+                        throw new Error('Failed to set user ID in dashboard data manager');
+                    }
+                    
+                    // Try to load user data and get onboarding status
                     const onboardingCompleted = await this.dataManager.loadUserData();
                     
                     // Check localStorage as fallback for recent onboarding completion

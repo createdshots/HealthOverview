@@ -528,17 +528,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                // Load user data
-                await enhancedDataManager.setUserId(user.uid);
-                currentUserData = await loadUserData();
+                // Wait a small amount to ensure Firebase is fully initialized
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Ensure user ID is set first
+                console.log('Setting user ID for data manager:', user.uid);
+                enhancedDataManager.setUserId(user.uid);
+                
+                // Verify the user ID was set correctly
+                if (!enhancedDataManager.userId) {
+                    throw new Error('Failed to set user ID in data manager');
+                }
+                
+                // Try to load existing user data
+                console.log('Loading user data for:', user.uid);
+                currentUserData = await enhancedDataManager.loadUserData();
 
                 if (!currentUserData) {
-                    console.log('No user data found, initializing...');
+                    console.log('No user data found, initializing default data...');
                     await enhancedDataManager.initializeDefaultData();
                     currentUserData = enhancedDataManager.getData();
+                } else {
+                    // Ensure the data is set in the manager
+                    enhancedDataManager.setData(currentUserData);
                 }
-
-                enhancedDataManager.setData(currentUserData);
 
                 // Check if user data has expected structure
                 if (!currentUserData.hospitals || currentUserData.hospitals.length === 0) {
@@ -547,11 +560,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentUserData = enhancedDataManager.getData();
                 }
 
+                // Check onboarding status
+                const onboardingCompleted = currentUserData.onboardingCompleted || false;
                 const hasExistingData = currentUserData.hospitals && currentUserData.hospitals.length > 0;
                 const hasConditions = currentUserData.conditions && currentUserData.conditions.length > 0;
                 const hasMedicalRecords = currentUserData.medicalRecords && currentUserData.medicalRecords.length > 0;
 
-                if (isOnboarding && (!onboardingCompleted || (!hasExistingData && !hasConditions && !hasMedicalRecords))) {
+                if (isOnboarding && !onboardingCompleted) {
                     showOnboardingModal();
                 } else {
                     if (profileContent) {
@@ -561,10 +576,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
+                // Update profile pictures
                 updateUserProfilePicture(displayName);
                 updateMainProfilePicture(currentUserData, displayName);
 
+                // Initialize profile picture uploader after a short delay
                 setTimeout(() => {
                     if (window.ProfilePictureUploader) {
                         new window.ProfilePictureUploader();
@@ -576,18 +592,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 showStatusMessage('Error loading profile data', 'error');
 
                 // Try to initialize default data as fallback
-                await enhancedDataManager.initializeDefaultData();
-                currentUserData = enhancedDataManager.getData();
-                if (profileContent) {
-                    profileContent.classList.remove('hidden');
-                    renderProfileTabs();
-                    renderFullProfile(currentUserData, user);
-                }
+                try {
+                    console.log('Attempting fallback data initialization...');
+                    enhancedDataManager.setUserId(user.uid);
+                    await enhancedDataManager.initializeDefaultData();
+                    currentUserData = enhancedDataManager.getData();
+                    if (profileContent) {
+                        profileContent.classList.remove('hidden');
+                        renderProfileTabs();
+                        renderFullProfile(currentUserData, user);
+                    }
 
-                // Update profile picture even in error case
-                const displayName = user.displayName || user.email || (user.isAnonymous ? 'Guest User' : 'Anonymous');
-                updateUserProfilePicture(displayName);
-                updateMainProfilePicture(currentUserData, displayName);
+                    // Update profile picture even in error case
+                    updateUserProfilePicture(displayName);
+                    updateMainProfilePicture(currentUserData, displayName);
+                } catch (fallbackError) {
+                    console.error('Fallback initialization also failed:', fallbackError);
+                    showStatusMessage('Failed to initialize profile data. Please refresh the page.', 'error');
+                }
             } finally {
                 if (loadingOverlay) loadingOverlay.style.display = 'none';
             }

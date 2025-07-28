@@ -52,7 +52,7 @@ export class EnhancedDataManager {
             symptomTracking: [],
             userProfile: {}
         };
-        this.userId = null;
+        this._userId = null;
         this.docRef = null;
         this.statusCallbacks = [];
     }
@@ -69,12 +69,39 @@ export class EnhancedDataManager {
 
     // Set user ID and initialize document reference
     setUserId(userId) {
-        this.userId = userId;
-        if (userId && db) {
-            this.docRef = doc(db, 'users', userId);
-        } else {
-            this.docRef = null;
+        console.log('Setting user ID in data manager:', userId);
+        this._userId = userId;
+        
+        // Wait for Firebase to be available
+        const initDocRef = () => {
+            if (userId && db) {
+                this.docRef = doc(db, 'users', userId);
+                console.log('Document reference created successfully');
+                return true;
+            } else {
+                console.log('Firebase db not ready yet, retrying...');
+                return false;
+            }
+        };
+        
+        // Try immediately, then retry with delay if needed
+        if (!initDocRef()) {
+            setTimeout(() => {
+                if (!initDocRef()) {
+                    console.error('Failed to create document reference - Firebase may not be initialized');
+                    this.docRef = null;
+                }
+            }, 200);
         }
+    }
+
+    // Get user ID
+    get userId() {
+        return this._userId;
+    }
+
+    set userId(value) {
+        this._userId = value;
     }
 
     // Get current data
@@ -167,7 +194,10 @@ export class EnhancedDataManager {
     // Load user data from Firestore
     async loadUserData() {
         if (!this.docRef || !this.userId) {
-            console.log("No document reference or user ID available");
+            console.log("No document reference or user ID available", { 
+                docRef: !!this.docRef, 
+                userId: this.userId 
+            });
             return false;
         }
 
