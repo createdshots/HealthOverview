@@ -377,7 +377,9 @@ class ProfilePictureUploader {
 
             console.log('💾 Updating user profile...');
             // Update user profile in Firestore
-            await this.updateUserProfile(uploadResult.url, uploadResult.publicId);
+            const storageType = uploadResult.isLocal ? 'local' : 
+                               uploadResult.isBlob ? 'blob' : 'cloudinary';
+            await this.updateUserProfile(uploadResult.url, uploadResult.publicId, storageType);
 
             console.log('🔄 Updating UI...');
             // Update UI
@@ -397,7 +399,7 @@ class ProfilePictureUploader {
         }
     }
 
-    async updateUserProfile(imageUrl, publicId) {
+    async updateUserProfile(imageUrl, publicId, storageType = 'cloudinary') {
         const user = auth.currentUser;
         if (!user) throw new Error('No authenticated user');
 
@@ -407,12 +409,26 @@ class ProfilePictureUploader {
         const userDoc = await getDoc(userDocRef);
         const userData = userDoc.exists() ? userDoc.data() : {};
 
-        // Delete old profile picture if it exists
-        if (userData.userProfile?.profilePicture?.publicId) {
+        // Delete old profile picture if it exists and it's from Cloudinary
+        if (userData.userProfile?.profilePicture?.publicId && 
+            userData.userProfile?.profilePicture?.storageType !== 'local' &&
+            userData.userProfile?.profilePicture?.storageType !== 'blob') {
             try {
                 await deleteFromCloudinary(userData.userProfile.profilePicture.publicId);
             } catch (error) {
                 console.warn('Failed to delete old profile picture:', error);
+            }
+        }
+
+        // Clean up old localStorage entries if switching to a new local storage
+        if (userData.userProfile?.profilePicture?.storageType === 'local' && 
+            userData.userProfile?.profilePicture?.publicId && 
+            storageType === 'local' &&
+            userData.userProfile.profilePicture.publicId !== publicId) {
+            try {
+                localStorage.removeItem(userData.userProfile.profilePicture.publicId);
+            } catch (error) {
+                console.warn('Failed to clean up old localStorage entry:', error);
             }
         }
 
@@ -422,6 +438,7 @@ class ProfilePictureUploader {
             profilePicture: {
                 url: imageUrl,
                 publicId: publicId,
+                storageType: storageType,
                 updatedAt: new Date().toISOString()
             }
         };
