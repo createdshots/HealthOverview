@@ -5,12 +5,14 @@ import { enhancedDataManager } from './data/enhancedDataManager.js';
 import { showStatusMessage } from './utils/ui.js';
 import { symptomTracker, showSymptomTracker } from './features/symptomTracker.js';
 import { mapViewer, showMapModal } from './features/mapViewer.js';
+import { HealthAI } from './ai/healthAI.js';
 
 class DashboardApp {
     constructor() {
         this.dataManager = enhancedDataManager;
         this.uiComponents = new UIComponents();
         this.loadingIndicator = null;
+        this.healthAI = new HealthAI();
     }
 
     async init() {
@@ -429,41 +431,141 @@ class DashboardApp {
     updateSummaryCards() {
         const data = this.dataManager.getData();
         
-        // Hospitals data
-        const hospitalsVisited = data.hospitals?.filter(h => h.visited)?.length || 0;
-        const hospitalsTotal = data.hospitals?.length || 0;
-        document.getElementById('hospitals-visited-count').textContent = hospitalsVisited;
-        document.getElementById('hospitals-total-count').textContent = `of ${hospitalsTotal} total`;
+        // New health tracking stats
+        const conditions = data.conditions || [];
+        const symptoms = data.symptoms || [];
+        const medications = data.medications || [];
         
-        // Ambulance data
-        const ambulanceVisited = data.ambulance?.filter(a => a.visited)?.length || 0;
-        const ambulanceTotal = data.ambulance?.length || 0;
-        document.getElementById('ambulance-visited-count').textContent = ambulanceVisited;
-        document.getElementById('ambulance-total-count').textContent = `of ${ambulanceTotal} total`;
+        // Update condition count
+        const activeConditions = conditions.filter(c => c.status === 'active' || !c.status).length;
+        document.getElementById('conditions-count').textContent = activeConditions;
         
-        // Medical records
+        // Update symptom count (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const recentSymptoms = symptoms.filter(s => new Date(s.timestamp) >= thirtyDaysAgo).length;
+        document.getElementById('symptoms-tracked-count').textContent = recentSymptoms;
+        
+        // Medical records count
         const medicalRecords = data.medicalRecords?.length || 0;
         document.getElementById('medical-records-count').textContent = medicalRecords;
         
-        // Health score (calculate based on activity)
-        const totalVisits = hospitalsVisited + ambulanceVisited;
-        const totalVisitCounts = (data.hospitals?.reduce((sum, h) => sum + (h.count || 0), 0) || 0) + 
-                                (data.ambulance?.reduce((sum, a) => sum + (a.count || 0), 0) || 0);
+        // Medications count
+        document.getElementById('medications-count').textContent = medications.length;
         
-        // Base score starts at 85 (good health assumption)
-        let healthScore = 85;
+        // Update condition and symptom lists
+        this.updateConditionsList(conditions);
+        this.updateSymptomsList(symptoms);
+        this.updateMedicationsList(medications);
         
-        // Reduce score for medical records (health incidents)
-        healthScore -= Math.min(medicalRecords * 3, 30);
+        // Legacy hospital/ambulance stats (kept for backward compatibility)
+        const hospitalsVisited = data.hospitals?.filter(h => h.visited)?.length || 0;
+        const hospitalsTotal = data.hospitals?.length || 0;
+        if (document.getElementById('hospitals-visited-count')) {
+            document.getElementById('hospitals-visited-count').textContent = hospitalsVisited;
+        }
+        if (document.getElementById('hospitals-total-count')) {
+            document.getElementById('hospitals-total-count').textContent = `of ${hospitalsTotal} total`;
+        }
         
-        // Add score for being proactive (visiting for checkups/having data)
-        healthScore += Math.min(totalVisits * 2, 15);
-        healthScore += Math.min(totalVisitCounts * 1, 10);
+        const ambulanceVisited = data.ambulance?.filter(a => a.visited)?.length || 0;
+        const ambulanceTotal = data.ambulance?.length || 0;
+        if (document.getElementById('ambulance-visited-count')) {
+            document.getElementById('ambulance-visited-count').textContent = ambulanceVisited;
+        }
+        if (document.getElementById('ambulance-total-count')) {
+            document.getElementById('ambulance-total-count').textContent = `of ${ambulanceTotal} total`;
+        }
+    }
+
+    updateConditionsList(conditions) {
+        const list = document.getElementById('conditions-list');
+        if (!list) return;
+
+        const activeConditions = conditions.filter(c => c.status === 'active' || !c.status);
         
-        // Ensure score stays between 0-100
-        healthScore = Math.max(0, Math.min(100, healthScore));
+        if (activeConditions.length === 0) {
+            list.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <p class="text-sm">No conditions tracked yet</p>
+                    <button class="text-blue-600 hover:text-blue-700 text-sm mt-2" id="add-condition-link">
+                        Add your first condition
+                    </button>
+                </div>
+            `;
+            list.querySelector('#add-condition-link')?.addEventListener('click', () => this.showAddConditionModal());
+        } else {
+            list.innerHTML = activeConditions.map(c => `
+                <div class="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-semibold text-sm text-gray-900">${c.name}</div>
+                            ${c.diagnosedDate ? `<div class="text-xs text-gray-500">Since ${new Date(c.diagnosedDate).toLocaleDateString()}</div>` : ''}
+                        </div>
+                        <span class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">${c.status || 'active'}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
         
-        document.getElementById('health-score').textContent = healthScore;
+        document.getElementById('conditions-showing-count').textContent = activeConditions.length;
+    }
+
+    updateSymptomsList(symptoms) {
+        const list = document.getElementById('symptoms-list');
+        if (!list) return;
+
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const recentSymptoms = symptoms.filter(s => new Date(s.timestamp) >= sevenDaysAgo).slice(0, 10);
+        
+        if (recentSymptoms.length === 0) {
+            list.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <p class="text-sm">No symptoms logged yet</p>
+                    <button class="text-blue-600 hover:text-blue-700 text-sm mt-2" id="log-symptom-link">
+                        Log your first symptom
+                    </button>
+                </div>
+            `;
+            list.querySelector('#log-symptom-link')?.addEventListener('click', () => this.showLogSymptomModal());
+        } else {
+            list.innerHTML = recentSymptoms.map(s => `
+                <div class="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-semibold text-sm text-gray-900">${s.name}</div>
+                            <div class="text-xs text-gray-500">${new Date(s.timestamp).toLocaleDateString()}</div>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded ${
+                            s.severity === 'severe' ? 'bg-red-100 text-red-700' :
+                            s.severity === 'moderate' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-green-100 text-green-700'
+                        }">${s.severity}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    updateMedicationsList(medications) {
+        const list = document.getElementById('medications-list');
+        if (!list) return;
+
+        if (medications.length === 0) {
+            list.innerHTML = `
+                <div class="text-center py-6 text-gray-500 text-sm">
+                    No medications added
+                </div>
+            `;
+        } else {
+            list.innerHTML = medications.slice(0, 5).map(m => `
+                <div class="p-2 bg-gray-50 rounded text-sm">
+                    <div class="font-semibold text-gray-900">${m.name}</div>
+                    ${m.dosage ? `<div class="text-xs text-gray-500">${m.dosage}</div>` : ''}
+                </div>
+            `).join('');
+        }
     }
 
     // Setup event listeners
@@ -473,6 +575,23 @@ class DashboardApp {
 
         if (signOutBtn) {
             signOutBtn.addEventListener('click', () => this.signOut());
+        }
+
+        // New health tracking buttons
+        const logSymptomBtn = document.getElementById('log-symptom-btn');
+        const addConditionBtn = document.getElementById('add-condition-btn');
+        const aiInsightsBtn = document.getElementById('ai-insights-btn');
+
+        if (logSymptomBtn) {
+            logSymptomBtn.addEventListener('click', () => this.showLogSymptomModal());
+        }
+
+        if (addConditionBtn) {
+            addConditionBtn.addEventListener('click', () => this.showAddConditionModal());
+        }
+
+        if (aiInsightsBtn) {
+            aiInsightsBtn.addEventListener('click', () => this.showAIInsights());
         }
 
         // Feature buttons
@@ -1238,6 +1357,256 @@ class UIComponents {
         // This method is called from the main app but we handle stats display in renderStats
         // So this is just a placeholder to prevent the error
         console.log('Quick stats updated:', { hospitalStats, ambulanceStats });
+    }
+
+    // New health tracking methods
+    showLogSymptomModal() {
+        const modal = this.createModal('Log Symptom', this.generateSymptomForm());
+        
+        const form = modal.querySelector('#symptom-form');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.saveSymptom(form);
+                this.closeModal(modal);
+            });
+        }
+    }
+
+    showAddConditionModal() {
+        const modal = this.createModal('Add Condition', this.generateConditionForm());
+        
+        const form = modal.querySelector('#condition-form');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.saveCondition(form);
+                this.closeModal(modal);
+            });
+        }
+    }
+
+    async showAIInsights() {
+        if (!this.healthAI.isEnabled()) {
+            const enable = confirm('AI Analysis is currently disabled. Would you like to enable it?');
+            if (enable) {
+                this.healthAI.updateSettings({ enabled: true });
+                showStatusMessage('AI Analysis enabled! 🤖', 'success');
+            } else {
+                return;
+            }
+        }
+
+        showStatusMessage('Analyzing your health data... 🤖', 'info');
+
+        try {
+            const userData = this.dataManager.localData;
+            const symptoms = userData.symptoms || [];
+            const conditions = userData.conditions || [];
+            const medications = userData.medications || [];
+
+            // Run AI analyses
+            const [symptomAnalysis, conditionTrends, medicationCheck, insights] = await Promise.all([
+                this.healthAI.analyzeSymptoms(symptoms, conditions),
+                this.healthAI.analyzeConditionTrends(conditions),
+                this.healthAI.getMedicationInteractions(medications),
+                this.healthAI.getHealthInsights(userData)
+            ]);
+
+            // Display results
+            this.displayAIResults(symptomAnalysis, conditionTrends, medicationCheck, insights);
+        } catch (error) {
+            console.error('AI analysis error:', error);
+            showStatusMessage('Failed to analyze health data', 'error');
+        }
+    }
+
+    displayAIResults(symptomAnalysis, conditionTrends, medicationCheck, insights) {
+        const panel = document.getElementById('ai-analysis-panel');
+        if (!panel) return;
+
+        panel.innerHTML = `
+            <div class="space-y-3">
+                ${symptomAnalysis.severity !== 'none' ? `
+                    <div class="p-3 bg-${symptomAnalysis.urgency === 'urgent' ? 'red' : 'yellow'}-50 rounded-lg">
+                        <div class="font-semibold text-sm mb-1">Symptom Analysis</div>
+                        <div class="text-xs text-gray-600">
+                            Severity: <span class="font-medium">${symptomAnalysis.severity}</span><br>
+                            Urgency: <span class="font-medium">${symptomAnalysis.urgency}</span>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${conditionTrends.trends.length > 0 ? `
+                    <div class="p-3 bg-blue-50 rounded-lg">
+                        <div class="font-semibold text-sm mb-1">Condition Trends</div>
+                        <div class="text-xs text-gray-600">${conditionTrends.trends[0].trend}</div>
+                    </div>
+                ` : ''}
+                
+                ${medicationCheck.interactions.length > 0 ? `
+                    <div class="p-3 bg-orange-50 rounded-lg">
+                        <div class="font-semibold text-sm mb-1">⚠️ Medication Alert</div>
+                        <div class="text-xs text-gray-600">${medicationCheck.interactions.length} potential interactions found</div>
+                    </div>
+                ` : ''}
+                
+                <div class="p-3 bg-green-50 rounded-lg">
+                    <div class="font-semibold text-sm mb-1">Health Score</div>
+                    <div class="text-2xl font-bold text-green-600">${insights.score}%</div>
+                </div>
+                
+                <div class="text-xs text-gray-500 italic">${symptomAnalysis.disclaimer || 'AI analysis for informational purposes only'}</div>
+            </div>
+        `;
+
+        showStatusMessage('AI analysis complete! 🤖', 'success');
+    }
+
+    async saveSymptom(form) {
+        const formData = new FormData(form);
+        const symptom = {
+            id: Date.now().toString(),
+            name: formData.get('symptom-name'),
+            severity: formData.get('severity'),
+            duration: formData.get('duration'),
+            notes: formData.get('notes'),
+            timestamp: new Date().toISOString()
+        };
+
+        const userData = this.dataManager.localData;
+        if (!userData.symptoms) userData.symptoms = [];
+        userData.symptoms.push(symptom);
+
+        await this.dataManager.saveUserData();
+        showStatusMessage('Symptom logged successfully! 📊', 'success');
+        this.refreshDashboard();
+    }
+
+    async saveCondition(form) {
+        const formData = new FormData(form);
+        const condition = {
+            id: Date.now().toString(),
+            name: formData.get('condition-name'),
+            diagnosedDate: formData.get('diagnosed-date'),
+            status: formData.get('status'),
+            notes: formData.get('notes'),
+            timestamp: new Date().toISOString()
+        };
+
+        const userData = this.dataManager.localData;
+        if (!userData.conditions) userData.conditions = [];
+        userData.conditions.push(condition);
+
+        await this.dataManager.saveUserData();
+        showStatusMessage('Condition added successfully! 🩺', 'success');
+        this.refreshDashboard();
+    }
+
+    generateSymptomForm() {
+        return `
+            <form id="symptom-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Symptom</label>
+                    <input type="text" name="symptom-name" required
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="e.g., Headache, Fatigue">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Severity</label>
+                    <select name="severity" required
+                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="mild">Mild</option>
+                        <option value="moderate">Moderate</option>
+                        <option value="severe">Severe</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                    <input type="text" name="duration" required
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="e.g., 2 hours, 3 days">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea name="notes" rows="3"
+                              class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                              placeholder="Additional details..."></textarea>
+                </div>
+                <button type="submit"
+                        class="w-full bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition">
+                    Log Symptom
+                </button>
+            </form>
+        `;
+    }
+
+    generateConditionForm() {
+        return `
+            <form id="condition-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Condition Name</label>
+                    <input type="text" name="condition-name" required
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="e.g., Hypertension, Diabetes">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Diagnosed Date</label>
+                    <input type="date" name="diagnosed-date"
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select name="status" required
+                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="active">Active</option>
+                        <option value="managed">Managed</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea name="notes" rows="3"
+                              class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                              placeholder="Treatment plan, medications, etc."></textarea>
+                </div>
+                <button type="submit"
+                        class="w-full bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition">
+                    Add Condition
+                </button>
+            </form>
+        `;
+    }
+
+    createModal(title, content) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-900">${title}</h3>
+                    <button class="close-modal text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                </div>
+                ${content}
+            </div>
+        `;
+
+        modal.querySelector('.close-modal').addEventListener('click', () => this.closeModal(modal));
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.closeModal(modal);
+        });
+
+        document.body.appendChild(modal);
+        return modal;
+    }
+
+    closeModal(modal) {
+        modal.remove();
+    }
+
+    refreshDashboard() {
+        this.updateUserProfile();
+        this.renderStats();
     }
 }
 

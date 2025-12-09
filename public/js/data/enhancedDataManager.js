@@ -48,6 +48,10 @@ export class EnhancedDataManager {
             ambulance: [],
             awards: [],
             visitHistory: [],
+            conditions: [],
+            symptoms: [],
+            medications: [],
+            allergies: [],
             medicalRecords: [],
             symptomTracking: [],
             userProfile: {}
