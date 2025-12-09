@@ -1512,6 +1512,11 @@ class DashboardApp {
 
         if (!issue) return;
 
+        // Get user's predefined locations or defaults
+        const userLocations = this.dataManager.localData?.userSettings?.locations || ['Home', 'Work', 'Outside', 'Other'];
+        const ambulanceServices = this.dataManager.localData?.ambulance?.map(a => a.name) || [];
+        const hospitals = this.dataManager.localData?.hospitals?.map(h => h.name) || [];
+
         const modalContent = `
             <form id="episode-form" class="space-y-4">
                 <div class="bg-gradient-to-r from-blue-600 to-blue-400 rounded-lg p-4 text-white mb-4 shadow-lg">
@@ -1529,6 +1534,15 @@ class DashboardApp {
                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
 
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">📍 Location</label>
+                    <select name="episode-location" required
+                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select location...</option>
+                        ${userLocations.map(loc => `<option value="${loc}">${loc}</option>`).join('')}
+                    </select>
+                </div>
+
                 ${issue.requiresAmbulance ? `
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
                         <label class="flex items-center space-x-2 mb-2">
@@ -1536,8 +1550,15 @@ class DashboardApp {
                             <span class="text-sm font-medium text-gray-700">🚑 Ambulance was called</span>
                         </label>
                         <div id="ambulance-details" class="hidden space-y-2 mt-2">
-                            <input type="text" name="ambulance-service" placeholder="Ambulance service name"
-                                   class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                            <div class="relative">
+                                <input type="text" name="ambulance-service" id="ambulance-input" placeholder="Start typing ambulance service..."
+                                       class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 autocomplete-input"
+                                       list="ambulance-list">
+                                <datalist id="ambulance-list">
+                                    ${ambulanceServices.map(s => `<option value="${s}">`).join('')}
+                                </datalist>
+                                <div id="ambulance-suggestions" class="hidden absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto"></div>
+                            </div>
                             <input type="time" name="ambulance-arrival" placeholder="Arrival time"
                                    class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
                         </div>
@@ -1551,8 +1572,15 @@ class DashboardApp {
                             <span class="text-sm font-medium text-gray-700">🏥 Went to hospital</span>
                         </label>
                         <div id="hospital-details" class="hidden space-y-2 mt-2">
-                            <input type="text" name="hospital-name" placeholder="Hospital name"
-                                   class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                            <div class="relative">
+                                <input type="text" name="hospital-name" id="hospital-input" placeholder="Start typing hospital name..."
+                                       class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 autocomplete-input"
+                                       list="hospital-list">
+                                <datalist id="hospital-list">
+                                    ${hospitals.map(h => `<option value="${h}">`).join('')}
+                                </datalist>
+                                <div id="hospital-suggestions" class="hidden absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto"></div>
+                            </div>
                             <input type="time" name="hospital-arrival" placeholder="Arrival time"
                                    class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
                             <select name="treatment-type" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
@@ -1586,6 +1614,70 @@ class DashboardApp {
         `;
 
         const modal = this.createModal(`Record: ${issue.name}`, modalContent);
+
+        // Setup autocomplete for ambulance service
+        const ambulanceInput = modal.querySelector('#ambulance-input');
+        if (ambulanceInput) {
+            ambulanceInput.addEventListener('input', (e) => {
+                const value = e.target.value.toLowerCase();
+                const suggestions = document.querySelector('#ambulance-suggestions');
+                if (!suggestions) return;
+                
+                if (value.length < 1) {
+                    suggestions.classList.add('hidden');
+                    return;
+                }
+                
+                const filtered = ambulanceServices.filter(s => s.toLowerCase().includes(value));
+                if (filtered.length > 0) {
+                    suggestions.innerHTML = filtered.map(s => `
+                        <div class="p-2 cursor-pointer hover:bg-blue-100 text-sm">${s}</div>
+                    `).join('');
+                    suggestions.classList.remove('hidden');
+                    
+                    suggestions.querySelectorAll('div').forEach(div => {
+                        div.addEventListener('click', () => {
+                            ambulanceInput.value = div.textContent.trim();
+                            suggestions.classList.add('hidden');
+                        });
+                    });
+                } else {
+                    suggestions.classList.add('hidden');
+                }
+            });
+        }
+
+        // Setup autocomplete for hospital
+        const hospitalInput = modal.querySelector('#hospital-input');
+        if (hospitalInput) {
+            hospitalInput.addEventListener('input', (e) => {
+                const value = e.target.value.toLowerCase();
+                const suggestions = document.querySelector('#hospital-suggestions');
+                if (!suggestions) return;
+                
+                if (value.length < 1) {
+                    suggestions.classList.add('hidden');
+                    return;
+                }
+                
+                const filtered = hospitals.filter(h => h.toLowerCase().includes(value));
+                if (filtered.length > 0) {
+                    suggestions.innerHTML = filtered.map(h => `
+                        <div class="p-2 cursor-pointer hover:bg-green-100 text-sm">${h}</div>
+                    `).join('');
+                    suggestions.classList.remove('hidden');
+                    
+                    suggestions.querySelectorAll('div').forEach(div => {
+                        div.addEventListener('click', () => {
+                            hospitalInput.value = div.textContent.trim();
+                            suggestions.classList.add('hidden');
+                        });
+                    });
+                } else {
+                    suggestions.classList.add('hidden');
+                }
+            });
+        }
 
         // Toggle ambulance details
         const ambulanceCalled = modal.querySelector('#ambulance-called');
@@ -1635,6 +1727,7 @@ class DashboardApp {
         // Add form data to episode
         episode.timestamp = formData.get('episode-time') || new Date().toISOString();
         episode.notes = formData.get('notes') || '';
+        episode.location = formData.get('episode-location') || 'Not specified';
 
         // Handle ambulance progression
         if (formData.get('ambulance-called')) {
@@ -1675,6 +1768,167 @@ class DashboardApp {
 
         showStatusMessage(`Medical episode recorded: ${episode.issueName} 🚨`, 'success');
         this.refreshDashboard();
+    }
+
+    // Show progression timeline for editing episode flow
+    showEpisodeProgressionTimeline(episodeId) {
+        const data = this.dataManager.getData();
+        const episode = data.medicalEpisodes?.find(e => e.id === episodeId);
+
+        if (!episode) {
+            showStatusMessage('Episode not found', 'error');
+            return;
+        }
+
+        const progressionOptions = [
+            { type: 'initial', label: '🚨 Initial Symptom', icon: '🚨' },
+            { type: 'ambulance_called', label: '🚑 Ambulance Called', icon: '🚑' },
+            { type: 'hospital_arrival', label: '🏥 Hospital Arrival', icon: '🏥' },
+            { type: 'treatment_started', label: '💊 Treatment Started', icon: '💊' },
+            { type: 'escalation', label: '⚠️ Condition Escalated', icon: '⚠️' },
+            { type: 'observation', label: '👁️ Under Observation', icon: '👁️' },
+            { type: 'recovery', label: '✅ Recovery Stage', icon: '✅' },
+            { type: 'discharge', label: '🏠 Discharged', icon: '🏠' }
+        ];
+
+        // Build timeline HTML
+        const timelineHTML = `
+            <div class="space-y-4">
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                    <div class="font-semibold text-gray-900">${episode.issueName}</div>
+                    <div class="text-sm text-gray-600 mt-1">
+                        Started: ${new Date(episode.timestamp).toLocaleString()}
+                    </div>
+                    <div class="text-sm text-gray-600">Location: ${episode.location || 'Not specified'}</div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Progression Timeline:</label>
+                    <div id="progression-items" class="space-y-2 max-h-60 overflow-y-auto">
+                        ${(episode.progression || []).map((prog, idx) => `
+                            <div class="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900">${progressionOptions.find(o => o.type === prog.type)?.label || prog.type}</div>
+                                    <div class="text-xs text-gray-500">${new Date(prog.timestamp).toLocaleString()}</div>
+                                    ${prog.serviceName ? `<div class="text-xs text-gray-600 mt-1">Service: ${prog.serviceName}</div>` : ''}
+                                    ${prog.hospitalName ? `<div class="text-xs text-gray-600 mt-1">Hospital: ${prog.hospitalName}</div>` : ''}
+                                </div>
+                                <button type="button" class="remove-progression-btn ml-2 text-red-500 hover:text-red-700 font-bold" data-index="${idx}">
+                                    ✕
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded-r-lg">
+                    <div class="text-sm font-medium text-gray-900 mb-2">Add New Progression:</div>
+                    <select id="new-progression-type" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 mb-2">
+                        <option value="">Select progression type...</option>
+                        ${progressionOptions.map(opt => `<option value="${opt.type}">${opt.label}</option>`).join('')}
+                    </select>
+                    <textarea id="progression-notes" placeholder="Notes about this progression (optional)" rows="2"
+                              class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"></textarea>
+                    <button type="button" id="add-progression-btn" class="w-full mt-2 bg-gradient-to-r from-blue-600 to-blue-400 text-white font-medium py-2 px-4 rounded-lg hover:from-blue-700 hover:to-blue-500 transition">
+                        + Add to Timeline
+                    </button>
+                </div>
+
+                <div class="flex space-x-2">
+                    <button type="button" class="flex-1 bg-gradient-to-r from-green-600 to-green-400 text-white font-bold py-2 px-4 rounded-lg hover:from-green-700 hover:to-green-500 transition" id="save-progression-btn">
+                        ✅ Save Changes
+                    </button>
+                    <button type="button" class="flex-1 bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg hover:bg-gray-400 transition close-progression-modal">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+
+        const modal = this.createModal(`📋 Episode Timeline: ${episode.issueName}`, timelineHTML);
+
+        // Add progression button
+        const addBtn = modal.querySelector('#add-progression-btn');
+        addBtn.addEventListener('click', () => {
+            const typeSelect = modal.querySelector('#new-progression-type');
+            const notesText = modal.querySelector('#progression-notes');
+            const type = typeSelect.value;
+
+            if (!type) {
+                showStatusMessage('Please select a progression type', 'error');
+                return;
+            }
+
+            // Add to visual list
+            const itemsContainer = modal.querySelector('#progression-items');
+            const newProgItem = document.createElement('div');
+            newProgItem.className = 'flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200';
+            const label = progressionOptions.find(o => o.type === type)?.label || type;
+            const timestamp = new Date().toLocaleString();
+            newProgItem.innerHTML = `
+                <div class="flex-1">
+                    <div class="font-medium text-gray-900">${label}</div>
+                    <div class="text-xs text-gray-500">${timestamp}</div>
+                    ${notesText.value ? `<div class="text-xs text-gray-600 mt-1">${notesText.value}</div>` : ''}
+                </div>
+                <button type="button" class="remove-progression-btn ml-2 text-red-500 hover:text-red-700 font-bold">
+                    ✕
+                </button>
+            `;
+
+            // Add remove handler
+            newProgItem.querySelector('.remove-progression-btn').addEventListener('click', () => {
+                newProgItem.remove();
+            });
+
+            itemsContainer.appendChild(newProgItem);
+
+            // Reset inputs
+            typeSelect.value = '';
+            notesText.value = '';
+            showStatusMessage(`${label} added to timeline`, 'success');
+        });
+
+        // Remove progression buttons
+        modal.querySelectorAll('.remove-progression-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const progItem = e.target.closest('div.bg-gray-50');
+                if (progItem) {
+                    progItem.remove();
+                }
+            });
+        });
+
+        // Save changes
+        const saveBtn = modal.querySelector('#save-progression-btn');
+        saveBtn.addEventListener('click', async () => {
+            // Collect all progressions from the UI
+            const progressionItems = modal.querySelectorAll('#progression-items .bg-gray-50');
+            const newProgressions = [];
+
+            progressionItems.forEach(item => {
+                const label = item.querySelector('.font-medium').textContent;
+                const type = progressionOptions.find(o => o.label === label)?.type;
+                newProgressions.push({
+                    type: type || 'other',
+                    timestamp: new Date().toISOString(),
+                    notes: item.querySelector('.text-xs:last-child')?.textContent || ''
+                });
+            });
+
+            // Update episode in data manager
+            episode.progression = newProgressions;
+            await this.dataManager.saveData();
+
+            showStatusMessage('Episode timeline updated! 📋', 'success');
+            this.closeModal(modal);
+            this.refreshDashboard();
+        });
+
+        // Close button
+        modal.querySelector('.close-progression-modal').addEventListener('click', () => {
+            this.closeModal(modal);
+        });
     }
 }
 

@@ -171,7 +171,6 @@ export class MedicalEpisodeManager {
             await this.markHospitalVisit(details.hospitalName);
         }
 
-        await this.dataManager.saveUserData();
         return true;
     }
 
@@ -207,7 +206,7 @@ export class MedicalEpisodeManager {
             data.medicalEpisodes = [];
         }
         data.medicalEpisodes.push(episode);
-        await this.dataManager.saveUserData();
+        await this.dataManager.saveData();
         return episode;
     }
 
