@@ -1534,6 +1534,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function completeOnboarding(selectedConditions) {
         try {
+            console.log('🎯 Starting onboarding completion for user:', currentUser?.uid);
+            
             const form = document.getElementById('onboarding-form');
             if (!form) {
                 throw new Error('Form not found');
@@ -1543,6 +1545,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Get current data to preserve existing information
             const currentData = enhancedDataManager.getData();
+            
+            console.log('📋 Current data before update:', currentData);
 
             const userData = {
                 displayName: formData.get('displayName') || currentUser?.displayName || 'User',
@@ -1558,19 +1562,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 ...currentData,
                 userProfile: userData,
                 conditions: Array.from(selectedConditions),
-                onboardingCompleted: true
+                onboardingCompleted: true,
+                lastUpdated: new Date().toISOString()
             };
+
+            console.log('💾 Updated data to save:', {
+                onboardingCompleted: updatedData.onboardingCompleted,
+                conditions: updatedData.conditions,
+                userProfile: updatedData.userProfile
+            });
 
             // Set the data in the data manager
             enhancedDataManager.setData(updatedData);
 
-            // Save to Firestore
-            await enhancedDataManager.saveData();
+            // Save to Firestore with error handling
+            console.log('💾 Saving to Firestore...');
+            const saveSuccess = await enhancedDataManager.saveData();
+            
+            if (!saveSuccess) {
+                console.warn('⚠️ Save operation returned false, but continuing...');
+            } else {
+                console.log('✅ Onboarding data saved successfully');
+            }
 
+            // Update local reference
             currentUserData = enhancedDataManager.getData();
-
-            console.log('Onboarding completed with conditions:', Array.from(selectedConditions));
-            console.log('Saved data structure:', updatedData);
+            
+            console.log('✅ Onboarding completed with data:', {
+                onboardingCompleted: currentUserData.onboardingCompleted,
+                conditions: currentUserData.conditions
+            });
 
             hideModal();
             showStatusMessage('Profile setup completed successfully! Refreshing profile...', 'success');
@@ -1587,7 +1608,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
         } catch (error) {
-            console.error('Error completing onboarding:', error);
+            console.error('❌ Error completing onboarding:', error);
             showStatusMessage('Error saving profile. Please try again.', 'error');
         }
     }

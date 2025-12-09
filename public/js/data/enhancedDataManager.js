@@ -198,7 +198,7 @@ export class EnhancedDataManager {
                 docRef: !!this.docRef, 
                 userId: this.userId 
             });
-            return false;
+            return null;
         }
 
         try {
@@ -226,21 +226,18 @@ export class EnhancedDataManager {
                     userProfile: {},
                     ...firestoreData
                 };
-                console.log("User data loaded successfully");
+                console.log("User data loaded successfully from Firestore");
+                console.log("Onboarding status:", this.localData.onboardingCompleted);
                 
-                // Check if onboarding is completed
-                const onboardingCompleted = this.localData.onboardingCompleted || 
-                                       this.localData.userProfile?.onboardingCompleted || 
-                                       false;
-                
-                return onboardingCompleted;
+                // Return the loaded data
+                return this.localData;
             } else {
                 console.log("No user document found, initializing default data");
                 const success = await this.initializeDefaultData();
                 if (success) {
-                    this.showStatusMessage('Default data imported successfully!', 'success');
+                    this.showStatusMessage('Welcome! Setting up your profile...', 'success');
                 }
-                return false; // New user, onboarding not completed
+                return this.localData; // Return initialized data
             }
         } catch (error) {
             console.error("Error loading user data:", error);
@@ -249,38 +246,50 @@ export class EnhancedDataManager {
             if (error.code === 'permission-denied' || error.message.includes('access control')) {
                 console.log("Permission denied, treating as anonymous user");
                 await this.initializeDefaultData();
-                return true; // Skip onboarding for permission-denied users
+                return this.localData;
             }
             
             this.showStatusMessage('Error loading user data. Using offline mode.', 'warning');
             await this.initializeDefaultData();
-            return false;
+            return this.localData;
         }
     }
 
     // Save data to Firestore
     async saveData() {
         if (!this.docRef || !this.userId) {
-            console.log("No document reference available, skipping save");
+            console.error("❌ Cannot save: No document reference or user ID available");
             return false;
         }
 
         try {
-            console.log("Attempting to save data to Firestore...");
+            console.log("💾 Attempting to save data to Firestore for user:", this.userId);
+            console.log("📦 Data being saved:", {
+                onboardingCompleted: this.localData.onboardingCompleted,
+                hospitals: this.localData.hospitals?.length || 0,
+                medicalRecords: this.localData.medicalRecords?.length || 0,
+                conditions: this.localData.conditions?.length || 0
+            });
+            
+            // Add timestamp for tracking
+            const dataToSave = {
+                ...this.localData,
+                lastUpdated: new Date().toISOString()
+            };
             
             // Add a timeout to prevent hanging requests
-            const savePromise = setDoc(this.docRef, this.localData, { merge: true });
+            const savePromise = setDoc(this.docRef, dataToSave, { merge: true });
             const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Save timeout')), 10000)
             );
             
             await Promise.race([savePromise, timeoutPromise]);
             
-            console.log("Data saved successfully to Firestore");
+            console.log("✅ Data saved successfully to Firestore");
             this.showStatusMessage("Data saved successfully!", "success");
             return true;
         } catch (error) {
-            console.error("Error saving data to Firestore:", error);
+            console.error("❌ Error saving data to Firestore:", error);
             
             // If it's a CORS or network error, don't show error to user
             if (error.message.includes('access control') || error.message.includes('CORS') || error.message.includes('timeout')) {

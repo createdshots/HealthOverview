@@ -171,7 +171,18 @@
         <button id="guest-signin-btn" class="w-full bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition font-medium">
           Continue as Guest
         </button>
-        
+
+        <!-- Admin Login Button -->
+        <div class="mt-6 pt-4 border-t border-gray-200">
+          <button id="admin-login-btn" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-red-700 text-white py-2 px-4 rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 transform hover:scale-105 text-sm font-medium shadow-lg">
+            <span class="text-lg">🛡️</span>
+            <span>Admin Access</span>
+          </button>
+          <p class="text-xs text-gray-500 text-center mt-2">
+            For @healthoverview.info administrators only
+          </p>
+        </div>
+
       </div>
       <div class="mt-6 text-xs text-gray-400 text-center">By signing in, you agree to our <a href="#" class="underline hover:text-purple-600">Terms</a> and <a href="#" class="underline hover:text-purple-600">Privacy Policy</a>.</div>
       <div id="login-status-message" class="mt-4"></div>
