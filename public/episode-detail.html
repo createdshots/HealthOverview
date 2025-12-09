@@ -144,11 +144,9 @@
     </div>
 
     <script type="module">
-        import firebaseExports from '/firebaseConfig.js';
+        import { onAuthStateChanged, auth } from '/firebaseConfig.js';
         import { EnhancedDataManager } from '/js/data/enhancedDataManager.js';
         import { MedicalEpisodeManager, MEDICAL_ISSUES } from '/js/features/medicalEpisodes.js';
-        
-        const { onAuthStateChanged, db, auth } = firebaseExports;
 
         let currentEpisodeId = null;
         let episodeData = null;
