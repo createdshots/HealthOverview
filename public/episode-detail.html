@@ -144,9 +144,11 @@
     </div>
 
     <script type="module">
-        import { db, doc, getDoc, updateDoc, deleteDoc, onAuthStateChanged } from '/firebaseConfig.js';
+        import firebaseExports from '/firebaseConfig.js';
         import { EnhancedDataManager } from '/js/data/enhancedDataManager.js';
         import { MedicalEpisodeManager, MEDICAL_ISSUES } from '/js/features/medicalEpisodes.js';
+        
+        const { onAuthStateChanged, db, auth } = firebaseExports;
 
         let currentEpisodeId = null;
         let episodeData = null;
@@ -164,7 +166,7 @@
         }
 
         // Auth state listener
-        onAuthStateChanged(db.app.auth(), async (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 userId = user.uid;
                 dataManager = new EnhancedDataManager();
@@ -180,10 +182,13 @@
 
         async function loadEpisodeData() {
             try {
-                await dataManager.loadData();
+                console.log('Loading episode data for ID:', currentEpisodeId);
+                await dataManager.loadUserData();
                 const data = dataManager.getData();
                 
+                console.log('All medical episodes:', data.medicalEpisodes);
                 episodeData = data.medicalEpisodes?.find(e => e.id === currentEpisodeId);
+                console.log('Found episode:', episodeData);
                 
                 if (!episodeData) {
                     showError('Episode not found');
