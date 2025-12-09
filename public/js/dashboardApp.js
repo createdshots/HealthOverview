@@ -1320,7 +1320,7 @@ class DashboardApp {
         if (!userData.symptoms) userData.symptoms = [];
         userData.symptoms.push(symptom);
 
-        await this.dataManager.saveUserData();
+        await this.dataManager.saveData();
         showStatusMessage('Symptom logged successfully! 📊', 'success');
         this.refreshDashboard();
     }
@@ -1340,7 +1340,7 @@ class DashboardApp {
         if (!userData.conditions) userData.conditions = [];
         userData.conditions.push(condition);
 
-        await this.dataManager.saveUserData();
+        await this.dataManager.saveData();
         showStatusMessage('Condition added successfully! 🩺', 'success');
         this.refreshDashboard();
     }
@@ -1767,7 +1767,11 @@ class DashboardApp {
         await this.episodeManager.saveEpisode(episode);
 
         showStatusMessage(`Medical episode recorded: ${episode.issueName} 🚨`, 'success');
-        this.refreshDashboard();
+        
+        // Navigate to episode detail page
+        setTimeout(() => {
+            window.location.href = `/episode-detail.html?id=${episode.id}`;
+        }, 800);
     }
 
     // Show progression timeline for editing episode flow
