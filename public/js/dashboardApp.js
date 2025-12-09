@@ -574,6 +574,8 @@ class DashboardApp {
 
     // Setup event listeners
     setupEventListeners() {
+        console.log('🔧 Setting up event listeners...');
+        
         // Authentication buttons
         const signOutBtn = document.getElementById('signout-btn');
 
@@ -583,8 +585,16 @@ class DashboardApp {
 
         // New medical episode button - PROMINENT
         const newEpisodeBtn = document.getElementById('new-episode-btn');
+        console.log('🚨 New Episode Button:', newEpisodeBtn ? 'FOUND' : 'NOT FOUND');
+        
         if (newEpisodeBtn) {
-            newEpisodeBtn.addEventListener('click', () => this.showMedicalEpisodeModal());
+            console.log('✅ Adding click handler to new-episode-btn');
+            newEpisodeBtn.addEventListener('click', () => {
+                console.log('🚨 NEW EPISODE BUTTON CLICKED!');
+                this.showMedicalEpisodeModal();
+            });
+        } else {
+            console.error('❌ Could not find new-episode-btn element!');
         }
 
         // New health tracking buttons
@@ -603,6 +613,8 @@ class DashboardApp {
         if (aiInsightsBtn) {
             aiInsightsBtn.addEventListener('click', () => this.showAIInsights());
         }
+
+        console.log('✅ Event listeners setup complete');
 
         // Feature buttons
         const addRecordBtn = document.getElementById('add-record-btn');
@@ -1187,189 +1199,9 @@ class DashboardApp {
             welcomeSection.style.animationDelay = '0.2s';
         }
     }
-}
 
-// UI Components class to handle rendering
-class UIComponents {
-    constructor() {
-        this.hospitalsShowing = 10;
-        this.ambulanceShowing = 10;
-    }
-
-    renderList(type, data, searchTerm = '', originalData = null) {
-        const containerId = type === 'hospitals' ? 'hospitals-list' : 'ambulance-list';
-        const container = document.getElementById(containerId);
-        const showingCountId = type === 'hospitals' ? 'hospitals-showing-count' : 'ambulance-showing-count';
-        const loadMoreId = type === 'hospitals' ? 'hospitals-load-more' : 'ambulance-load-more';
-        
-        if (!container) {
-            console.warn(`Container ${containerId} not found`);
-            return;
-        }
-
-        const showingLimit = type === 'hospitals' ? this.hospitalsShowing : this.ambulanceShowing;
-        const dataToShow = data.slice(0, showingLimit);
-        const hasMore = data.length > showingLimit;
-
-        container.innerHTML = '';
-
-        // Update showing count
-        const showingCountEl = document.getElementById(showingCountId);
-        if (showingCountEl) {
-            showingCountEl.textContent = dataToShow.length;
-        }
-
-        // Show/hide load more button
-        const loadMoreEl = document.getElementById(loadMoreId);
-        if (loadMoreEl) {
-            if (hasMore) {
-                loadMoreEl.classList.remove('hidden');
-                const button = loadMoreEl.querySelector('button');
-                if (button) {
-                    button.textContent = `Load more ${type} (${data.length - showingLimit} remaining)...`;
-                    button.onclick = () => {
-                        if (type === 'hospitals') {
-                            this.hospitalsShowing += 10;
-                        } else {
-                            this.ambulanceShowing += 10;
-                        }
-                        this.renderList(type, data, searchTerm, originalData);
-                    };
-                }
-            } else {
-                loadMoreEl.classList.add('hidden');
-            }
-        }
-
-        if (!dataToShow || dataToShow.length === 0) {
-            container.innerHTML = `
-                <div class="text-gray-500 text-center py-12">
-                    <div class="text-4xl mb-4">${type === 'hospitals' ? '🏥' : '🚑'}</div>
-                    <p class="text-lg">No ${type} found${searchTerm ? ` for "${searchTerm}"` : ''}.</p>
-                </div>
-            `;
-            return;
-        }
-
-        dataToShow.forEach((item, filteredIndex) => {
-            // Find the original index in the full dataset
-            const originalIndex = originalData ? originalData.findIndex(originalItem => 
-                originalItem.name === item.name && originalItem.location === item.location
-            ) : filteredIndex;
-            
-            const listItem = this.createListItem(type, item, originalIndex);
-            container.appendChild(listItem);
-        });
-    }
-
-    createListItem(type, item, index) {
-        const listItem = document.createElement('div');
-        listItem.className = 'list-item glass-card rounded-2xl p-5 mb-4 transition-all duration-300 hover:shadow-xl border border-white/30';
-        
-        const isVisited = item.visited || false;
-        const count = item.count || 0;
-        
-        // Generate gradient based on type
-        const gradientClass = type === 'hospitals' 
-            ? 'from-purple-50 to-blue-50 border-purple-200' 
-            : 'from-blue-50 to-cyan-50 border-blue-200';
-        
-        listItem.className += ` bg-gradient-to-br ${gradientClass}`;
-        
-        listItem.innerHTML = `
-            <div class="flex items-start justify-between">
-                <div class="flex items-start space-x-4 flex-1">
-                    <div class="flex-shrink-0 mt-2">
-                        <input 
-                            type="checkbox" 
-                            ${isVisited ? 'checked' : ''} 
-                            data-type="${type}" 
-                            data-index="${index}" 
-                            class="w-5 h-5 text-purple-600 border-2 border-gray-300 rounded-lg focus:ring-purple-500 transition-all duration-200"
-                        >
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h4 class="text-lg font-semibold ${isVisited ? 'text-green-700' : 'text-gray-800'} mb-1">
-                            ${item.name || 'Unnamed Location'}
-                        </h4>
-                        ${item.city ? `<p class="text-sm text-gray-600 mb-2 flex items-center">
-                            <span class="mr-2">📍</span>${item.city}
-                        </p>` : ''}
-                        ${count > 0 ? `<div class="flex items-center space-x-2">
-                            <span class="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-3 py-1 rounded-full font-medium">
-                                ${count} visit${count > 1 ? 's' : ''}
-                            </span>
-                        </div>` : ''}
-                    </div>
-                </div>
-                <div class="flex-shrink-0 ml-4">
-                    <div class="flex items-center space-x-2">
-                        <button 
-                            data-type="${type}" 
-                            data-index="${index}" 
-                            data-action="increase"
-                            class="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl w-10 h-10 flex items-center justify-center hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg transform hover:scale-110 font-bold"
-                            title="Add visit"
-                        >
-                            +
-                        </button>
-                        ${count > 0 ? `
-                        <button 
-                            data-type="${type}" 
-                            data-index="${index}" 
-                            data-action="decrease"
-                            class="bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl w-10 h-10 flex items-center justify-center hover:from-red-600 hover:to-pink-700 transition-all duration-300 shadow-lg transform hover:scale-110 font-bold"
-                            title="Remove visit"
-                        >
-                            −
-                        </button>` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        return listItem;
-    }
-
-    renderStats(type, data) {
-        const statsElement = document.getElementById(`${type}-stats`);
-        if (!statsElement) return;
-        
-        const total = data.length;
-        const visited = data.filter(item => item.visited).length;
-        const percentage = total > 0 ? Math.round((visited / total) * 100) : 0;
-        
-        const gradientClass = type === 'hospitals' 
-            ? 'from-purple-500 to-blue-600' 
-            : 'from-blue-500 to-cyan-600';
-        
-        statsElement.innerHTML = `
-            <div class="bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl border-2 border-gray-200">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-sm font-semibold text-gray-700">Progress</span>
-                    <span class="text-lg font-bold text-gray-800">${visited}/${total}</span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
-                    <div class="bg-gradient-to-r ${gradientClass} h-3 rounded-full transition-all duration-500 shadow-sm" 
-                         style="width: ${percentage}%"></div>
-                </div>
-                <div class="text-center">
-                    <span class="text-2xl font-bold bg-gradient-to-r ${gradientClass} bg-clip-text text-transparent">
-                        ${percentage}%
-                    </span>
-                    <span class="text-sm text-gray-600 ml-2">complete</span>
-                </div>
-            </div>
-        `;
-    }
-
-    updateQuickStats(hospitalStats, ambulanceStats) {
-        // This method is called from the main app but we handle stats display in renderStats
-        // So this is just a placeholder to prevent the error
-        console.log('Quick stats updated:', { hospitalStats, ambulanceStats });
-    }
-
-    // New health tracking methods
+    // ===== HEALTH TRACKING METHODS =====
+    
     showLogSymptomModal() {
         const modal = this.createModal('Log Symptom', this.generateSymptomForm());
         
@@ -1614,14 +1446,12 @@ class UIComponents {
         modal.remove();
     }
 
-    refreshDashboard() {
-        this.updateUserProfile();
-        this.renderStats();
-        this.updateSummaryCards();
-    }
+    // ===== MEDICAL EPISODE METHODS =====
 
-    // Medical Episode Modal - Comprehensive medical issue selection
     showMedicalEpisodeModal() {
+        console.log('🚨 showMedicalEpisodeModal() called');
+        console.log('📋 MEDICAL_ISSUES:', MEDICAL_ISSUES);
+        
         const categoriesHTML = Object.entries(MEDICAL_ISSUES).map(([key, category]) => `
             <div class="mb-6">
                 <h4 class="font-bold text-lg mb-3 flex items-center text-gray-800">
@@ -1684,7 +1514,7 @@ class UIComponents {
 
         const modalContent = `
             <form id="episode-form" class="space-y-4">
-                <div class="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-4 text-white mb-4">
+                <div class="bg-gradient-to-r from-blue-600 to-blue-400 rounded-lg p-4 text-white mb-4 shadow-lg">
                     <div class="text-lg font-bold">${issue.name}</div>
                     <div class="text-sm opacity-90">Category: ${category.name}</div>
                     <div class="text-sm opacity-90 mt-1">
@@ -1745,7 +1575,7 @@ class UIComponents {
 
                 <div class="flex space-x-3">
                     <button type="submit"
-                            class="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-4 rounded-lg hover:from-purple-700 hover:to-pink-700 transition transform hover:scale-105">
+                            class="flex-1 bg-gradient-to-r from-blue-600 to-blue-400 text-white font-bold py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-500 transition transform hover:scale-105 shadow-lg">
                         💾 Save Episode
                     </button>
                     <button type="button" class="cancel-btn px-6 py-3 border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition">
@@ -1845,6 +1675,187 @@ class UIComponents {
 
         showStatusMessage(`Medical episode recorded: ${episode.issueName} 🚨`, 'success');
         this.refreshDashboard();
+    }
+}
+
+// UI Components class to handle rendering
+class UIComponents {
+    constructor() {
+        this.hospitalsShowing = 10;
+        this.ambulanceShowing = 10;
+    }
+
+    renderList(type, data, searchTerm = '', originalData = null) {
+        const containerId = type === 'hospitals' ? 'hospitals-list' : 'ambulance-list';
+        const container = document.getElementById(containerId);
+        const showingCountId = type === 'hospitals' ? 'hospitals-showing-count' : 'ambulance-showing-count';
+        const loadMoreId = type === 'hospitals' ? 'hospitals-load-more' : 'ambulance-load-more';
+        
+        if (!container) {
+            console.warn(`Container ${containerId} not found`);
+            return;
+        }
+
+        const showingLimit = type === 'hospitals' ? this.hospitalsShowing : this.ambulanceShowing;
+        const dataToShow = data.slice(0, showingLimit);
+        const hasMore = data.length > showingLimit;
+
+        container.innerHTML = '';
+
+        // Update showing count
+        const showingCountEl = document.getElementById(showingCountId);
+        if (showingCountEl) {
+            showingCountEl.textContent = dataToShow.length;
+        }
+
+        // Show/hide load more button
+        const loadMoreEl = document.getElementById(loadMoreId);
+        if (loadMoreEl) {
+            if (hasMore) {
+                loadMoreEl.classList.remove('hidden');
+                const button = loadMoreEl.querySelector('button');
+                if (button) {
+                    button.textContent = `Load more ${type} (${data.length - showingLimit} remaining)...`;
+                    button.onclick = () => {
+                        if (type === 'hospitals') {
+                            this.hospitalsShowing += 10;
+                        } else {
+                            this.ambulanceShowing += 10;
+                        }
+                        this.renderList(type, data, searchTerm, originalData);
+                    };
+                }
+            } else {
+                loadMoreEl.classList.add('hidden');
+            }
+        }
+
+        if (!dataToShow || dataToShow.length === 0) {
+            container.innerHTML = `
+                <div class="text-gray-500 text-center py-12">
+                    <div class="text-4xl mb-4">${type === 'hospitals' ? '🏥' : '🚑'}</div>
+                    <p class="text-lg">No ${type} found${searchTerm ? ` for "${searchTerm}"` : ''}.</p>
+                </div>
+            `;
+            return;
+        }
+
+        dataToShow.forEach((item, filteredIndex) => {
+            // Find the original index in the full dataset
+            const originalIndex = originalData ? originalData.findIndex(originalItem => 
+                originalItem.name === item.name && originalItem.location === item.location
+            ) : filteredIndex;
+            
+            const listItem = this.createListItem(type, item, originalIndex);
+            container.appendChild(listItem);
+        });
+    }
+
+    createListItem(type, item, index) {
+        const listItem = document.createElement('div');
+        listItem.className = 'list-item glass-card rounded-2xl p-5 mb-4 transition-all duration-300 hover:shadow-xl border border-white/30';
+        
+        const isVisited = item.visited || false;
+        const count = item.count || 0;
+        
+        // Generate gradient based on type
+        const gradientClass = type === 'hospitals' 
+            ? 'from-purple-50 to-blue-50 border-purple-200' 
+            : 'from-blue-50 to-cyan-50 border-blue-200';
+        
+        listItem.className += ` bg-gradient-to-br ${gradientClass}`;
+        
+        listItem.innerHTML = `
+            <div class="flex items-start justify-between">
+                <div class="flex items-start space-x-4 flex-1">
+                    <div class="flex-shrink-0 mt-2">
+                        <input 
+                            type="checkbox" 
+                            ${isVisited ? 'checked' : ''} 
+                            data-type="${type}" 
+                            data-index="${index}" 
+                            class="w-5 h-5 text-purple-600 border-2 border-gray-300 rounded-lg focus:ring-purple-500 transition-all duration-200"
+                        >
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-lg font-semibold ${isVisited ? 'text-green-700' : 'text-gray-800'} mb-1">
+                            ${item.name || 'Unnamed Location'}
+                        </h4>
+                        ${item.city ? `<p class="text-sm text-gray-600 mb-2 flex items-center">
+                            <span class="mr-2">📍</span>${item.city}
+                        </p>` : ''}
+                        ${count > 0 ? `<div class="flex items-center space-x-2">
+                            <span class="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-3 py-1 rounded-full font-medium">
+                                ${count} visit${count > 1 ? 's' : ''}
+                            </span>
+                        </div>` : ''}
+                    </div>
+                </div>
+                <div class="flex-shrink-0 ml-4">
+                    <div class="flex items-center space-x-2">
+                        <button 
+                            data-type="${type}" 
+                            data-index="${index}" 
+                            data-action="increase"
+                            class="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl w-10 h-10 flex items-center justify-center hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg transform hover:scale-110 font-bold"
+                            title="Add visit"
+                        >
+                            +
+                        </button>
+                        ${count > 0 ? `
+                        <button 
+                            data-type="${type}" 
+                            data-index="${index}" 
+                            data-action="decrease"
+                            class="bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl w-10 h-10 flex items-center justify-center hover:from-red-600 hover:to-pink-700 transition-all duration-300 shadow-lg transform hover:scale-110 font-bold"
+                            title="Remove visit"
+                        >
+                            −
+                        </button>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        return listItem;
+    }
+
+    renderStats(type, data) {
+        const statsElement = document.getElementById(`${type}-stats`);
+        if (!statsElement) return;
+        
+        const total = data.length;
+        const visited = data.filter(item => item.visited).length;
+        const percentage = total > 0 ? Math.round((visited / total) * 100) : 0;
+        
+        const gradientClass = type === 'hospitals' 
+            ? 'from-purple-500 to-blue-600' 
+            : 'from-blue-500 to-cyan-600';
+        
+        statsElement.innerHTML = `
+            <div class="bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl border-2 border-gray-200">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm font-semibold text-gray-700">Progress</span>
+                    <span class="text-lg font-bold text-gray-800">${visited}/${total}</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                    <div class="bg-gradient-to-r ${gradientClass} h-3 rounded-full transition-all duration-500 shadow-sm" 
+                         style="width: ${percentage}%"></div>
+                </div>
+                <div class="text-center">
+                    <span class="text-2xl font-bold bg-gradient-to-r ${gradientClass} bg-clip-text text-transparent">
+                        ${percentage}%
+                    </span>
+                    <span class="text-sm text-gray-600 ml-2">complete</span>
+                </div>
+            </div>
+        `;
+    }
+
+    updateQuickStats(hospitalStats, ambulanceStats) {
+        // This method is called from the main app but we handle stats display in renderStats
+        // So this is just a placeholder to prevent the error
+        console.log('Quick stats updated:', { hospitalStats, ambulanceStats });
     }
 }
 
