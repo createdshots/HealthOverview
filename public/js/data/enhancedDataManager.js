@@ -53,6 +53,7 @@ export class EnhancedDataManager {
             medications: [],
             allergies: [],
             medicalRecords: [],
+            medicalEpisodes: [],
             symptomTracking: [],
             userProfile: {}
         };

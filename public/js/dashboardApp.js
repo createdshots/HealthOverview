@@ -6,6 +6,7 @@ import { showStatusMessage } from './utils/ui.js';
 import { symptomTracker, showSymptomTracker } from './features/symptomTracker.js';
 import { mapViewer, showMapModal } from './features/mapViewer.js';
 import { HealthAI } from './ai/healthAI.js';
+import { MedicalEpisodeManager, MEDICAL_ISSUES } from './features/medicalEpisodes.js';
 
 class DashboardApp {
     constructor() {
@@ -13,6 +14,7 @@ class DashboardApp {
         this.uiComponents = new UIComponents();
         this.loadingIndicator = null;
         this.healthAI = new HealthAI();
+        this.episodeManager = new MedicalEpisodeManager(this.dataManager);
     }
 
     async init() {
@@ -435,23 +437,25 @@ class DashboardApp {
         const conditions = data.conditions || [];
         const symptoms = data.symptoms || [];
         const medications = data.medications || [];
+        const episodes = data.medicalEpisodes || [];
         
         // Update condition count
         const activeConditions = conditions.filter(c => c.status === 'active' || !c.status).length;
-        document.getElementById('conditions-count').textContent = activeConditions;
+        const conditionsElement = document.getElementById('conditions-count');
+        if (conditionsElement) conditionsElement.textContent = activeConditions;
         
-        // Update symptom count (last 30 days)
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const recentSymptoms = symptoms.filter(s => new Date(s.timestamp) >= thirtyDaysAgo).length;
-        document.getElementById('symptoms-tracked-count').textContent = recentSymptoms;
+        // Update medical episodes count
+        const episodesElement = document.getElementById('episodes-count');
+        if (episodesElement) episodesElement.textContent = episodes.length;
         
         // Medical records count
         const medicalRecords = data.medicalRecords?.length || 0;
-        document.getElementById('medical-records-count').textContent = medicalRecords;
+        const recordsElement = document.getElementById('medical-records-count');
+        if (recordsElement) recordsElement.textContent = medicalRecords;
         
         // Medications count
-        document.getElementById('medications-count').textContent = medications.length;
+        const medicationsElement = document.getElementById('medications-count');
+        if (medicationsElement) medicationsElement.textContent = medications.length;
         
         // Update condition and symptom lists
         this.updateConditionsList(conditions);
@@ -575,6 +579,12 @@ class DashboardApp {
 
         if (signOutBtn) {
             signOutBtn.addEventListener('click', () => this.signOut());
+        }
+
+        // New medical episode button - PROMINENT
+        const newEpisodeBtn = document.getElementById('new-episode-btn');
+        if (newEpisodeBtn) {
+            newEpisodeBtn.addEventListener('click', () => this.showMedicalEpisodeModal());
         }
 
         // New health tracking buttons
@@ -1607,6 +1617,234 @@ class UIComponents {
     refreshDashboard() {
         this.updateUserProfile();
         this.renderStats();
+        this.updateSummaryCards();
+    }
+
+    // Medical Episode Modal - Comprehensive medical issue selection
+    showMedicalEpisodeModal() {
+        const categoriesHTML = Object.entries(MEDICAL_ISSUES).map(([key, category]) => `
+            <div class="mb-6">
+                <h4 class="font-bold text-lg mb-3 flex items-center text-gray-800">
+                    <span class="text-2xl mr-2">${category.icon}</span>
+                    ${category.name}
+                </h4>
+                <div class="grid grid-cols-1 gap-2">
+                    ${category.issues.map(issue => `
+                        <button type="button" 
+                                class="episode-issue-btn text-left p-3 rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all duration-200"
+                                data-issue-id="${issue.id}"
+                                data-category="${key}">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="font-semibold text-gray-900">${issue.name}</div>
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        ${issue.requiresAmbulance ? '🚑 ' : ''}
+                                        ${issue.requiresHospital ? '🏥 ' : ''}
+                                        Severity: <span class="font-medium ${
+                                            issue.severity === 'critical' ? 'text-red-600' :
+                                            issue.severity === 'high' ? 'text-orange-600' :
+                                            issue.severity === 'medium' ? 'text-yellow-600' :
+                                            'text-green-600'
+                                        }">${issue.severity}</span>
+                                    </div>
+                                </div>
+                                <div class="text-2xl">→</div>
+                            </div>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+
+        const modalContent = `
+            <div class="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                <p class="text-gray-600 mb-4">Select the type of medical episode or emergency you experienced:</p>
+                ${categoriesHTML}
+            </div>
+        `;
+
+        const modal = this.createModal('🚨 New Medical Episode', modalContent);
+        
+        // Add click handlers to all issue buttons
+        modal.querySelectorAll('.episode-issue-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const issueId = btn.dataset.issueId;
+                const category = btn.dataset.category;
+                this.closeModal(modal);
+                this.showEpisodeDetailsModal(issueId, category);
+            });
+        });
+    }
+
+    showEpisodeDetailsModal(issueId, categoryKey) {
+        const category = MEDICAL_ISSUES[categoryKey];
+        const issue = category.issues.find(i => i.id === issueId);
+
+        if (!issue) return;
+
+        const modalContent = `
+            <form id="episode-form" class="space-y-4">
+                <div class="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-4 text-white mb-4">
+                    <div class="text-lg font-bold">${issue.name}</div>
+                    <div class="text-sm opacity-90">Category: ${category.name}</div>
+                    <div class="text-sm opacity-90 mt-1">
+                        Severity: <span class="font-bold">${issue.severity.toUpperCase()}</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">When did this occur?</label>
+                    <input type="datetime-local" name="episode-time" required
+                           value="${new Date().toISOString().slice(0, 16)}"
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                ${issue.requiresAmbulance ? `
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <label class="flex items-center space-x-2 mb-2">
+                            <input type="checkbox" name="ambulance-called" id="ambulance-called" class="rounded">
+                            <span class="text-sm font-medium text-gray-700">🚑 Ambulance was called</span>
+                        </label>
+                        <div id="ambulance-details" class="hidden space-y-2 mt-2">
+                            <input type="text" name="ambulance-service" placeholder="Ambulance service name"
+                                   class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                            <input type="time" name="ambulance-arrival" placeholder="Arrival time"
+                                   class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${issue.requiresHospital ? `
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <label class="flex items-center space-x-2 mb-2">
+                            <input type="checkbox" name="hospital-visit" id="hospital-visit" class="rounded">
+                            <span class="text-sm font-medium text-gray-700">🏥 Went to hospital</span>
+                        </label>
+                        <div id="hospital-details" class="hidden space-y-2 mt-2">
+                            <input type="text" name="hospital-name" placeholder="Hospital name"
+                                   class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                            <input type="time" name="hospital-arrival" placeholder="Arrival time"
+                                   class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                            <select name="treatment-type" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                <option value="">Treatment received</option>
+                                <option value="emergency">Emergency Department</option>
+                                <option value="admission">Hospital Admission</option>
+                                <option value="observation">Observation</option>
+                                <option value="outpatient">Outpatient</option>
+                            </select>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                    <textarea name="notes" rows="4"
+                              class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                              placeholder="Describe what happened, symptoms, treatment received, etc."></textarea>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button type="submit"
+                            class="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-4 rounded-lg hover:from-purple-700 hover:to-pink-700 transition transform hover:scale-105">
+                        💾 Save Episode
+                    </button>
+                    <button type="button" class="cancel-btn px-6 py-3 border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        `;
+
+        const modal = this.createModal(`Record: ${issue.name}`, modalContent);
+
+        // Toggle ambulance details
+        const ambulanceCalled = modal.querySelector('#ambulance-called');
+        if (ambulanceCalled) {
+            ambulanceCalled.addEventListener('change', (e) => {
+                const details = modal.querySelector('#ambulance-details');
+                if (details) {
+                    details.classList.toggle('hidden', !e.target.checked);
+                }
+            });
+        }
+
+        // Toggle hospital details
+        const hospitalVisit = modal.querySelector('#hospital-visit');
+        if (hospitalVisit) {
+            hospitalVisit.addEventListener('change', (e) => {
+                const details = modal.querySelector('#hospital-details');
+                if (details) {
+                    details.classList.toggle('hidden', !e.target.checked);
+                }
+            });
+        }
+
+        // Form submission
+        const form = modal.querySelector('#episode-form');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await this.saveEpisode(form, issueId, categoryKey);
+            this.closeModal(modal);
+        });
+
+        // Cancel button
+        modal.querySelector('.cancel-btn').addEventListener('click', () => {
+            this.closeModal(modal);
+        });
+    }
+
+    async saveEpisode(form, issueId, categoryKey) {
+        const formData = new FormData(form);
+        const episode = this.episodeManager.createEpisode(issueId, categoryKey);
+
+        if (!episode) {
+            showStatusMessage('Error creating episode', 'error');
+            return;
+        }
+
+        // Add form data to episode
+        episode.timestamp = formData.get('episode-time') || new Date().toISOString();
+        episode.notes = formData.get('notes') || '';
+
+        // Handle ambulance progression
+        if (formData.get('ambulance-called')) {
+            const serviceName = formData.get('ambulance-service');
+            const arrivalTime = formData.get('ambulance-arrival');
+            
+            await this.episodeManager.addProgression(episode.id, 'ambulance_called', {
+                serviceName,
+                arrivalTime,
+                timestamp: episode.timestamp
+            });
+
+            if (serviceName) {
+                await this.episodeManager.markAmbulanceService(serviceName);
+            }
+        }
+
+        // Handle hospital progression
+        if (formData.get('hospital-visit')) {
+            const hospitalName = formData.get('hospital-name');
+            const arrivalTime = formData.get('hospital-arrival');
+            const treatmentType = formData.get('treatment-type');
+            
+            await this.episodeManager.addProgression(episode.id, 'hospital_arrival', {
+                hospitalName,
+                arrivalTime,
+                treatmentType,
+                timestamp: episode.timestamp
+            });
+
+            if (hospitalName) {
+                await this.episodeManager.markHospitalVisit(hospitalName);
+            }
+        }
+
+        // Save the episode
+        await this.episodeManager.saveEpisode(episode);
+
+        showStatusMessage(`Medical episode recorded: ${episode.issueName} 🚨`, 'success');
+        this.refreshDashboard();
     }
 }
 
